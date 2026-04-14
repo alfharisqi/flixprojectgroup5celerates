@@ -1,0 +1,30 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f8f8f8;
+  color: #222;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+input, textarea, button {
+  font: inherit;
+}
+
+input, textarea {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+button {
+  background: black;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
