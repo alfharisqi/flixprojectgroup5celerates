@@ -1,6 +1,7 @@
 import pool from "../config/db.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { sendWelcomeEmail, sendLoginNotificationEmail } from "../utils/sendEmail.js";
 
 export const register = async (req, res) => {
   try {
@@ -37,6 +38,13 @@ export const register = async (req, res) => {
        RETURNING id_user, username, email`,
       [roleId, username, email, hashedPassword]
     );
+
+    // kirim email welcome
+    try {
+      await sendWelcomeEmail(email, username);
+    } catch (mailError) {
+      console.error("Gagal kirim email register:", mailError.message);
+    }
 
     return res.status(201).json({
       message: "Register berhasil",
@@ -93,6 +101,13 @@ export const login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
+
+    // kirim email notifikasi login
+    try {
+      await sendLoginNotificationEmail(user.email, user.username);
+    } catch (mailError) {
+      console.error("Gagal kirim email login:", mailError.message);
+    }
 
     return res.json({
       message: "Login berhasil",

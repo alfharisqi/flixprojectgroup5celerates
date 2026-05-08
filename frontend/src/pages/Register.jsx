@@ -8,13 +8,13 @@ function Register() {
   const [form, setForm] = useState({
     username: "",
     email: "",
-    password: ""
+    password: "",
   });
 
   const handleChange = (e) => {
     setForm({
       ...form,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -24,7 +24,7 @@ function Register() {
     try {
       const res = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/auth/register`,
-        form
+        form,
       );
 
       alert(res.data.message);
@@ -44,9 +44,8 @@ function Register() {
           display: "flex",
           flexDirection: "column",
           gap: "12px",
-          maxWidth: "400px"
-        }}
-      >
+          maxWidth: "400px",
+        }}>
         <input
           type="text"
           name="username"

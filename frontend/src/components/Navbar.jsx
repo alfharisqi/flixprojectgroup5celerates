@@ -18,19 +18,16 @@ function Navbar() {
         display: "flex",
         justifyContent: "space-between",
         padding: "16px 24px",
-        borderBottom: "1px solid #ddd"
-      }}
-    >
+        borderBottom: "1px solid #ddd",
+      }}>
       <div style={{ display: "flex", gap: "16px" }}>
         <Link to="/">Community</Link>
 
-        {user?.role === "moderator" && (
-          <Link to="/moderator">Moderator</Link>
-        )}
+        {token && <Link to="/profile">Profile</Link>}
 
-        {user?.role === "admin" && (
-          <Link to="/admin">Admin</Link>
-        )}
+        {user?.role === "moderator" && <Link to="/moderator">Moderator</Link>}
+
+        {user?.role === "admin" && <Link to="/admin">Admin</Link>}
       </div>
 
       <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
