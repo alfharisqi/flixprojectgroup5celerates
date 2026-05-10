@@ -5,6 +5,7 @@ import EmojiPicker from "emoji-picker-react";
 import { FiSmile } from "react-icons/fi";
 import GifPickerModal from "../components/GifPickerModal";
 import PostInsightModal from "../components/PostInsightModal";
+import RichContent from "../components/RichContent";
 
 function PostDetail() {
   const { id } = useParams();
@@ -31,7 +32,7 @@ function PostDetail() {
   const fetchPost = async () => {
     try {
       const res = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/posts/${id}`
+        `${import.meta.env.VITE_API_URL}/api/posts/${id}`,
       );
       setPost(res.data);
     } catch (error) {
@@ -43,7 +44,7 @@ function PostDetail() {
   const fetchComments = async () => {
     try {
       const res = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/comments/${id}`
+        `${import.meta.env.VITE_API_URL}/api/comments/${id}`,
       );
       setComments(res.data);
     } catch (error) {
@@ -55,7 +56,7 @@ function PostDetail() {
   const fetchPoll = async (postId) => {
     try {
       const res = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/polls/post/${postId}`
+        `${import.meta.env.VITE_API_URL}/api/polls/post/${postId}`,
       );
       setPollData(res.data);
     } catch (error) {
@@ -69,9 +70,9 @@ function PostDetail() {
         `${import.meta.env.VITE_API_URL}/api/post-insights/${id}`,
         {
           headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+            Authorization: `Bearer ${token}`,
+          },
+        },
       );
 
       setInsight(res.data);
@@ -97,54 +98,54 @@ function PostDetail() {
   const toggleChildReplies = (commentId) => {
     setShowChildReplies((prev) => ({
       ...prev,
-      [commentId]: !prev[commentId]
+      [commentId]: !prev[commentId],
     }));
   };
 
   const toggleReplyBox = (key) => {
     setActiveReplyBox((prev) => ({
       ...prev,
-      [key]: !prev[key]
+      [key]: !prev[key],
     }));
   };
 
   const toggleEmojiPicker = (key) => {
     setShowEmojiPicker((prev) => ({
       ...prev,
-      [key]: !prev[key]
+      [key]: !prev[key],
     }));
   };
 
   const toggleGifPicker = (key) => {
     setShowGifPicker((prev) => ({
       ...prev,
-      [key]: !prev[key]
+      [key]: !prev[key],
     }));
   };
 
   const handleReplyChange = (key, value) => {
     setReplyInputs((prev) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
   };
 
   const handleSelectGif = (key, gif) => {
     setSelectedGifs((prev) => ({
       ...prev,
-      [key]: gif
+      [key]: gif,
     }));
 
     setShowGifPicker((prev) => ({
       ...prev,
-      [key]: false
+      [key]: false,
     }));
   };
 
   const removeSelectedGif = (key) => {
     setSelectedGifs((prev) => ({
       ...prev,
-      [key]: null
+      [key]: null,
     }));
   };
 
@@ -164,7 +165,7 @@ function PostDetail() {
             style={{
               maxWidth: "220px",
               borderRadius: "10px",
-              display: "block"
+              display: "block",
             }}
           />
         )}
@@ -179,9 +180,9 @@ function PostDetail() {
         {},
         {
           headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+            Authorization: `Bearer ${token}`,
+          },
+        },
       );
       fetchPost();
     } catch (error) {
@@ -196,9 +197,9 @@ function PostDetail() {
         { reaction_type: reactionType },
         {
           headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+            Authorization: `Bearer ${token}`,
+          },
+        },
       );
       fetchPost();
     } catch (error) {
@@ -216,9 +217,9 @@ function PostDetail() {
           {},
           {
             headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
+              Authorization: `Bearer ${token}`,
+            },
+          },
         );
       }
 
@@ -236,9 +237,9 @@ function PostDetail() {
         { option_id: optionId },
         {
           headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+            Authorization: `Bearer ${token}`,
+          },
+        },
       );
 
       fetchPoll(post.id_post);
@@ -247,7 +248,11 @@ function PostDetail() {
     }
   };
 
-  const handleCreateReply = async (postId, parentCommentId = null, inputKey) => {
+  const handleCreateReply = async (
+    postId,
+    parentCommentId = null,
+    inputKey,
+  ) => {
     try {
       const replyText = replyInputs[inputKey];
 
@@ -260,36 +265,36 @@ function PostDetail() {
       }
 
       const finalContent = selectedGifs[inputKey]?.url
-        ? `${replyText || ""}\n[GIF]${selectedGifs[inputKey].url}[/GIF]`
+        ? `${replyText || ""}<p><img src="${selectedGifs[inputKey].url}" alt="GIF" class="embedded-gif" /></p>`
         : replyText;
 
       await axios.post(
         `${import.meta.env.VITE_API_URL}/api/comments/${postId}`,
         {
           content: finalContent,
-          parent_comment_id: parentCommentId
+          parent_comment_id: parentCommentId,
         },
         {
           headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+            Authorization: `Bearer ${token}`,
+          },
+        },
       );
 
       setReplyInputs((prev) => ({
         ...prev,
-        [inputKey]: ""
+        [inputKey]: "",
       }));
 
       setSelectedGifs((prev) => ({
         ...prev,
-        [inputKey]: null
+        [inputKey]: null,
       }));
 
       if (parentCommentId) {
         setShowChildReplies((prev) => ({
           ...prev,
-          [parentCommentId]: true
+          [parentCommentId]: true,
         }));
       }
 
@@ -301,7 +306,7 @@ function PostDetail() {
 
   const getChildComments = (allComments, parentId) => {
     return allComments.filter(
-      (comment) => Number(comment.parent_comment_id) === Number(parentId)
+      (comment) => Number(comment.parent_comment_id) === Number(parentId),
     );
   };
 
@@ -315,23 +320,21 @@ function PostDetail() {
           key={comment.id_comment}
           style={{
             marginLeft: `${level * 20}px`,
-            marginTop: "10px"
-          }}
-        >
+            marginTop: "10px",
+          }}>
           <div
             style={{
               background: "#f7f7f7",
               padding: "10px",
-              borderRadius: "6px"
-            }}
-          >
+              borderRadius: "6px",
+            }}>
             <strong>{comment.username}</strong>
             <div style={{ fontSize: "12px", color: "#666" }}>
               {new Date(comment.created_at).toLocaleString()}
             </div>
 
             <div style={{ margin: "6px 0 8px 0" }}>
-              {renderContentWithGif(comment.content)}
+              <RichContent html={comment.content} />
             </div>
 
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -344,8 +347,7 @@ function PostDetail() {
               {childComments.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => toggleChildReplies(comment.id_comment)}
-                >
+                  onClick={() => toggleChildReplies(comment.id_comment)}>
                   {showChildReplies[comment.id_comment]
                     ? `Hide Replies (${childComments.length})`
                     : `Show Replies (${childComments.length})`}
@@ -367,27 +369,24 @@ function PostDetail() {
                       flex: 1,
                       padding: "10px",
                       border: "1px solid #ccc",
-                      borderRadius: "6px"
+                      borderRadius: "6px",
                     }}
                   />
                   <button
                     type="button"
-                    onClick={() => toggleEmojiPicker(inputKey)}
-                  >
+                    onClick={() => toggleEmojiPicker(inputKey)}>
                     <FiSmile />
                   </button>
                   <button
                     type="button"
-                    onClick={() => toggleGifPicker(inputKey)}
-                  >
+                    onClick={() => toggleGifPicker(inputKey)}>
                     GIF
                   </button>
                   <button
                     type="button"
                     onClick={() =>
                       handleCreateReply(postId, comment.id_comment, inputKey)
-                    }
-                  >
+                    }>
                     Kirim
                   </button>
                 </div>
@@ -400,14 +399,13 @@ function PostDetail() {
                       style={{
                         maxWidth: "180px",
                         borderRadius: "10px",
-                        display: "block"
+                        display: "block",
                       }}
                     />
                     <button
                       type="button"
                       onClick={() => removeSelectedGif(inputKey)}
-                      style={{ marginTop: "8px" }}
-                    >
+                      style={{ marginTop: "8px" }}>
                       Hapus GIF
                     </button>
                   </div>
@@ -419,7 +417,7 @@ function PostDetail() {
                       onEmojiClick={(emojiData) =>
                         handleReplyChange(
                           inputKey,
-                          (replyInputs[inputKey] || "") + emojiData.emoji
+                          (replyInputs[inputKey] || "") + emojiData.emoji,
                         )
                       }
                     />
@@ -454,8 +452,7 @@ function PostDetail() {
       <button
         type="button"
         onClick={() => navigate(-1)}
-        style={{ marginBottom: "16px" }}
-      >
+        style={{ marginBottom: "16px" }}>
         ← Kembali
       </button>
 
@@ -464,9 +461,8 @@ function PostDetail() {
           border: "1px solid #ddd",
           borderRadius: "8px",
           padding: "16px",
-          background: "#fff"
-        }}
-      >
+          background: "#fff",
+        }}>
         <h2 style={{ margin: 0 }}>{post.title || "Untitled Post"}</h2>
 
         <div style={{ marginTop: "8px", color: "#666", fontSize: "14px" }}>
@@ -479,9 +475,8 @@ function PostDetail() {
               display: "flex",
               gap: "8px",
               flexWrap: "wrap",
-              marginTop: "12px"
-            }}
-          >
+              marginTop: "12px",
+            }}>
             {post.tags.map((tag, index) => (
               <span
                 key={index}
@@ -489,9 +484,8 @@ function PostDetail() {
                   background: "#f3f4f6",
                   padding: "4px 10px",
                   borderRadius: "999px",
-                  fontSize: "12px"
-                }}
-              >
+                  fontSize: "12px",
+                }}>
                 #{tag}
               </span>
             ))}
@@ -499,7 +493,7 @@ function PostDetail() {
         )}
 
         <div style={{ marginTop: "12px" }}>
-          {renderContentWithGif(post.content)}
+          <RichContent html={post.content} />
         </div>
 
         {post.image_url && (
@@ -510,7 +504,7 @@ function PostDetail() {
               maxWidth: "260px",
               marginTop: "10px",
               borderRadius: "10px",
-              display: "block"
+              display: "block",
             }}
           />
         )}
@@ -519,7 +513,8 @@ function PostDetail() {
           <div style={{ marginTop: "16px" }}>
             <h3 style={{ color: "#111" }}>Polling</h3>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {pollData.options.map((option) => (
                 <button
                   key={option.id_option}
@@ -534,10 +529,10 @@ function PostDetail() {
                     border: "1px solid #ccc",
                     background: "#fff",
                     color: "#111",
-                    cursor: "pointer"
-                  }}
-                >
-                  {option.option_text || "Opsi polling kosong"} — {option.vote_count} vote
+                    cursor: "pointer",
+                  }}>
+                  {option.option_text || "Opsi polling kosong"} —{" "}
+                  {option.vote_count} vote
                 </button>
               ))}
             </div>
@@ -549,30 +544,39 @@ function PostDetail() {
             display: "flex",
             gap: "8px",
             flexWrap: "wrap",
-            marginTop: "12px"
-          }}
-        >
+            marginTop: "12px",
+          }}>
           <button type="button" onClick={() => handleLike(post.id_post)}>
             👍 Like ({post.like_count || 0})
           </button>
 
-          <button type="button" onClick={() => handleReaction(post.id_post, "love")}>
+          <button
+            type="button"
+            onClick={() => handleReaction(post.id_post, "love")}>
             ❤️ {post.love_count || 0}
           </button>
 
-          <button type="button" onClick={() => handleReaction(post.id_post, "funny")}>
+          <button
+            type="button"
+            onClick={() => handleReaction(post.id_post, "funny")}>
             😂 {post.funny_count || 0}
           </button>
 
-          <button type="button" onClick={() => handleReaction(post.id_post, "wow")}>
+          <button
+            type="button"
+            onClick={() => handleReaction(post.id_post, "wow")}>
             😮 {post.wow_count || 0}
           </button>
 
-          <button type="button" onClick={() => handleReaction(post.id_post, "sad")}>
+          <button
+            type="button"
+            onClick={() => handleReaction(post.id_post, "sad")}>
             😢 {post.sad_count || 0}
           </button>
 
-          <button type="button" onClick={() => handleReaction(post.id_post, "angry")}>
+          <button
+            type="button"
+            onClick={() => handleReaction(post.id_post, "angry")}>
             😡 {post.angry_count || 0}
           </button>
 
@@ -593,9 +597,8 @@ function PostDetail() {
           style={{
             marginTop: "16px",
             paddingTop: "12px",
-            borderTop: "1px solid #eee"
-          }}
-        >
+            borderTop: "1px solid #eee",
+          }}>
           <h4 style={{ marginBottom: "12px" }}>Replies</h4>
 
           {token ? (
@@ -612,27 +615,24 @@ function PostDetail() {
                     flex: 1,
                     padding: "10px",
                     border: "1px solid #ccc",
-                    borderRadius: "6px"
+                    borderRadius: "6px",
                   }}
                 />
                 <button
                   type="button"
-                  onClick={() => toggleEmojiPicker(postReplyKey)}
-                >
+                  onClick={() => toggleEmojiPicker(postReplyKey)}>
                   <FiSmile />
                 </button>
                 <button
                   type="button"
-                  onClick={() => toggleGifPicker(postReplyKey)}
-                >
+                  onClick={() => toggleGifPicker(postReplyKey)}>
                   GIF
                 </button>
                 <button
                   type="button"
                   onClick={() =>
                     handleCreateReply(post.id_post, null, postReplyKey)
-                  }
-                >
+                  }>
                   Reply
                 </button>
               </div>
@@ -645,14 +645,13 @@ function PostDetail() {
                     style={{
                       maxWidth: "180px",
                       borderRadius: "10px",
-                      display: "block"
+                      display: "block",
                     }}
                   />
                   <button
                     type="button"
                     onClick={() => removeSelectedGif(postReplyKey)}
-                    style={{ marginTop: "8px" }}
-                  >
+                    style={{ marginTop: "8px" }}>
                     Hapus GIF
                   </button>
                 </div>
@@ -664,7 +663,7 @@ function PostDetail() {
                     onEmojiClick={(emojiData) =>
                       handleReplyChange(
                         postReplyKey,
-                        (replyInputs[postReplyKey] || "") + emojiData.emoji
+                        (replyInputs[postReplyKey] || "") + emojiData.emoji,
                       )
                     }
                   />
@@ -688,9 +687,8 @@ function PostDetail() {
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "10px"
-              }}
-            >
+                gap: "10px",
+              }}>
               {renderCommentTree(comments, rootComments, post.id_post, 0)}
             </div>
           ) : (

@@ -16,6 +16,7 @@ import { fileURLToPath } from "url";
 import pollRoutes from "./routes/pollRoutes.js";
 import postInsightRoutes from "./routes/postInsightRoutes.js";
 import postShareRoutes from "./routes/postShareRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 
 dotenv.config();
 
@@ -63,3 +64,5 @@ app.use("/api/polls", pollRoutes);
 app.use("/api/post-insights", postInsightRoutes);
 
 app.use("/api/post-shares", postShareRoutes);
+
+app.use("/api/uploads", uploadRoutes);

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import RichTextEditor from "../components/RichTextEditor";
 
 function CreatePostPage() {
   const navigate = useNavigate();
@@ -11,8 +12,6 @@ function CreatePostPage() {
   const [content, setContent] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState([]);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState("");
   const [pollOptions, setPollOptions] = useState(["", ""]);
 
   const addTag = () => {
@@ -34,25 +33,6 @@ function CreatePostPage() {
       e.preventDefault();
       addTag();
     }
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > 2 * 1024 * 1024) {
-      alert("Ukuran gambar maksimal 2 MB");
-      e.target.value = "";
-      return;
-    }
-
-    setSelectedImage(file);
-    setImagePreview(URL.createObjectURL(file));
-  };
-
-  const removeSelectedImage = () => {
-    setSelectedImage(null);
-    setImagePreview("");
   };
 
   const handlePollOptionChange = (index, value) => {
@@ -81,8 +61,6 @@ function CreatePostPage() {
     setContent("");
     setTagInput("");
     setTags([]);
-    setSelectedImage(null);
-    setImagePreview("");
     setPollOptions(["", ""]);
   };
 
@@ -105,10 +83,6 @@ function CreatePostPage() {
       formData.append("content", content);
       formData.append("post_type", postType);
       formData.append("tags", JSON.stringify(tags));
-
-      if (selectedImage && postType === "post") {
-        formData.append("image", selectedImage);
-      }
 
       if (postType === "poll") {
         const cleanedOptions = pollOptions
@@ -282,68 +256,8 @@ function CreatePostPage() {
         </div>
 
         <div style={{ marginBottom: "18px" }}>
-          <textarea
-            placeholder="Body text (optional)"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            style={{
-              width: "100%",
-              minHeight: "220px",
-              padding: "20px",
-              borderRadius: "20px",
-              border: "1px solid #ccc",
-              fontSize: "16px",
-              resize: "vertical",
-              boxSizing: "border-box",
-              background: "#fff",
-              color: "#111"
-            }}
-          />
+          <RichTextEditor value={content} onChange={setContent} />
         </div>
-
-        {postType === "post" && (
-          <div style={{ marginBottom: "18px" }}>
-            <label style={{ display: "block", marginBottom: "8px", color: "#111" }}>
-              Upload Image (max 2 MB)
-            </label>
-
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/jpg,image/webp"
-              onChange={handleImageChange}
-              style={{ color: "#111" }}
-            />
-
-            {imagePreview && (
-              <div style={{ marginTop: "12px" }}>
-                <img
-                  src={imagePreview}
-                  alt="Preview"
-                  style={{
-                    maxWidth: "250px",
-                    borderRadius: "12px",
-                    display: "block"
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={removeSelectedImage}
-                  style={{
-                    marginTop: "8px",
-                    padding: "8px 12px",
-                    borderRadius: "8px",
-                    border: "1px solid #ccc",
-                    background: "#fff",
-                    color: "#111",
-                    cursor: "pointer"
-                  }}
-                >
-                  Hapus Gambar
-                </button>
-              </div>
-            )}
-          </div>
-        )}
 
         {postType === "poll" && (
           <div style={{ marginBottom: "18px" }}>
@@ -413,17 +327,16 @@ function CreatePostPage() {
         >
           <button
             type="button"
-            onClick={() => navigate("/")}
             style={{
               padding: "12px 18px",
               borderRadius: "999px",
-              border: "1px solid #ccc",
-              background: "#f5f5f5",
-              color: "#111",
-              cursor: "pointer"
+              border: "1px solid #ddd",
+              background: "#f3f3f3",
+              color: "#999",
+              cursor: "not-allowed"
             }}
           >
-            Cancel
+            Save Draft
           </button>
 
           <button
