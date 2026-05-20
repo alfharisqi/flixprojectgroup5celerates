@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import EmojiPicker from "emoji-picker-react";
-import { FiSmile } from "react-icons/fi";
+import { FiBarChart2, FiSmile } from "react-icons/fi";
 import GifPickerModal from "../components/GifPickerModal";
 import PostInsightModal from "../components/PostInsightModal";
 import RichContent from "../components/RichContent";
@@ -82,9 +82,32 @@ function PostDetail() {
     }
   };
 
+  const recordPostView = async () => {
+    if (!token) return;
+
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/post-views/${id}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   useEffect(() => {
-    fetchPost();
-    fetchComments();
+    const loadPost = async () => {
+      await recordPostView();
+      fetchPost();
+      fetchComments();
+    };
+
+    loadPost();
   }, [id]);
 
   useEffect(() => {
@@ -147,6 +170,10 @@ function PostDetail() {
       ...prev,
       [key]: null,
     }));
+  };
+
+  const handleTagClick = (tag) => {
+    navigate(`/?tag=${encodeURIComponent(tag)}`);
   };
 
   const renderContentWithGif = (text) => {
@@ -224,6 +251,7 @@ function PostDetail() {
       }
 
       await navigator.clipboard.writeText(shareLink);
+      fetchPost();
       alert("Link post berhasil disalin");
     } catch (error) {
       alert("Gagal menyalin link");
@@ -243,6 +271,7 @@ function PostDetail() {
       );
 
       fetchPoll(post.id_post);
+      fetchPost();
     } catch (error) {
       alert(error.response?.data?.message || "Gagal vote polling");
     }
@@ -299,6 +328,7 @@ function PostDetail() {
       }
 
       fetchComments();
+      fetchPost();
     } catch (error) {
       alert(error.response?.data?.message || "Gagal membuat reply");
     }
@@ -446,6 +476,8 @@ function PostDetail() {
 
   const rootComments = comments.filter((comment) => !comment.parent_comment_id);
   const postReplyKey = `post-${post.id_post}`;
+  const viewCount = Number(post.view_count || 0);
+  const totalInsight = Number(post.total_insight || viewCount);
 
   return (
     <div style={{ padding: "24px", maxWidth: "800px", margin: "0 auto" }}>
@@ -465,8 +497,28 @@ function PostDetail() {
         }}>
         <h2 style={{ margin: 0 }}>{post.title || "Untitled Post"}</h2>
 
-        <div style={{ marginTop: "8px", color: "#666", fontSize: "14px" }}>
-          by {post.username} • {new Date(post.created_at).toLocaleString()}
+        <div
+          style={{
+            marginTop: "8px",
+            color: "#666",
+            fontSize: "14px",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            flexWrap: "wrap",
+          }}>
+          <span>
+            by {post.username} - {new Date(post.created_at).toLocaleString()}
+          </span>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "5px",
+            }}>
+            <FiBarChart2 size={14} />
+            {viewCount} views
+          </span>
         </div>
 
         {post.tags?.length > 0 && (
@@ -478,16 +530,23 @@ function PostDetail() {
               marginTop: "12px",
             }}>
             {post.tags.map((tag, index) => (
-              <span
+              <button
                 key={index}
+                type="button"
+                onClick={() => handleTagClick(tag)}
                 style={{
                   background: "#f3f4f6",
                   padding: "4px 10px",
                   borderRadius: "999px",
                   fontSize: "12px",
-                }}>
+                  border: "1px solid transparent",
+                  color: "#111",
+                  cursor: "pointer",
+                }}
+                title={`Lihat post dengan hashtag #${tag}`}
+              >
                 #{tag}
-              </span>
+              </button>
             ))}
           </div>
         )}
@@ -531,7 +590,7 @@ function PostDetail() {
                     color: "#111",
                     cursor: "pointer",
                   }}>
-                  {option.option_text || "Opsi polling kosong"} —{" "}
+                  {option.option_text || "Opsi polling kosong"} -{" "}
                   {option.vote_count} vote
                 </button>
               ))}
@@ -584,13 +643,17 @@ function PostDetail() {
             🔗 Share
           </button>
 
-          <button type="button" onClick={fetchInsight}>
-            📈 Insight
+          <button
+            type="button"
+            onClick={fetchInsight}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+            <FiBarChart2 size={16} />
+            Insight ({totalInsight})
           </button>
         </div>
 
         <div style={{ marginTop: "10px", color: "#666", fontSize: "14px" }}>
-          💬 Total Replies: {comments.length}
+          Total Replies: {comments.length}
         </div>
 
         <div
