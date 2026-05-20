@@ -17,6 +17,9 @@ import pollRoutes from "./routes/pollRoutes.js";
 import postInsightRoutes from "./routes/postInsightRoutes.js";
 import postShareRoutes from "./routes/postShareRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import postViewRoutes from "./routes/postViewRoutes.js";
+import movieRoutes from "./routes/movieRoutes.js";
+import { initializePostViewsTable } from "./config/initPostViews.js";
 
 dotenv.config();
 
@@ -38,6 +41,16 @@ app.use("/api/posts", postRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/moderator", moderatorRoutes);
 app.use("/api/comments", commentRoutes);
+app.use("/api/post-reactions", postReactionRoutes);
+app.use("/api/post-likes", postLikeRoutes);
+app.use("/api/polls", pollRoutes);
+app.use("/api/post-insights", postInsightRoutes);
+app.use("/api/post-shares", postShareRoutes);
+app.use("/api/post-views", postViewRoutes);
+app.use("/api/movies", movieRoutes);
+app.use("/api/tmdb", movieRoutes);
+app.use("/api/uploads", uploadRoutes);
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 transporter.verify()
   .then(() => {
@@ -49,20 +62,13 @@ transporter.verify()
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server berjalan di http://localhost:${PORT}`);
-});
-
-app.use("/api/post-reactions", postReactionRoutes);
-
-app.use("/api/post-likes", postLikeRoutes);
-
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
-
-app.use("/api/polls", pollRoutes);
-
-app.use("/api/post-insights", postInsightRoutes);
-
-app.use("/api/post-shares", postShareRoutes);
-
-app.use("/api/uploads", uploadRoutes);
+initializePostViewsTable()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server berjalan di http://localhost:${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error("Gagal menyiapkan tabel post views:", error.message);
+    process.exit(1);
+  });

@@ -31,6 +31,8 @@ function PostInsightModal({ isOpen, onClose, insight }) {
 
         <div style={{ display: "grid", gap: "10px" }}>
           <div><strong>Title:</strong> {insight.title}</div>
+          <div><strong>Total Insight:</strong> {insight.total_insight || 0}</div>
+          <div><strong>Views:</strong> {insight.view_count || 0}</div>
           <div><strong>Like:</strong> {insight.total_likes}</div>
           <div><strong>Replies:</strong> {insight.total_replies}</div>
           <div><strong>Shares:</strong> {insight.total_shares}</div>

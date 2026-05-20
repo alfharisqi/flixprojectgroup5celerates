@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
@@ -11,9 +11,12 @@ import PostDetail from "./pages/PostDetail";
 import CreatePostPage from "./pages/CreatePostPage";
 
 function App() {
+  const location = useLocation();
+  const hideNavbar = ["/login", "/register"].includes(location.pathname);
+
   return (
     <>
-      <Navbar />
+      {!hideNavbar && <Navbar />}
       <Routes>
         <Route path="/" element={<Community />} />
         <Route path="/post/:id" element={<PostDetail />} />

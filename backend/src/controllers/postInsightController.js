@@ -19,6 +19,13 @@ export const getPostInsight = async (req, res) => {
 
     const post = postCheck.rows[0];
 
+    const viewResult = await pool.query(
+      `SELECT COUNT(*) AS view_count
+       FROM flix.post_views
+       WHERE id_post = $1`,
+      [postId]
+    );
+
     const likeResult = await pool.query(
       `SELECT COUNT(*) AS total_likes
        FROM flix.post_likes
@@ -54,6 +61,7 @@ export const getPostInsight = async (req, res) => {
     );
 
     let pollInsight = null;
+    let totalPollVotesCount = 0;
 
     if (post.post_type === "poll") {
       const pollResult = await pool.query(
@@ -86,8 +94,10 @@ export const getPostInsight = async (req, res) => {
           [pollId]
         );
 
+        totalPollVotesCount = Number(totalPollVotes.rows[0].total_poll_votes);
+
         pollInsight = {
-          total_poll_votes: Number(totalPollVotes.rows[0].total_poll_votes),
+          total_poll_votes: totalPollVotesCount,
           options: optionVotes.rows.map((item) => ({
             ...item,
             vote_count: Number(item.vote_count)
@@ -96,15 +106,32 @@ export const getPostInsight = async (req, res) => {
       }
     }
 
+    const viewCount = Number(viewResult.rows[0].view_count);
+    const totalLikes = Number(likeResult.rows[0].total_likes);
+    const totalReplies = Number(replyResult.rows[0].total_replies);
+    const totalShares = Number(shareResult.rows[0].total_shares);
+    const totalReactions = Number(
+      reactionResult.rows[0].total_reactions || 0
+    );
+    const totalInsight =
+      viewCount +
+      totalLikes +
+      totalReplies +
+      totalShares +
+      totalReactions +
+      totalPollVotesCount;
+
     return res.json({
       post_id: Number(postId),
       title: post.title,
       post_type: post.post_type,
-      total_likes: Number(likeResult.rows[0].total_likes),
-      total_replies: Number(replyResult.rows[0].total_replies),
-      total_shares: Number(shareResult.rows[0].total_shares),
+      total_insight: totalInsight,
+      view_count: viewCount,
+      total_likes: totalLikes,
+      total_replies: totalReplies,
+      total_shares: totalShares,
       reactions: {
-        total_reactions: Number(reactionResult.rows[0].total_reactions || 0),
+        total_reactions: totalReactions,
         love_count: Number(reactionResult.rows[0].love_count || 0),
         funny_count: Number(reactionResult.rows[0].funny_count || 0),
         wow_count: Number(reactionResult.rows[0].wow_count || 0),

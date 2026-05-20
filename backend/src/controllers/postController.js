@@ -2,6 +2,20 @@ import pool from "../config/db.js";
 
 export const getPosts = async (req, res) => {
   try {
+    const tag = typeof req.query.tag === "string" ? req.query.tag.trim() : "";
+    const values = [];
+    let tagFilter = "";
+
+    if (tag) {
+      values.push(tag);
+      tagFilter = `
+       WHERE EXISTS (
+         SELECT 1
+         FROM unnest(p.tags) AS tag_name
+         WHERE LOWER(tag_name) = LOWER($1)
+       )`;
+    }
+
     const result = await pool.query(
       `SELECT 
           p.id_post,
@@ -14,16 +28,58 @@ export const getPosts = async (req, res) => {
           u.id_user,
           u.username,
 
+          COALESCE(v.view_count, 0) AS view_count,
+          COALESCE(c.reply_count, 0) AS reply_count,
+          COALESCE(s.share_count, 0) AS share_count,
           COALESCE(l.like_count, 0) AS like_count,
 
+          COALESCE(r.total_reactions, 0) AS total_reactions,
           COALESCE(r.love_count, 0) AS love_count,
           COALESCE(r.funny_count, 0) AS funny_count,
           COALESCE(r.wow_count, 0) AS wow_count,
           COALESCE(r.sad_count, 0) AS sad_count,
-          COALESCE(r.angry_count, 0) AS angry_count
+          COALESCE(r.angry_count, 0) AS angry_count,
+          COALESCE(po.total_votes, 0) AS poll_vote_count,
+
+          (
+            COALESCE(v.view_count, 0) +
+            COALESCE(c.reply_count, 0) +
+            COALESCE(s.share_count, 0) +
+            COALESCE(l.like_count, 0) +
+            COALESCE(r.total_reactions, 0) +
+            COALESCE(po.total_votes, 0)
+          ) AS total_insight,
+
+          CASE
+            WHEN pp.id_poll IS NULL THEN NULL
+            ELSE json_build_object(
+              'id_poll', pp.id_poll,
+              'id_post', pp.id_post,
+              'total_votes', COALESCE(po.total_votes, 0),
+              'options', COALESCE(po.options, '[]'::json)
+            )
+          END AS poll
 
        FROM flix.posts p
        JOIN flix.users u ON p.id_user = u.id_user
+
+       LEFT JOIN (
+         SELECT id_post, COUNT(*) AS view_count
+         FROM flix.post_views
+         GROUP BY id_post
+       ) v ON p.id_post = v.id_post
+
+       LEFT JOIN (
+         SELECT id_post, COUNT(*) AS reply_count
+         FROM flix.comments
+         GROUP BY id_post
+       ) c ON p.id_post = c.id_post
+
+       LEFT JOIN (
+         SELECT id_post, COUNT(*) AS share_count
+         FROM flix.post_shares
+         GROUP BY id_post
+       ) s ON p.id_post = s.id_post
 
        LEFT JOIN (
          SELECT id_post, COUNT(*) AS like_count
@@ -34,6 +90,7 @@ export const getPosts = async (req, res) => {
        LEFT JOIN (
          SELECT
            id_post,
+           COUNT(*) AS total_reactions,
            SUM(CASE WHEN reaction_type = 'love' THEN 1 ELSE 0 END) AS love_count,
            SUM(CASE WHEN reaction_type = 'funny' THEN 1 ELSE 0 END) AS funny_count,
            SUM(CASE WHEN reaction_type = 'wow' THEN 1 ELSE 0 END) AS wow_count,
@@ -43,7 +100,30 @@ export const getPosts = async (req, res) => {
          GROUP BY id_post
        ) r ON p.id_post = r.id_post
 
-       ORDER BY p.id_post DESC`
+       LEFT JOIN flix.post_polls pp ON p.id_post = pp.id_post
+
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id_option', o.id_option,
+             'option_text', o.option_text,
+             'vote_count', COALESCE(votes.vote_count, 0)
+           )
+           ORDER BY o.id_option ASC
+         ) AS options,
+         COALESCE(SUM(COALESCE(votes.vote_count, 0)), 0) AS total_votes
+         FROM flix.post_poll_options o
+         LEFT JOIN (
+           SELECT id_option, COUNT(*) AS vote_count
+           FROM flix.post_poll_votes
+           GROUP BY id_option
+         ) votes ON o.id_option = votes.id_option
+         WHERE o.id_poll = pp.id_poll
+       ) po ON TRUE
+
+       ${tagFilter}
+       ORDER BY p.id_post DESC`,
+      values
     );
 
     return res.json(result.rows);
@@ -71,16 +151,48 @@ export const getPostById = async (req, res) => {
           u.id_user,
           u.username,
 
+          COALESCE(v.view_count, 0) AS view_count,
+          COALESCE(c.reply_count, 0) AS reply_count,
+          COALESCE(s.share_count, 0) AS share_count,
           COALESCE(l.like_count, 0) AS like_count,
 
+          COALESCE(r.total_reactions, 0) AS total_reactions,
           COALESCE(r.love_count, 0) AS love_count,
           COALESCE(r.funny_count, 0) AS funny_count,
           COALESCE(r.wow_count, 0) AS wow_count,
           COALESCE(r.sad_count, 0) AS sad_count,
-          COALESCE(r.angry_count, 0) AS angry_count
+          COALESCE(r.angry_count, 0) AS angry_count,
+          COALESCE(pv.poll_vote_count, 0) AS poll_vote_count,
+
+          (
+            COALESCE(v.view_count, 0) +
+            COALESCE(c.reply_count, 0) +
+            COALESCE(s.share_count, 0) +
+            COALESCE(l.like_count, 0) +
+            COALESCE(r.total_reactions, 0) +
+            COALESCE(pv.poll_vote_count, 0)
+          ) AS total_insight
 
        FROM flix.posts p
        JOIN flix.users u ON p.id_user = u.id_user
+
+       LEFT JOIN (
+         SELECT id_post, COUNT(*) AS view_count
+         FROM flix.post_views
+         GROUP BY id_post
+       ) v ON p.id_post = v.id_post
+
+       LEFT JOIN (
+         SELECT id_post, COUNT(*) AS reply_count
+         FROM flix.comments
+         GROUP BY id_post
+       ) c ON p.id_post = c.id_post
+
+       LEFT JOIN (
+         SELECT id_post, COUNT(*) AS share_count
+         FROM flix.post_shares
+         GROUP BY id_post
+       ) s ON p.id_post = s.id_post
 
        LEFT JOIN (
          SELECT id_post, COUNT(*) AS like_count
@@ -91,6 +203,7 @@ export const getPostById = async (req, res) => {
        LEFT JOIN (
          SELECT
            id_post,
+           COUNT(*) AS total_reactions,
            SUM(CASE WHEN reaction_type = 'love' THEN 1 ELSE 0 END) AS love_count,
            SUM(CASE WHEN reaction_type = 'funny' THEN 1 ELSE 0 END) AS funny_count,
            SUM(CASE WHEN reaction_type = 'wow' THEN 1 ELSE 0 END) AS wow_count,
@@ -99,6 +212,14 @@ export const getPostById = async (req, res) => {
          FROM flix.post_reactions
          GROUP BY id_post
        ) r ON p.id_post = r.id_post
+
+       LEFT JOIN (
+         SELECT pp.id_post, COUNT(v.id_vote) AS poll_vote_count
+         FROM flix.post_polls pp
+         JOIN flix.post_poll_options o ON pp.id_poll = o.id_poll
+         LEFT JOIN flix.post_poll_votes v ON o.id_option = v.id_option
+         GROUP BY pp.id_post
+       ) pv ON p.id_post = pv.id_post
 
        WHERE p.id_post = $1`,
       [id]
