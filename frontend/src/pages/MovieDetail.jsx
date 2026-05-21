@@ -5,14 +5,13 @@ import {
   FaBookmark,
   FaFacebookF,
   FaRegStar,
-  FaSearch,
   FaShareAlt,
   FaStar,
   FaThumbsUp,
   FaTwitter,
   FaYoutube,
 } from "react-icons/fa";
-import flixLogo from "../assets/flix-logo.png";
+import SiteNavbar from "../components/SiteNavbar";
 import amazonPrimeVideoIcon from "../assets/platformstream-logo/amazonprimevideo-icon.png";
 import appleTvIcon from "../assets/platformstream-logo/appletv-icon.png";
 import catchplayIcon from "../assets/platformstream-logo/catchplay-icon.png";
@@ -347,37 +346,7 @@ function MovieDetail() {
 
   return (
     <main className="movie-detail-page">
-      <header className="movie-detail-nav">
-        <Link className="movie-detail-logo-link" to="/" aria-label="FLIX Home">
-          <img className="movie-detail-logo" src={flixLogo} alt="FLIX" />
-        </Link>
-
-        <nav className="movie-detail-menu" aria-label="Primary navigation">
-          <Link to="/">Home</Link>
-          <Link to="/">Movie</Link>
-          <Link to="/">TV Series</Link>
-          <Link to="/">Genre</Link>
-          <Link to="/community">Community</Link>
-        </nav>
-
-        <div className="movie-detail-actions">
-          <button type="button" aria-label="Search">
-            <FaSearch />
-          </button>
-          {!token ? (
-            <>
-              <Link to="/login">Login</Link>
-              <Link className="movie-detail-signin" to="/register">
-                Sign In
-              </Link>
-            </>
-          ) : (
-            <Link className="movie-detail-signin" to="/profile">
-              {user?.username || "Profile"}
-            </Link>
-          )}
-        </div>
-      </header>
+      <SiteNavbar mode="absolute" activeKey="movies" />
 
       <section
         className="movie-detail-hero"
@@ -647,9 +616,9 @@ function MovieDetail() {
       <footer className="movie-detail-footer">
         <nav aria-label="Footer navigation">
           <Link to="/">Home</Link>
-          <Link to="/">Movie</Link>
-          <Link to="/">TV Series</Link>
-          <Link to="/">Genre</Link>
+          <Link to="/movies">Movie</Link>
+          <Link to="/movies">TV Series</Link>
+          <Link to="/movies">Genre</Link>
           <Link to="/community">Community</Link>
         </nav>
         <div>
