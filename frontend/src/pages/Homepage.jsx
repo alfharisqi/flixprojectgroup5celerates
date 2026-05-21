@@ -70,6 +70,8 @@ const fallbackMovies = Array.from({ length: 8 }, (_, index) => ({
   genre_ids: [18, 53],
 }));
 
+const heroMovieLimit = 4;
+
 const getMovieYear = (date) => date?.slice(0, 4) || "-";
 
 const getMovieRating = (voteAverage) => {
@@ -190,19 +192,31 @@ function Homepage() {
         const movies = uniqueById([
           ...(nowPlayingData.results || []),
           ...(trendingData.results || []),
-        ].map(mapTmdbMovie)).slice(0, 12);
+        ].map(mapTmdbMovie)).slice(0, heroMovieLimit);
 
         if (movies.length > 0) {
           setHitMovies(movies);
           setActiveHeroIndex(0);
         }
       } catch {
-        setHitMovies([fallbackHeroMovie, ...fallbackMovies]);
+        setHitMovies([fallbackHeroMovie, ...fallbackMovies].slice(0, heroMovieLimit));
       }
     };
 
     fetchHitMovies();
   }, []);
+
+  useEffect(() => {
+    if (hitMovies.length <= 1) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setActiveHeroIndex((currentIndex) => (currentIndex + 1) % hitMovies.length);
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [hitMovies]);
 
   useEffect(() => {
     const fetchMoodMovies = async () => {
@@ -253,8 +267,14 @@ function Homepage() {
     });
   };
 
-  const currentHeroMovie = hitMovies[activeHeroIndex] || fallbackHeroMovie;
+  const heroMovies = hitMovies.slice(0, heroMovieLimit);
+  const currentHeroMovie = heroMovies[activeHeroIndex] || fallbackHeroMovie;
   const heroBackdrop = currentHeroMovie.backdrop || fallbackHeroMovie.backdrop;
+  const openMovieDetail = (movieId) => {
+    if (Number.isInteger(Number(movieId))) {
+      navigate(`/movie/${movieId}`);
+    }
+  };
 
   return (
     <main className="homepage">
@@ -334,7 +354,17 @@ function Homepage() {
           </div>
 
           <div className="homepage-feature-wrap">
-            <article className="homepage-feature-card">
+            <article
+              className="homepage-feature-card"
+              role="button"
+              tabIndex={0}
+              onClick={() => openMovieDetail(currentHeroMovie.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  openMovieDetail(currentHeroMovie.id);
+                }
+              }}
+            >
               <div className="homepage-feature-poster">
                 <img src={currentHeroMovie.poster} alt={currentHeroMovie.title} />
               </div>
@@ -359,7 +389,7 @@ function Homepage() {
               </button>
 
               <div className="homepage-dots" aria-label="Pilih film hits">
-                {hitMovies.slice(0, 4).map((movie, index) => (
+                {heroMovies.map((movie, index) => (
                   <button
                     className={activeHeroIndex === index ? "is-active" : ""}
                     key={movie.id}
@@ -438,10 +468,25 @@ function Homepage() {
               .slice(0, 2);
 
             return (
-              <article className="homepage-movie-card" key={movie.id} tabIndex={0}>
+              <article
+                className="homepage-movie-card"
+                key={movie.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => openMovieDetail(movie.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    openMovieDetail(movie.id);
+                  }
+                }}
+              >
                 <div className="homepage-movie-poster">
                   <img src={movie.poster} alt={movie.title} />
-                  <button type="button" aria-label={`Simpan ${movie.title}`}>
+                  <button
+                    type="button"
+                    aria-label={`Simpan ${movie.title}`}
+                    onClick={(event) => event.stopPropagation()}
+                  >
                     <FaBookmark />
                   </button>
                   <div className="homepage-movie-overlay" aria-hidden="true">

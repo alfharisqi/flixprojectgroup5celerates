@@ -6,6 +6,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Register from "./pages/Register";
 import ResetPassword from "./pages/ResetPassword";
 import Homepage from "./pages/Homepage";
+import MovieDetail from "./pages/MovieDetail";
 import Community from "./pages/Community";
 import AdminPage from "./pages/AdminPage";
 import ModeratorPage from "./pages/ModeratorPage";
@@ -15,19 +16,23 @@ import CreatePostPage from "./pages/CreatePostPage";
 
 function App() {
   const location = useLocation();
-  const hideNavbar = [
+  const authAndHomePaths = [
     "/login",
     "/register",
     "/forgot-password",
     "/reset-password",
     "/",
-  ].includes(location.pathname);
+  ];
+  const hideNavbar =
+    authAndHomePaths.includes(location.pathname) ||
+    location.pathname.startsWith("/movie/");
 
   return (
     <>
       {!hideNavbar && <Navbar />}
       <Routes>
         <Route path="/" element={<Homepage />} />
+        <Route path="/movie/:id" element={<MovieDetail />} />
         <Route path="/community" element={<Community />} />
         <Route path="/post/:id" element={<PostDetail />} />
         <Route path="/create-post" element={<CreatePostPage />} />

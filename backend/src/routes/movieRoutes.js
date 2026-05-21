@@ -6,6 +6,7 @@ import {
   getMovieGenres,
   getMovieRecommendations,
   getMovieVideos,
+  getMovieWatchProviders,
   getNowPlayingMovies,
   getPopularMovies,
   getTopRatedMovies,
@@ -27,6 +28,7 @@ router.get("/discover", discoverMovies);
 router.get("/:id/recommendations", getMovieRecommendations);
 router.get("/:id/videos", getMovieVideos);
 router.get("/:id/credits", getMovieCredits);
+router.get("/:id/watch-providers", getMovieWatchProviders);
 router.get("/:id", getMovieDetail);
 
 export default router;

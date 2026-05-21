@@ -1,6 +1,8 @@
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
 const TMDB_BACKDROP_BASE_URL = "https://image.tmdb.org/t/p/original";
+const DEFAULT_WATCH_PROVIDER_REGION = "US";
+const WATCH_PROVIDER_REGION_FALLBACKS = ["US", "GB", "CA", "AU", "ID"];
 
 const getTmdbAuth = () => {
   const credential = process.env.TMDB_API_KEY?.trim();
@@ -135,6 +137,91 @@ const mapCrew = (person) => ({
   profile_path: person.profile_path,
   profile_url: mapImageUrl(person.profile_path),
 });
+
+const mapWatchProvider = (provider, type) => ({
+  provider_id: provider.provider_id,
+  provider_name: provider.provider_name,
+  logo_path: provider.logo_path,
+  logo_url: mapImageUrl(provider.logo_path),
+  display_priority: provider.display_priority,
+  type,
+});
+
+const uniqueWatchProviders = (providers) => {
+  const seenProviderIds = new Set();
+
+  return providers.filter((provider) => {
+    if (seenProviderIds.has(provider.provider_id)) {
+      return false;
+    }
+
+    seenProviderIds.add(provider.provider_id);
+    return true;
+  });
+};
+
+const hasWatchProviders = (regionProviders = {}) =>
+  ["flatrate", "free", "ads", "rent", "buy"].some(
+    (key) => (regionProviders[key] || []).length > 0
+  );
+
+const getWatchProviderRegion = (data, preferredRegion = DEFAULT_WATCH_PROVIDER_REGION) => {
+  const availableRegions = Object.keys(data.results || {});
+  const candidateRegions = [
+    preferredRegion,
+    ...WATCH_PROVIDER_REGION_FALLBACKS,
+    ...availableRegions,
+  ]
+    .filter(Boolean)
+    .map((region) => region.toUpperCase());
+  const uniqueCandidateRegions = [...new Set(candidateRegions)];
+
+  return (
+    uniqueCandidateRegions.find((region) =>
+      hasWatchProviders(data.results?.[region])
+    ) ||
+    uniqueCandidateRegions[0] ||
+    DEFAULT_WATCH_PROVIDER_REGION
+  );
+};
+
+const mapMovieWatchProviders = (
+  data,
+  region = DEFAULT_WATCH_PROVIDER_REGION
+) => {
+  const requestedRegion = region.toUpperCase();
+  const regionCode = getWatchProviderRegion(data, requestedRegion);
+  const regionProviders = data.results?.[regionCode] || {};
+  const flatrate = (regionProviders.flatrate || []).map((provider) =>
+    mapWatchProvider(provider, "flatrate")
+  );
+  const free = (regionProviders.free || []).map((provider) =>
+    mapWatchProvider(provider, "free")
+  );
+  const ads = (regionProviders.ads || []).map((provider) =>
+    mapWatchProvider(provider, "ads")
+  );
+  const rent = (regionProviders.rent || []).map((provider) =>
+    mapWatchProvider(provider, "rent")
+  );
+  const buy = (regionProviders.buy || []).map((provider) =>
+    mapWatchProvider(provider, "buy")
+  );
+
+  return {
+    id: data.id,
+    requested_region: requestedRegion,
+    region: regionCode,
+    used_fallback_region: regionCode !== requestedRegion,
+    link: regionProviders.link || null,
+    flatrate,
+    free,
+    ads,
+    rent,
+    buy,
+    all: uniqueWatchProviders([...flatrate, ...free, ...ads, ...rent, ...buy]),
+  };
+};
 
 const mapMovieDetail = (movie) => ({
   ...mapMovie(movie),
@@ -291,14 +378,36 @@ export const discoverMovies = async (req, res) => {
 
 export const getMovieDetail = async (req, res) => {
   try {
-    const data = await requestTmdb(`/movie/${req.params.id}`, {
-      language: getLanguage(req),
-      append_to_response: "videos,credits,recommendations",
-    });
+    const region = req.query.region || DEFAULT_WATCH_PROVIDER_REGION;
+    const [data, watchProviders] = await Promise.all([
+      requestTmdb(`/movie/${req.params.id}`, {
+        language: getLanguage(req),
+        append_to_response: "videos,credits,recommendations",
+      }),
+      requestTmdb(`/movie/${req.params.id}/watch/providers`),
+    ]);
 
-    return res.json(mapMovieDetail(data));
+    return res.json({
+      ...mapMovieDetail(data),
+      watch_providers: mapMovieWatchProviders(watchProviders, region),
+    });
   } catch (error) {
     return handleTmdbError(res, error, "Gagal mengambil detail film");
+  }
+};
+
+export const getMovieWatchProviders = async (req, res) => {
+  try {
+    const data = await requestTmdb(`/movie/${req.params.id}/watch/providers`);
+
+    return res.json(
+      mapMovieWatchProviders(
+        data,
+        req.query.region || DEFAULT_WATCH_PROVIDER_REGION
+      )
+    );
+  } catch (error) {
+    return handleTmdbError(res, error, "Gagal mengambil provider streaming film");
   }
 };
 

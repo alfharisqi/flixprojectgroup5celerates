@@ -14,7 +14,9 @@
 }
 
 .homepage a,
-.homepage button {
+.homepage button,
+.homepage-feature-card,
+.homepage-movie-card {
   transition:
     background-color 180ms ease,
     border-color 180ms ease,
@@ -270,15 +272,39 @@
   width: 464px;
   min-height: 568px;
   margin-top: -9px;
-  border: 1px solid #f20712;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #101010, #070707);
+  border: 1px solid rgba(242, 7, 18, 0.62);
+  border-radius: 20px;
+  background: #080808;
   overflow: hidden;
-  box-shadow: 0 30px 55px rgba(242, 7, 18, 0.38);
+  box-shadow: 0 22px 42px rgba(242, 7, 18, 0.22);
+  cursor: pointer;
+}
+
+.homepage-feature-card::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 1;
+  height: 177px;
+  background: linear-gradient(
+    180deg,
+    rgba(20, 20, 20, 0) 0%,
+    rgba(20, 20, 20, 0.9) 48%,
+    #141414 100%
+  );
+  pointer-events: none;
+}
+
+.homepage-feature-card:hover,
+.homepage-feature-card:focus-visible {
+  border-color: rgba(242, 7, 18, 0.82);
+  box-shadow: 0 26px 48px rgba(242, 7, 18, 0.3);
+  transform: translateY(-3px);
 }
 
 .homepage-feature-poster {
-  height: 460px;
+  position: absolute;
+  inset: 0;
   background: #090909;
 }
 
@@ -292,24 +318,27 @@
 
 .homepage-feature-meta {
   position: absolute;
-  left: 52px;
-  bottom: 88px;
+  left: 58px;
+  bottom: 96px;
+  z-index: 2;
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 .homepage-feature-meta span {
-  height: 24px;
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.82);
+  height: 23px;
+  min-width: 61px;
+  border-radius: 999px;
+  background: #000000;
   color: #ffffff;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  padding: 0 10px;
-  font-size: 17px;
+  padding: 0 9px;
+  font-size: 18px;
   line-height: 1;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .homepage-feature-meta svg,
@@ -318,11 +347,22 @@
 }
 
 .homepage-feature-card h2 {
-  margin: 25px 24px 0;
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  bottom: 34px;
+  z-index: 2;
+  max-height: 66px;
+  margin: 0;
   text-align: center;
   font-size: 28px;
-  line-height: 1.2;
+  line-height: 1.18;
   font-weight: 500;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.88);
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .homepage-feature-controls {
@@ -620,6 +660,7 @@
   min-width: 232px;
   scroll-snap-align: start;
   outline: none;
+  cursor: pointer;
 }
 
 .homepage-movie-poster {
@@ -903,16 +944,29 @@
 
   .homepage-feature-card {
     min-height: auto;
+    aspect-ratio: 0.84;
   }
 
   .homepage-feature-poster {
     height: auto;
-    aspect-ratio: 0.84;
   }
 
   .homepage-feature-meta {
     left: 24px;
-    bottom: 78px;
+    bottom: 88px;
+  }
+
+  .homepage-feature-card::after {
+    height: 154px;
+  }
+
+  .homepage-feature-card h2 {
+    left: 20px;
+    right: 20px;
+    bottom: 28px;
+    max-height: 54px;
+    font-size: 22px;
+    line-height: 1.2;
   }
 
   .homepage-dots {
