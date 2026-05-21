@@ -19,8 +19,10 @@ import postShareRoutes from "./routes/postShareRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import postViewRoutes from "./routes/postViewRoutes.js";
 import movieRoutes from "./routes/movieRoutes.js";
+import movieReviewRoutes from "./routes/movieReviewRoutes.js";
 import { initializePostViewsTable } from "./config/initPostViews.js";
 import { initializePasswordResetTable } from "./config/initPasswordReset.js";
+import { initializeMovieReviewsTable } from "./config/initMovieReviews.js";
 
 dotenv.config();
 
@@ -50,6 +52,7 @@ app.use("/api/post-shares", postShareRoutes);
 app.use("/api/post-views", postViewRoutes);
 app.use("/api/movies", movieRoutes);
 app.use("/api/tmdb", movieRoutes);
+app.use("/api/movie-reviews", movieReviewRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
@@ -63,7 +66,11 @@ transporter.verify()
 
 const PORT = process.env.PORT || 5000;
 
-Promise.all([initializePostViewsTable(), initializePasswordResetTable()])
+Promise.all([
+  initializePostViewsTable(),
+  initializePasswordResetTable(),
+  initializeMovieReviewsTable(),
+])
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Server berjalan di http://localhost:${PORT}`);
