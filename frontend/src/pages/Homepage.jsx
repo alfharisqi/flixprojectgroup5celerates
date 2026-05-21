@@ -466,7 +466,7 @@ function Homepage() {
         <nav aria-label="Footer navigation">
           <Link to="/">Home</Link>
           <Link to="/movies">Movie</Link>
-          <a href="#recommendations">TV Series</a>
+          <Link to="/tv-series">TV Series</Link>
           <a href="#mood">Genre</a>
           <Link to="/community">Community</Link>
         </nav>

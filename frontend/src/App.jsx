@@ -8,6 +8,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Homepage from "./pages/Homepage";
 import MovieDetail from "./pages/MovieDetail";
 import MoviesPage from "./pages/MoviesPage";
+import TVSeriesPage from "./pages/TVSeriesPage";
 import Community from "./pages/Community";
 import AdminPage from "./pages/AdminPage";
 import ModeratorPage from "./pages/ModeratorPage";
@@ -23,6 +24,7 @@ function App() {
     "/forgot-password",
     "/reset-password",
     "/movies",
+    "/tv-series",
     "/",
   ];
   const hideNavbar =
@@ -35,6 +37,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Homepage />} />
         <Route path="/movies" element={<MoviesPage />} />
+        <Route path="/tv-series" element={<TVSeriesPage />} />
         <Route path="/movie/:id" element={<MovieDetail />} />
         <Route path="/community" element={<Community />} />
         <Route path="/post/:id" element={<PostDetail />} />

@@ -77,14 +77,19 @@
 }
 
 .site-navbar__menu a:hover,
-.site-navbar__menu a:focus-visible,
-.site-navbar__menu a.is-active {
+.site-navbar__menu a:focus-visible {
   color: #ffffff;
 }
 
 .site-navbar__menu a:hover,
 .site-navbar__menu a:focus-visible {
   opacity: 0.76;
+}
+
+.site-navbar__menu a.is-active {
+  color: #f20712;
+  font-weight: 700;
+  opacity: 1;
 }
 
 .site-navbar__actions {
