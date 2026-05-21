@@ -14,7 +14,7 @@ import "./SiteNavbar.css";
 const navItems = [
   { key: "home", label: "Home", to: "/" },
   { key: "movies", label: "Movie", to: "/movies" },
-  { key: "tv", label: "TV Series", to: "/movies" },
+  { key: "tv", label: "TV Series", to: "/tv-series" },
   { key: "genre", label: "Genre", to: "/movies" },
   { key: "community", label: "Community", to: "/community" },
 ];
@@ -30,6 +30,7 @@ const getStoredUser = () => {
 const getActiveKey = (pathname, activeKey) => {
   if (activeKey) return activeKey;
   if (pathname === "/") return "home";
+  if (pathname.startsWith("/tv-series")) return "tv";
   if (pathname.startsWith("/movie") || pathname.startsWith("/movies")) return "movies";
   if (pathname.startsWith("/community") || pathname.startsWith("/post")) return "community";
   return "";
