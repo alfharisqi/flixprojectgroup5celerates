@@ -25,3 +25,19 @@ export const sendLoginNotificationEmail = async (toEmail, username) => {
     `
   });
 };
+
+export const sendPasswordResetEmail = async (toEmail, username, resetLink) => {
+  await transporter.sendMail({
+    from: process.env.MAIL_FROM,
+    to: toEmail,
+    subject: "Reset Password Akun Flix",
+    html: `
+      <h2>Halo, ${username}!</h2>
+      <p>Kami menerima permintaan reset password untuk akun <b>Flix</b> kamu.</p>
+      <p>Klik link berikut untuk membuat password baru:</p>
+      <p><a href="${resetLink}">Reset Password</a></p>
+      <p>Link ini berlaku selama 30 menit.</p>
+      <p>Kalau kamu tidak meminta reset password, abaikan email ini.</p>
+    `
+  });
+};
