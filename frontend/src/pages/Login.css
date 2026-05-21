@@ -1,13 +1,14 @@
 .login-page {
   min-height: 100vh;
   min-height: 100svh;
-  background: #000000;
+  background: #232323;
   color: #ffffff;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  place-items: center;
   box-sizing: border-box;
-  padding: 42px 52px 38px;
+  padding: 96px 52px 48px;
   overflow-x: hidden;
+  position: relative;
 }
 
 .login-logo {
@@ -16,43 +17,47 @@
   object-fit: contain;
   object-position: left center;
   display: block;
-  flex: 0 0 auto;
+  position: absolute;
+  top: 42px;
+  left: 52px;
 }
 
 .login-shell {
-  width: min(640px, 100%);
-  margin: 134px auto 0;
+  width: 640px;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .register-shell {
-  margin-top: 95px;
+  margin: 0 auto;
 }
 
 .forgot-shell {
-  margin-top: 134px;
+  margin: 0 auto;
 }
 
 .login-title {
   margin: 0;
   color: #ffffff;
   font-size: 40px;
-  line-height: 1.2;
-  font-weight: 800;
+  line-height: 1.1;
+  font-weight: 500;
   letter-spacing: 0;
 }
 
 .login-subtitle {
-  margin: 15px 0 35px;
+  margin: 16px 0 42px;
   color: #f1f1f1;
-  font-size: 22px;
-  line-height: 1.35;
-  font-weight: 500;
+  opacity: 0.75;
+  font-size: 21px;
+  line-height: 25px;
+  font-weight: 400;
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 21px;
 }
 
 .register-form {
@@ -66,14 +71,14 @@
 
 .login-field-label {
   position: absolute;
-  top: -8px;
-  left: 14px;
+  top: -10px;
+  left: 12px;
   z-index: 1;
-  padding: 0 5px;
-  background: #000000;
+  padding: 0 4px;
+  background: #232323;
   color: #ffffff;
   font-size: 16px;
-  line-height: 1;
+  line-height: 20px;
   font-weight: 400;
 }
 
@@ -81,13 +86,13 @@
   width: 100%;
   height: 56px;
   box-sizing: border-box;
-  border: 1px solid #777985;
-  border-radius: 18px;
-  background: #222222;
+  border: 1px solid #79747e;
+  border-radius: 20px;
+  background: #232323;
   color: #ffffff;
   padding: 0 16px;
   font-size: 18px;
-  line-height: 1;
+  line-height: 22px;
   outline: none;
   transition: border-color 160ms ease, background 160ms ease;
 }
@@ -99,7 +104,7 @@
 
 .login-input:focus {
   border-color: #ffffff;
-  background: #252525;
+  background: #232323;
 }
 
 .login-password-input {
@@ -129,7 +134,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 18px;
-  margin-top: -2px;
+  margin-top: -5px;
   font-size: 16px;
 }
 
@@ -149,7 +154,7 @@
   box-sizing: border-box;
   border: 2px solid #ffffff;
   border-radius: 3px;
-  background: #000000;
+  background: #232323;
   padding: 0;
   margin: 0;
   display: grid;
@@ -173,7 +178,7 @@
 
 .login-check span {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .login-link-button {
@@ -183,19 +188,19 @@
   padding: 0;
   cursor: pointer;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .login-submit {
   width: 100%;
   height: 56px;
   border: 0;
-  border-radius: 16px;
-  background: #f20712;
+  border-radius: 20px;
+  background: #e50914;
   color: #ffffff;
   cursor: pointer;
-  font-weight: 800;
-  margin-top: 14px;
+  font-weight: 500;
+  margin-top: 10px;
   padding: 0 18px;
 }
 
@@ -205,15 +210,16 @@
 }
 
 .login-signup {
-  margin: 0 0 36px;
+  margin: -1px 0 38px;
   text-align: center;
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 600;
+  color: #e5e5e5;
+  font-size: 14px;
+  font-weight: 400;
 }
 
 .login-signup a {
-  font-weight: 800;
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .register-terms {
@@ -229,18 +235,18 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 43px;
+  color: rgba(229, 229, 229, 0.5);
+  font-size: 14px;
+  font-weight: 400;
+  margin-bottom: 29px;
 }
 
 .login-divider::before,
 .login-divider::after {
   content: "";
-  height: 1px;
+  height: 0.5px;
   flex: 1;
-  background: #3d3d3d;
+  background: rgba(229, 229, 229, 0.25);
 }
 
 .login-socials {
@@ -250,7 +256,7 @@
 }
 
 .login-social {
-  height: 57px;
+  height: 56px;
   border: 1px solid #ffffff;
   border-radius: 4px;
   background: transparent;
@@ -284,11 +290,16 @@
 
 @media (max-width: 760px) {
   .login-page {
-    padding: 28px 18px;
+    display: block;
+    padding: 28px 18px 40px;
+  }
+
+  .login-logo {
+    position: static;
   }
 
   .login-shell {
-    margin-top: 78px;
+    margin: 78px auto 0;
   }
 
   .register-shell {

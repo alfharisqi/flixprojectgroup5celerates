@@ -7,6 +7,7 @@ import Register from "./pages/Register";
 import ResetPassword from "./pages/ResetPassword";
 import Homepage from "./pages/Homepage";
 import MovieDetail from "./pages/MovieDetail";
+import MoviesPage from "./pages/MoviesPage";
 import Community from "./pages/Community";
 import AdminPage from "./pages/AdminPage";
 import ModeratorPage from "./pages/ModeratorPage";
@@ -21,6 +22,7 @@ function App() {
     "/register",
     "/forgot-password",
     "/reset-password",
+    "/movies",
     "/",
   ];
   const hideNavbar =
@@ -32,6 +34,7 @@ function App() {
       {!hideNavbar && <Navbar />}
       <Routes>
         <Route path="/" element={<Homepage />} />
+        <Route path="/movies" element={<MoviesPage />} />
         <Route path="/movie/:id" element={<MovieDetail />} />
         <Route path="/community" element={<Community />} />
         <Route path="/post/:id" element={<PostDetail />} />

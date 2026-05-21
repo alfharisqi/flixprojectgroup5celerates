@@ -6,13 +6,12 @@ import {
   FaChevronRight,
   FaFacebookF,
   FaPlay,
-  FaSearch,
   FaSlidersH,
   FaStar,
   FaTwitter,
   FaYoutube,
 } from "react-icons/fa";
-import flixLogo from "../assets/flix-logo.png";
+import SiteNavbar from "../components/SiteNavbar";
 import menegangkanIcon from "../assets/emoticon/menegangkan-emoticon.png";
 import pikiranIcon from "../assets/emoticon/pikiran-emoticon.png";
 import romantisIcon from "../assets/emoticon/romantis-emoticon.png";
@@ -125,14 +124,6 @@ const uniqueById = (movies) => {
 function Homepage() {
   const navigate = useNavigate();
   const moodScrollerRef = useRef(null);
-  const token = localStorage.getItem("token");
-  const user = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem("user"));
-    } catch {
-      return null;
-    }
-  }, []);
 
   const [selectedMood, setSelectedMood] = useState(moods[0]);
   const [hitMovies, setHitMovies] = useState([fallbackHeroMovie, ...fallbackMovies]);
@@ -253,13 +244,6 @@ function Homepage() {
     fetchMoodMovies();
   }, [selectedMood]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    navigate("/");
-    window.location.reload();
-  };
-
   const moveHero = (direction) => {
     setActiveHeroIndex((currentIndex) => {
       const totalMovies = hitMovies.length || 1;
@@ -278,45 +262,7 @@ function Homepage() {
 
   return (
     <main className="homepage">
-      <header className="homepage-nav">
-        <Link className="homepage-logo-link" to="/" aria-label="FLIX Home">
-          <img className="homepage-logo" src={flixLogo} alt="FLIX" />
-        </Link>
-
-        <nav className="homepage-menu" aria-label="Primary navigation">
-          <Link to="/">Home</Link>
-          <a href="#recommendations">Movie</a>
-          <a href="#recommendations">TV Series</a>
-          <a href="#mood">Genre</a>
-          <Link to="/community">Community</Link>
-        </nav>
-
-        <div className="homepage-actions">
-          <button className="homepage-search" type="button" aria-label="Search">
-            <FaSearch />
-          </button>
-
-          {!token ? (
-            <>
-              <Link className="homepage-login" to="/login">
-                Login
-              </Link>
-              <Link className="homepage-signin" to="/register">
-                Sign In
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link className="homepage-login" to="/profile">
-                {user?.username || "Profile"}
-              </Link>
-              <button className="homepage-signin" type="button" onClick={handleLogout}>
-                Logout
-              </button>
-            </>
-          )}
-        </div>
-      </header>
+      <SiteNavbar mode="absolute" activeKey="home" />
 
       <section
         className="homepage-hero"
@@ -347,7 +293,11 @@ function Homepage() {
                 <FaPlay />
                 Pilih Mood
               </a>
-              <button className="homepage-secondary-btn" type="button">
+              <button
+                className="homepage-secondary-btn"
+                type="button"
+                onClick={() => navigate("/movies")}
+              >
                 Lihat Watchlist
               </button>
             </div>
@@ -515,7 +465,7 @@ function Homepage() {
       <footer className="homepage-footer">
         <nav aria-label="Footer navigation">
           <Link to="/">Home</Link>
-          <a href="#recommendations">Movie</a>
+          <Link to="/movies">Movie</Link>
           <a href="#recommendations">TV Series</a>
           <a href="#mood">Genre</a>
           <Link to="/community">Community</Link>
