@@ -20,6 +20,7 @@ import uploadRoutes from "./routes/uploadRoutes.js";
 import postViewRoutes from "./routes/postViewRoutes.js";
 import movieRoutes from "./routes/movieRoutes.js";
 import { initializePostViewsTable } from "./config/initPostViews.js";
+import { initializePasswordResetTable } from "./config/initPasswordReset.js";
 
 dotenv.config();
 
@@ -62,13 +63,13 @@ transporter.verify()
 
 const PORT = process.env.PORT || 5000;
 
-initializePostViewsTable()
+Promise.all([initializePostViewsTable(), initializePasswordResetTable()])
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Server berjalan di http://localhost:${PORT}`);
     });
   })
   .catch((error) => {
-    console.error("Gagal menyiapkan tabel post views:", error.message);
+    console.error("Gagal menyiapkan tabel database:", error.message);
     process.exit(1);
   });

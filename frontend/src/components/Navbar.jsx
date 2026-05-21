@@ -8,7 +8,7 @@ function Navbar() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    navigate("/login");
+    navigate("/");
     window.location.reload();
   };
 
@@ -21,7 +21,8 @@ function Navbar() {
         borderBottom: "1px solid #ddd",
       }}>
       <div style={{ display: "flex", gap: "16px" }}>
-        <Link to="/">Community</Link>
+        <Link to="/">Home</Link>
+        <Link to="/community">Community</Link>
 
         {token && <Link to="/profile">Profile</Link>}
 

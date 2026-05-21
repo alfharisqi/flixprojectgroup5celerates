@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { FaApple, FaFacebookF } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 import { FiEye, FiEyeOff } from "react-icons/fi";
+import flixLogo from "../assets/flix-logo.png";
 import "./Login.css";
 
 function Register() {
@@ -70,9 +71,7 @@ function Register() {
 
   return (
     <main className="login-page">
-      <div className="login-logo" aria-label="FLIX">
-        FL<span>I</span>X
-      </div>
+      <img className="login-logo" src={flixLogo} alt="FLIX" />
 
       <section className="login-shell register-shell">
         <h1 className="login-title">Sign Up</h1>

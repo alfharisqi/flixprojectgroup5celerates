@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { FaApple, FaFacebookF } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 import { FiEye, FiEyeOff } from "react-icons/fi";
+import flixLogo from "../assets/flix-logo.png";
 import "./Login.css";
 
 function Login() {
@@ -39,15 +40,7 @@ function Login() {
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
-      const role = res.data.user.role;
-
-      if (role === "admin") {
-        navigate("/admin");
-      } else if (role === "moderator") {
-        navigate("/moderator");
-      } else {
-        navigate("/");
-      }
+      navigate("/");
 
       window.location.reload();
     } catch (error) {
@@ -59,9 +52,7 @@ function Login() {
 
   return (
     <main className="login-page">
-      <div className="login-logo" aria-label="FLIX">
-        FL<span>I</span>X
-      </div>
+      <img className="login-logo" src={flixLogo} alt="FLIX" />
 
       <section className="login-shell">
         <h1 className="login-title">Login</h1>
@@ -119,7 +110,7 @@ function Login() {
             <button
               className="login-link-button"
               type="button"
-              onClick={() => setErrorMessage("Fitur lupa password belum tersedia")}
+              onClick={() => navigate("/forgot-password")}
             >
               Forgot Password
             </button>

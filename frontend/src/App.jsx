@@ -2,7 +2,10 @@ import { Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
 import Register from "./pages/Register";
+import ResetPassword from "./pages/ResetPassword";
+import Homepage from "./pages/Homepage";
 import Community from "./pages/Community";
 import AdminPage from "./pages/AdminPage";
 import ModeratorPage from "./pages/ModeratorPage";
@@ -12,17 +15,26 @@ import CreatePostPage from "./pages/CreatePostPage";
 
 function App() {
   const location = useLocation();
-  const hideNavbar = ["/login", "/register"].includes(location.pathname);
+  const hideNavbar = [
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+    "/",
+  ].includes(location.pathname);
 
   return (
     <>
       {!hideNavbar && <Navbar />}
       <Routes>
-        <Route path="/" element={<Community />} />
+        <Route path="/" element={<Homepage />} />
+        <Route path="/community" element={<Community />} />
         <Route path="/post/:id" element={<PostDetail />} />
         <Route path="/create-post" element={<CreatePostPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         <Route
           path="/profile"
