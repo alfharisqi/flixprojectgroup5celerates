@@ -12,6 +12,7 @@ import {
   FaYoutube,
 } from "react-icons/fa";
 import SiteNavbar from "../components/SiteNavbar";
+import FilterPopup from "../components/FilterPopup";
 import menegangkanIcon from "../assets/emoticon/menegangkan-emoticon.png";
 import pikiranIcon from "../assets/emoticon/pikiran-emoticon.png";
 import romantisIcon from "../assets/emoticon/romantis-emoticon.png";
@@ -58,6 +59,57 @@ const defaultGenreLookup = {
   10751: "Keluarga",
 };
 
+const movieFilterGenreOptions = [
+  { value: "all", label: "Semua" },
+  { value: "18", label: "Drama" },
+  { value: "53", label: "Thriller" },
+  { value: "16", label: "Animasi" },
+  { value: "35", label: "Komedi" },
+  { value: "12", label: "Adventure" },
+  { value: "14", label: "Fantasy" },
+  { value: "27", label: "Horror" },
+  { value: "28", label: "Aksi" },
+  { value: "10749", label: "Romantis" },
+];
+
+const platformFilterOptions = [
+  { value: "all", label: "Semua" },
+  { value: "netflix", label: "Netflix" },
+  { value: "disney", label: "Disney+" },
+  { value: "prime", label: "Prime Video" },
+  { value: "vidio", label: "Vidio" },
+  { value: "viu", label: "Viu" },
+  { value: "wetv", label: "WeTV" },
+  { value: "hbo", label: "HBO Max" },
+  { value: "apple", label: "Apple TV" },
+  { value: "catchplay", label: "Catchplay" },
+];
+
+const platformMatchers = {
+  netflix: ["netflix"],
+  disney: ["disney", "hotstar"],
+  prime: ["prime video", "amazon"],
+  vidio: ["vidio"],
+  viu: ["viu"],
+  wetv: ["wetv", "we tv"],
+  hbo: ["hbo", "max"],
+  apple: ["apple tv"],
+  catchplay: ["catchplay"],
+};
+
+const movieSortOptions = [
+  { value: "latest", label: "Terbaru" },
+  { value: "za", label: "Z - A" },
+  { value: "az", label: "A - Z" },
+  { value: "rating", label: "Rating Tertinggi" },
+];
+
+const defaultFilterValues = {
+  genre: "all",
+  platform: "all",
+  sort: "latest",
+};
+
 const fallbackMovies = Array.from({ length: 8 }, (_, index) => ({
   id: `fallback-${index + 1}`,
   title: "Cargo",
@@ -97,6 +149,78 @@ const getShortOverview = (overview) => {
   return `${cleanOverview.slice(0, 93).trim()}...`;
 };
 
+const getProviderNames = (watchProviders = {}) => {
+  const providers = [
+    ...(watchProviders.all || []),
+    ...(watchProviders.flatrate || []),
+    ...(watchProviders.free || []),
+    ...(watchProviders.ads || []),
+    ...(watchProviders.rent || []),
+    ...(watchProviders.buy || []),
+  ];
+
+  return [...new Set(providers.map((provider) => provider.provider_name || ""))]
+    .map((providerName) => providerName.toLowerCase())
+    .filter(Boolean);
+};
+
+const matchesPlatformFilter = (watchProviders, selectedPlatform) => {
+  if (selectedPlatform === "all") {
+    return true;
+  }
+
+  const keywords = platformMatchers[selectedPlatform] || [selectedPlatform];
+  return getProviderNames(watchProviders).some((providerName) =>
+    keywords.some((keyword) => providerName.includes(keyword)),
+  );
+};
+
+const getRatingSortScore = (rating) => {
+  const score = Number(rating);
+  return Number.isFinite(score) ? score : 0;
+};
+
+const sortMovieList = (movies, sortKey) => {
+  const sortedMovies = [...movies];
+
+  if (sortKey === "az") {
+    return sortedMovies.sort((a, b) => a.title.localeCompare(b.title));
+  }
+
+  if (sortKey === "za") {
+    return sortedMovies.sort((a, b) => b.title.localeCompare(a.title));
+  }
+
+  if (sortKey === "rating") {
+    return sortedMovies.sort(
+      (a, b) => getRatingSortScore(b.rating) - getRatingSortScore(a.rating),
+    );
+  }
+
+  return sortedMovies;
+};
+
+const applyMovieFilters = (movies, filters, providersByMovieId) => {
+  const filteredMovies = movies.filter((movie) => {
+    const movieId = String(movie.id);
+    const matchesGenre =
+      filters.genre === "all" ||
+      (movie.genre_ids || []).map((genreId) => String(genreId)).includes(filters.genre);
+    const hasLoadedProvider = Object.prototype.hasOwnProperty.call(
+      providersByMovieId,
+      movieId,
+    );
+    const matchesPlatform =
+      filters.platform === "all" ||
+      !hasLoadedProvider ||
+      matchesPlatformFilter(providersByMovieId[movieId], filters.platform);
+
+    return matchesGenre && matchesPlatform;
+  });
+
+  return sortMovieList(filteredMovies, filters.sort);
+};
+
 const mapTmdbMovie = (movie) => ({
   id: movie.id,
   title: movie.title || movie.original_title || "Untitled",
@@ -129,9 +253,18 @@ function Homepage() {
   const [hitMovies, setHitMovies] = useState([fallbackHeroMovie, ...fallbackMovies]);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const [moodMovies, setMoodMovies] = useState(fallbackMovies);
+  const [providersByMovieId, setProvidersByMovieId] = useState({});
+  const [filterValues, setFilterValues] = useState(defaultFilterValues);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [moodLoading, setMoodLoading] = useState(true);
   const [moodError, setMoodError] = useState("");
   const [genreLookup, setGenreLookup] = useState(defaultGenreLookup);
+
+  const filteredMoodMovies = applyMovieFilters(
+    moodMovies,
+    filterValues,
+    providersByMovieId,
+  );
 
   useEffect(() => {
     const fetchGenres = async () => {
@@ -243,6 +376,55 @@ function Homepage() {
 
     fetchMoodMovies();
   }, [selectedMood]);
+
+  useEffect(() => {
+    const missingMovieIds = moodMovies
+      .map((movie) => String(movie.id))
+      .filter(
+        (movieId) =>
+          Number.isInteger(Number(movieId)) &&
+          !Object.prototype.hasOwnProperty.call(providersByMovieId, movieId),
+      );
+
+    if (missingMovieIds.length === 0) {
+      return undefined;
+    }
+
+    let shouldIgnore = false;
+
+    const loadMovieProviders = async () => {
+      const providerEntries = await Promise.all(
+        missingMovieIds.map(async (movieId) => {
+          try {
+            const apiUrl = import.meta.env.VITE_API_URL;
+            const response = await fetch(`${apiUrl}/api/movies/${movieId}/watch-providers`);
+
+            if (!response.ok) {
+              throw new Error("Gagal mengambil provider film");
+            }
+
+            const data = await response.json();
+            return [movieId, data];
+          } catch {
+            return [movieId, { all: [] }];
+          }
+        }),
+      );
+
+      if (!shouldIgnore) {
+        setProvidersByMovieId((currentProviders) => ({
+          ...currentProviders,
+          ...Object.fromEntries(providerEntries),
+        }));
+      }
+    };
+
+    loadMovieProviders();
+
+    return () => {
+      shouldIgnore = true;
+    };
+  }, [moodMovies, providersByMovieId]);
 
   const moveHero = (direction) => {
     setActiveHeroIndex((currentIndex) => {
@@ -400,7 +582,11 @@ function Homepage() {
             Rekomendasi Film Untuk Mood {selectedMood.label}
           </div>
           <div className="homepage-recommendation-actions">
-            <button className="homepage-filter" type="button">
+            <button
+              className="homepage-filter"
+              type="button"
+              onClick={() => setIsFilterOpen(true)}
+            >
               <FaSlidersH />
               Filter
             </button>
@@ -409,9 +595,14 @@ function Homepage() {
 
         {moodError && <p className="homepage-movie-status">{moodError}</p>}
         {moodLoading && <p className="homepage-movie-status">Memuat rekomendasi mood...</p>}
+        {!moodLoading && filteredMoodMovies.length === 0 && (
+          <p className="homepage-movie-status">
+            Tidak ada film yang cocok dengan filter ini.
+          </p>
+        )}
 
         <div className="homepage-movie-carousel" ref={moodScrollerRef}>
-          {moodMovies.map((movie) => {
+          {filteredMoodMovies.map((movie) => {
             const movieGenres = (movie.genre_ids || [])
               .map((genreId) => genreLookup[genreId])
               .filter(Boolean)
@@ -477,6 +668,17 @@ function Homepage() {
         </div>
         <p>Copyright 2026 - Kelompok 5</p>
       </footer>
+
+      <FilterPopup
+        open={isFilterOpen}
+        title="Filter Rekomendasi"
+        values={filterValues}
+        genreOptions={movieFilterGenreOptions}
+        platformOptions={platformFilterOptions}
+        sortOptions={movieSortOptions}
+        onChange={setFilterValues}
+        onClose={() => setIsFilterOpen(false)}
+      />
     </main>
   );
 }

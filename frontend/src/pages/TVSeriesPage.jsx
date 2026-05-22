@@ -12,6 +12,7 @@ import {
   FaYoutube,
 } from "react-icons/fa";
 import SiteNavbar from "../components/SiteNavbar";
+import FilterPopup from "../components/FilterPopup";
 import "./TVSeriesPage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -54,6 +55,56 @@ const defaultGenreLookup = {
   10768: "Perang & Politik",
 };
 
+const seriesFilterGenreOptions = [
+  { value: "all", label: "Semua" },
+  { value: "18", label: "Drama" },
+  { value: "9648", label: "Thriller" },
+  { value: "16", label: "Animasi" },
+  { value: "35", label: "Komedi" },
+  { value: "10759", label: "Adventure" },
+  { value: "10765", label: "Fantasy" },
+  { value: "80", label: "Kriminal" },
+  { value: "10751", label: "Keluarga" },
+];
+
+const platformFilterOptions = [
+  { value: "all", label: "Semua" },
+  { value: "netflix", label: "Netflix" },
+  { value: "disney", label: "Disney+" },
+  { value: "prime", label: "Prime Video" },
+  { value: "vidio", label: "Vidio" },
+  { value: "viu", label: "Viu" },
+  { value: "wetv", label: "WeTV" },
+  { value: "hbo", label: "HBO Max" },
+  { value: "apple", label: "Apple TV" },
+  { value: "catchplay", label: "Catchplay" },
+];
+
+const platformMatchers = {
+  netflix: ["netflix"],
+  disney: ["disney", "hotstar"],
+  prime: ["prime video", "amazon"],
+  vidio: ["vidio"],
+  viu: ["viu"],
+  wetv: ["wetv", "we tv"],
+  hbo: ["hbo", "max"],
+  apple: ["apple tv"],
+  catchplay: ["catchplay"],
+};
+
+const seriesSortOptions = [
+  { value: "latest", label: "Terbaru" },
+  { value: "za", label: "Z - A" },
+  { value: "az", label: "A - Z" },
+  { value: "rating", label: "Rating Tertinggi" },
+];
+
+const defaultFilterValues = {
+  genre: "all",
+  platform: "all",
+  sort: "latest",
+};
+
 const getSeriesYear = (date) => date?.slice(0, 4) || "-";
 
 const formatAirDate = (date) => {
@@ -90,6 +141,78 @@ const getShortOverview = (overview) => {
   }
 
   return `${cleanOverview.slice(0, 157).trim()}...`;
+};
+
+const getProviderNames = (watchProviders = {}) => {
+  const providers = [
+    ...(watchProviders.all || []),
+    ...(watchProviders.flatrate || []),
+    ...(watchProviders.free || []),
+    ...(watchProviders.ads || []),
+    ...(watchProviders.rent || []),
+    ...(watchProviders.buy || []),
+  ];
+
+  return [...new Set(providers.map((provider) => provider.provider_name || ""))]
+    .map((providerName) => providerName.toLowerCase())
+    .filter(Boolean);
+};
+
+const matchesPlatformFilter = (watchProviders, selectedPlatform) => {
+  if (selectedPlatform === "all") {
+    return true;
+  }
+
+  const keywords = platformMatchers[selectedPlatform] || [selectedPlatform];
+  return getProviderNames(watchProviders).some((providerName) =>
+    keywords.some((keyword) => providerName.includes(keyword)),
+  );
+};
+
+const getRatingSortScore = (rating) => {
+  const score = Number(rating);
+  return Number.isFinite(score) ? score : 0;
+};
+
+const sortSeriesList = (seriesList, sortKey) => {
+  const sortedSeries = [...seriesList];
+
+  if (sortKey === "az") {
+    return sortedSeries.sort((a, b) => a.title.localeCompare(b.title));
+  }
+
+  if (sortKey === "za") {
+    return sortedSeries.sort((a, b) => b.title.localeCompare(a.title));
+  }
+
+  if (sortKey === "rating") {
+    return sortedSeries.sort(
+      (a, b) => getRatingSortScore(b.rating) - getRatingSortScore(a.rating),
+    );
+  }
+
+  return sortedSeries;
+};
+
+const applySeriesFilters = (seriesList, filters, providersBySeriesId) => {
+  const filteredSeries = seriesList.filter((series) => {
+    const seriesId = String(series.id);
+    const matchesGenre =
+      filters.genre === "all" ||
+      (series.genre_ids || []).map((genreId) => String(genreId)).includes(filters.genre);
+    const hasLoadedProvider = Object.prototype.hasOwnProperty.call(
+      providersBySeriesId,
+      seriesId,
+    );
+    const matchesPlatform =
+      filters.platform === "all" ||
+      !hasLoadedProvider ||
+      matchesPlatformFilter(providersBySeriesId[seriesId], filters.platform);
+
+    return matchesGenre && matchesPlatform;
+  });
+
+  return sortSeriesList(filteredSeries, filters.sort);
 };
 
 const mapTmdbSeries = (series) => ({
@@ -202,7 +325,10 @@ function TVSeriesPage() {
   const [allSeries, setAllSeries] = useState(fallbackSeries);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const [popularCarouselIndex, setPopularCarouselIndex] = useState(0);
+  const [providersBySeriesId, setProvidersBySeriesId] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterValues, setFilterValues] = useState(defaultFilterValues);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [genreLookup, setGenreLookup] = useState(defaultGenreLookup);
   const [loading, setLoading] = useState(true);
 
@@ -226,8 +352,13 @@ function TVSeriesPage() {
       };
     });
   }, [popularCarouselIndex, topTenPopularSeries]);
-  const filteredAllSeries = allSeries.filter((series) =>
+  const searchedAllSeries = allSeries.filter((series) =>
     series.title.toLowerCase().includes(searchQuery.trim().toLowerCase()),
+  );
+  const filteredAllSeries = applySeriesFilters(
+    searchedAllSeries,
+    filterValues,
+    providersBySeriesId,
   );
 
   useEffect(() => {
@@ -341,6 +472,56 @@ function TVSeriesPage() {
     return () => window.clearInterval(intervalId);
   }, [topTenPopularSeries.length]);
 
+  useEffect(() => {
+    const missingSeriesIds = allSeries
+      .map((series) => String(series.id))
+      .filter(
+        (seriesId) =>
+          Number.isInteger(Number(seriesId)) &&
+          !Object.prototype.hasOwnProperty.call(providersBySeriesId, seriesId),
+      );
+
+    if (missingSeriesIds.length === 0) {
+      return undefined;
+    }
+
+    let shouldIgnore = false;
+
+    const loadSeriesProviders = async () => {
+      const providerEntries = await Promise.all(
+        missingSeriesIds.map(async (seriesId) => {
+          try {
+            const response = await fetch(
+              `${apiUrl}/api/tv-series/${seriesId}/watch-providers`,
+            );
+
+            if (!response.ok) {
+              throw new Error("Gagal mengambil provider series");
+            }
+
+            const data = await response.json();
+            return [seriesId, data];
+          } catch {
+            return [seriesId, { all: [] }];
+          }
+        }),
+      );
+
+      if (!shouldIgnore) {
+        setProvidersBySeriesId((currentProviders) => ({
+          ...currentProviders,
+          ...Object.fromEntries(providerEntries),
+        }));
+      }
+    };
+
+    loadSeriesProviders();
+
+    return () => {
+      shouldIgnore = true;
+    };
+  }, [allSeries, providersBySeriesId]);
+
   const openSeries = (seriesId) => {
     if (Number.isInteger(Number(seriesId))) {
       navigate(`/tv-series/${seriesId}`);
@@ -450,7 +631,7 @@ function TVSeriesPage() {
                 onChange={(event) => setSearchQuery(event.target.value)}
               />
             </label>
-            <button type="button">
+            <button type="button" onClick={() => setIsFilterOpen(true)}>
               <FaFilter />
               Filter
             </button>
@@ -491,6 +672,17 @@ function TVSeriesPage() {
         </div>
         <p>Copyright 2026 - Kelompok 5</p>
       </footer>
+
+      <FilterPopup
+        open={isFilterOpen}
+        title="Filter Series"
+        values={filterValues}
+        genreOptions={seriesFilterGenreOptions}
+        platformOptions={platformFilterOptions}
+        sortOptions={seriesSortOptions}
+        onChange={setFilterValues}
+        onClose={() => setIsFilterOpen(false)}
+      />
     </main>
   );
 }
