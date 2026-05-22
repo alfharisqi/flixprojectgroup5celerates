@@ -16,25 +16,81 @@ const apiUrl = import.meta.env.VITE_API_URL;
 
 const fallbackPosterUrl =
   "https://image.tmdb.org/t/p/w500/cdPSUck4tBRvRu6DFk6XciDrssn.jpg";
+const fallbackGenreImage =
+  "https://image.tmdb.org/t/p/original/tiIpajUBpLMNWMEzpjRBxo0jCbD.jpg";
 
 const fallbackGenres = [
-  { id: 28, name: "Aksi" },
-  { id: 12, name: "Petualangan" },
-  { id: 16, name: "Animasi" },
-  { id: 35, name: "Komedi" },
-  { id: 80, name: "Kriminal" },
-  { id: 18, name: "Drama" },
-  { id: 14, name: "Fantasi" },
-  { id: 27, name: "Horor" },
-  { id: 9648, name: "Misteri" },
-  { id: 10749, name: "Romantis" },
-  { id: 878, name: "Sci-Fi" },
-  { id: 53, name: "Thriller" },
-  { id: 10751, name: "Keluarga" },
-  { id: 36, name: "Sejarah" },
-  { id: 10402, name: "Musik" },
-  { id: 10752, name: "Perang" },
+  { id: 28, name: "Aksi", type: "genre", query: { genre: "28" } },
+  { id: 12, name: "Petualangan", type: "genre", query: { genre: "12" } },
+  { id: 16, name: "Animasi", type: "genre", query: { genre: "16" } },
+  { id: 35, name: "Komedi", type: "genre", query: { genre: "35" } },
+  { id: 80, name: "Kriminal", type: "genre", query: { genre: "80" } },
+  { id: 18, name: "Drama", type: "genre", query: { genre: "18" } },
+  { id: 14, name: "Fantasi", type: "genre", query: { genre: "14" } },
+  { id: 27, name: "Horor", type: "genre", query: { genre: "27" } },
+  { id: 9648, name: "Misteri", type: "genre", query: { genre: "9648" } },
+  { id: 10749, name: "Romantis", type: "genre", query: { genre: "10749" } },
+  { id: 878, name: "Sci-Fi", type: "genre", query: { genre: "878" } },
+  { id: 53, name: "Thriller", type: "genre", query: { genre: "53" } },
+  { id: 10751, name: "Keluarga", type: "genre", query: { genre: "10751" } },
+  { id: 36, name: "Sejarah", type: "genre", query: { genre: "36" } },
+  { id: 10402, name: "Musik", type: "genre", query: { genre: "10402" } },
+  { id: 10752, name: "Perang", type: "genre", query: { genre: "10752" } },
+  {
+    id: "hollywood",
+    name: "Hollywood",
+    type: "regional",
+    query: { with_origin_country: "US", with_original_language: "en" },
+  },
+  {
+    id: "bollywood",
+    name: "Bollywood",
+    type: "regional",
+    query: { with_origin_country: "IN", with_original_language: "hi" },
+  },
+  {
+    id: "k-drama",
+    name: "K-Drama",
+    type: "regional",
+    query: { genre: "18", with_origin_country: "KR", with_original_language: "ko" },
+  },
+  {
+    id: "china-drama",
+    name: "Cina Drama",
+    type: "regional",
+    query: { genre: "18", with_origin_country: "CN", with_original_language: "zh" },
+  },
+  {
+    id: "japan",
+    name: "Japan",
+    type: "regional",
+    query: { with_origin_country: "JP", with_original_language: "ja" },
+  },
 ];
+
+const genreDescriptions = {
+  Aksi: "Adegan cepat, konflik besar, dan energi tinggi.",
+  Petualangan: "Perjalanan besar, dunia baru, dan misi penuh risiko.",
+  Animasi: "Visual ekspresif untuk keluarga, fantasi, dan cerita hangat.",
+  Komedi: "Cerita ringan dengan momen lucu dan karakter santai.",
+  Kriminal: "Kasus, investigasi, dan dunia gelap penuh intrik.",
+  Drama: "Cerita emosional dengan konflik manusia yang kuat.",
+  Fantasi: "Dunia imajinatif, kekuatan magis, dan petualangan epik.",
+  Horor: "Ketegangan gelap, teror, dan kejutan yang intens.",
+  Misteri: "Rahasia, teka-teki, dan jawaban yang perlahan terbuka.",
+  Romantis: "Kisah hubungan, rasa, dan pilihan hati.",
+  "Sci-Fi": "Teknologi, masa depan, dan gagasan besar.",
+  Thriller: "Alur tegang dengan ancaman yang terus meningkat.",
+  Keluarga: "Tontonan nyaman untuk dinikmati bersama.",
+  Sejarah: "Cerita masa lalu, tokoh besar, dan peristiwa penting.",
+  Musik: "Cerita yang hidup lewat lagu, panggung, dan ritme.",
+  Perang: "Konflik besar, strategi, dan sisi manusia dari pertempuran.",
+  Hollywood: "Film produksi Amerika dengan skala populer.",
+  Bollywood: "Film India dengan drama, musik, dan emosi besar.",
+  "K-Drama": "Drama Korea dengan cerita emosional dan karakter kuat.",
+  "Cina Drama": "Drama Cina dengan relasi, konflik, dan visual elegan.",
+  Japan: "Film Jepang dengan gaya cerita khas dan atmosfer kuat.",
+};
 
 const fallbackMovies = Array.from({ length: 10 }, (_, index) => ({
   id: `genre-fallback-${index + 1}`,
@@ -79,9 +135,38 @@ const mapTmdbMovie = (movie) => ({
   year: getMovieYear(movie.release_date),
   rating: getMovieRating(movie.vote_average),
   poster: movie.poster_url,
+  backdrop: movie.backdrop_url || movie.poster_url,
   overview: getShortOverview(movie.overview),
   genre_ids: movie.genre_ids || [],
 });
+
+const normalizeGenre = (genre) => ({
+  ...genre,
+  id: genre.id,
+  name: genre.name,
+  type: genre.type || "genre",
+  query: genre.query || { genre: String(genre.id) },
+  description:
+    genre.description ||
+    genreDescriptions[genre.name] ||
+    "Rekomendasi film pilihan berdasarkan kategori ini.",
+});
+
+const buildDiscoverUrl = (query = {}) => {
+  const params = new URLSearchParams({
+    sort_by: "popularity.desc",
+    language: "id-ID",
+    page: "1",
+  });
+
+  Object.entries(query).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    }
+  });
+
+  return `${apiUrl}/api/movies/discover?${params.toString()}`;
+};
 
 const uniqueById = (movies) => {
   const seen = new Set();
@@ -172,7 +257,8 @@ function GenrePage() {
   const user = useMemo(() => getStoredUser(), []);
   const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
   const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
-  const [genres, setGenres] = useState(fallbackGenres);
+  const [genres, setGenres] = useState(fallbackGenres.map(normalizeGenre));
+  const [genreImages, setGenreImages] = useState({});
   const [selectedGenre, setSelectedGenre] = useState(null);
   const [movies, setMovies] = useState([]);
   const [genreLoading, setGenreLoading] = useState(false);
@@ -180,7 +266,12 @@ function GenrePage() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const genreLookup = useMemo(
-    () => Object.fromEntries(genres.map((genre) => [genre.id, genre.name])),
+    () =>
+      Object.fromEntries(
+        genres
+          .filter((genre) => genre.type === "genre")
+          .map((genre) => [genre.id, genre.name]),
+      ),
     [genres],
   );
 
@@ -207,10 +298,20 @@ function GenrePage() {
         const fetchedGenres = data.genres || [];
 
         if (fetchedGenres.length > 0) {
-          setGenres(fetchedGenres);
+          const fetchedGenreCards = fetchedGenres.map((genre) =>
+            normalizeGenre({
+              ...genre,
+              query: { genre: String(genre.id) },
+            }),
+          );
+          const customGenreCards = fallbackGenres
+            .filter((genre) => genre.type === "regional")
+            .map(normalizeGenre);
+
+          setGenres([...fetchedGenreCards, ...customGenreCards]);
         }
       } catch {
-        setGenres(fallbackGenres);
+        setGenres(fallbackGenres.map(normalizeGenre));
       } finally {
         setGenreLoading(false);
       }
@@ -218,6 +319,55 @@ function GenrePage() {
 
     loadGenres();
   }, []);
+
+  useEffect(() => {
+    const genresWithoutImage = genres.filter((genre) => !genreImages[genre.id]);
+
+    if (genresWithoutImage.length === 0) {
+      return undefined;
+    }
+
+    let shouldIgnore = false;
+
+    const loadGenreImages = async () => {
+      const imageEntries = await Promise.all(
+        genresWithoutImage.map(async (genre) => {
+          try {
+            const response = await fetch(buildDiscoverUrl(genre.query));
+
+            if (!response.ok) {
+              throw new Error("Gagal mengambil gambar genre");
+            }
+
+            const data = await response.json();
+            const referenceMovie = (data.results || []).find(
+              (movie) => movie.backdrop_url || movie.poster_url,
+            );
+
+            return [
+              genre.id,
+              referenceMovie?.backdrop_url || referenceMovie?.poster_url || fallbackGenreImage,
+            ];
+          } catch {
+            return [genre.id, fallbackGenreImage];
+          }
+        }),
+      );
+
+      if (!shouldIgnore) {
+        setGenreImages((currentImages) => ({
+          ...currentImages,
+          ...Object.fromEntries(imageEntries),
+        }));
+      }
+    };
+
+    loadGenreImages();
+
+    return () => {
+      shouldIgnore = true;
+    };
+  }, [genreImages, genres]);
 
   useEffect(() => {
     if (!selectedGenre) {
@@ -231,9 +381,7 @@ function GenrePage() {
       try {
         setMoviesLoading(true);
         setErrorMessage("");
-        const response = await fetch(
-          `${apiUrl}/api/movies/discover?genre=${selectedGenre.id}&sort_by=popularity.desc&language=id-ID&page=1`,
-        );
+        const response = await fetch(buildDiscoverUrl(selectedGenre.query));
 
         if (!response.ok) {
           throw new Error("Gagal mengambil rekomendasi film");
@@ -316,9 +464,13 @@ function GenrePage() {
               key={genre.id}
               type="button"
               onClick={() => setSelectedGenre(genre)}
+              style={{
+                "--genre-card-image": `url(${genreImages[genre.id] || fallbackGenreImage})`,
+              }}
             >
-              <span>{genre.name.slice(0, 1)}</span>
-              {genre.name}
+              <span>{genre.type === "regional" ? "Regional" : "Genre"}</span>
+              <strong>{genre.name}</strong>
+              <small>{genre.description}</small>
             </button>
           ))}
         </div>

@@ -6,6 +6,8 @@ import { FiBarChart2, FiSmile } from "react-icons/fi";
 import GifPickerModal from "../components/GifPickerModal";
 import PostInsightModal from "../components/PostInsightModal";
 import RichContent from "../components/RichContent";
+import SiteNavbar from "../components/SiteNavbar";
+import "./PostDetail.css";
 
 function PostDetail() {
   const { id } = useParams();
@@ -471,7 +473,14 @@ function PostDetail() {
   };
 
   if (!post) {
-    return <div style={{ padding: "24px" }}>Post tidak ditemukan.</div>;
+    return (
+      <main className="post-detail-page">
+        <SiteNavbar mode="fixed" activeKey="community" />
+        <div className="post-detail-shell">
+          <div className="post-detail-empty">Post tidak ditemukan.</div>
+        </div>
+      </main>
+    );
   }
 
   const rootComments = comments.filter((comment) => !comment.parent_comment_id);
@@ -480,7 +489,9 @@ function PostDetail() {
   const totalInsight = Number(post.total_insight || viewCount);
 
   return (
-    <div style={{ padding: "24px", maxWidth: "800px", margin: "0 auto" }}>
+    <main className="post-detail-page">
+      <SiteNavbar mode="fixed" activeKey="community" />
+      <div className="post-detail-shell">
       <button
         type="button"
         onClick={() => navigate(-1)}
@@ -765,7 +776,8 @@ function PostDetail() {
         onClose={() => setShowInsight(false)}
         insight={insight}
       />
-    </div>
+      </div>
+    </main>
   );
 }
 

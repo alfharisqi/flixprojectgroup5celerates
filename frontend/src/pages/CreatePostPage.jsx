@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { FiArrowLeft, FiHash, FiPlus, FiSend, FiTrash2, FiX } from "react-icons/fi";
+import SiteNavbar from "../components/SiteNavbar";
 import RichTextEditor from "../components/RichTextEditor";
+import "./CreatePostPage.css";
 
 function CreatePostPage() {
   const navigate = useNavigate();
@@ -99,8 +102,8 @@ function CreatePostPage() {
 
       await axios.post(`${import.meta.env.VITE_API_URL}/api/posts`, formData, {
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       alert("Post berhasil dibuat");
@@ -112,250 +115,141 @@ function CreatePostPage() {
   };
 
   return (
-    <div style={{ maxWidth: "920px", margin: "0 auto", padding: "24px", color: "#111" }}>
-      <button
-        type="button"
-        onClick={() => navigate(-1)}
-        style={{
-          marginBottom: "16px",
-          border: "1px solid #ddd",
-          background: "#fff",
-          color: "#111",
-          padding: "8px 14px",
-          borderRadius: "999px",
-          cursor: "pointer"
-        }}
-      >
-        ← Kembali
-      </button>
+    <main className="create-post-page">
+      <SiteNavbar mode="fixed" activeKey="community" />
 
-      <h1 style={{ marginBottom: "20px", color: "#111" }}>Create Post</h1>
-
-      <div style={{ display: "flex", gap: "12px", marginBottom: "20px" }}>
-        <button
-          type="button"
-          onClick={() => setPostType("post")}
-          style={{
-            padding: "10px 16px",
-            borderRadius: "999px",
-            border: postType === "post" ? "2px solid #ff4500" : "1px solid #ccc",
-            background: postType === "post" ? "#fff7f3" : "#fff",
-            color: "#111",
-            cursor: "pointer",
-            fontWeight: postType === "post" ? "bold" : "normal"
-          }}
-        >
-          Post
+      <section className="create-post-hero">
+        <button className="create-post-back" type="button" onClick={() => navigate(-1)}>
+          <FiArrowLeft />
+          Kembali
         </button>
 
-        <button
-          type="button"
-          onClick={() => setPostType("poll")}
-          style={{
-            padding: "10px 16px",
-            borderRadius: "999px",
-            border: postType === "poll" ? "2px solid #ff4500" : "1px solid #ccc",
-            background: postType === "poll" ? "#fff7f3" : "#fff",
-            color: "#111",
-            cursor: "pointer",
-            fontWeight: postType === "poll" ? "bold" : "normal"
-          }}
-        >
-          Polling
-        </button>
-      </div>
-
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: "18px" }}>
-          <input
-            type="text"
-            placeholder="Title*"
-            maxLength={300}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "18px 20px",
-              borderRadius: "20px",
-              border: "1px solid #ccc",
-              fontSize: "18px",
-              boxSizing: "border-box",
-              background: "#fff",
-              color: "#111"
-            }}
-          />
-          <div style={{ textAlign: "right", marginTop: "8px", color: "#666" }}>
-            {title.length}/300
-          </div>
+        <div className="create-post-eyebrow">
+          <span />
+          COMMUNITY
         </div>
+        <h1>
+          Buat <strong>Post</strong> Baru
+        </h1>
+        <p>
+          Bagikan opini, rekomendasi, spoiler warning, atau polling untuk komunitas FLIX.
+        </p>
+      </section>
 
-        <div style={{ marginBottom: "18px" }}>
-          <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
+      <section className="create-post-shell">
+        <form className="create-post-form" onSubmit={handleSubmit}>
+          <div className="create-post-type-tabs" aria-label="Pilih tipe post">
+            <button
+              className={postType === "post" ? "is-active" : ""}
+              type="button"
+              onClick={() => setPostType("post")}
+            >
+              Post
+            </button>
+
+            <button
+              className={postType === "poll" ? "is-active" : ""}
+              type="button"
+              onClick={() => setPostType("poll")}
+            >
+              Polling
+            </button>
+          </div>
+
+          <label className="create-post-field">
+            <span>Title</span>
             <input
               type="text"
-              placeholder="Add tags"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={handleTagKeyDown}
-              style={{
-                flex: 1,
-                padding: "10px 12px",
-                borderRadius: "999px",
-                border: "1px solid #ccc",
-                background: "#fff",
-                color: "#111"
-              }}
+              placeholder="Title*"
+              maxLength={300}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
             />
-            <button
-              type="button"
-              onClick={addTag}
-              style={{
-                padding: "10px 14px",
-                borderRadius: "999px",
-                border: "1px solid #ccc",
-                background: "#fff",
-                color: "#111",
-                cursor: "pointer"
-              }}
-            >
-              Add Tag
-            </button>
-          </div>
+            <small>{title.length}/300</small>
+          </label>
 
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            {tags.map((tag, index) => (
-              <div
-                key={index}
-                style={{
-                  background: "#f3f4f6",
-                  color: "#111",
-                  padding: "6px 12px",
-                  borderRadius: "999px",
-                  display: "flex",
-                  gap: "8px",
-                  alignItems: "center"
-                }}
-              >
-                <span>#{tag}</span>
-                <button
-                  type="button"
-                  onClick={() => removeTag(tag)}
-                  style={{
-                    border: "none",
-                    background: "transparent",
-                    color: "#111",
-                    cursor: "pointer",
-                    fontWeight: "bold"
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ marginBottom: "18px" }}>
-          <RichTextEditor value={content} onChange={setContent} />
-        </div>
-
-        {postType === "poll" && (
-          <div style={{ marginBottom: "18px" }}>
-            <h3 style={{ marginBottom: "12px", color: "#111" }}>Polling Options</h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {pollOptions.map((option, index) => (
-                <div key={index} style={{ display: "flex", gap: "8px" }}>
-                  <input
-                    type="text"
-                    placeholder={`Option ${index + 1}`}
-                    value={option}
-                    onChange={(e) =>
-                      handlePollOptionChange(index, e.target.value)
-                    }
-                    style={{
-                      flex: 1,
-                      padding: "12px",
-                      borderRadius: "10px",
-                      border: "1px solid #ccc",
-                      background: "#fff",
-                      color: "#111"
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removePollOption(index)}
-                    style={{
-                      padding: "10px 14px",
-                      borderRadius: "8px",
-                      border: "1px solid #ccc",
-                      background: "#fff",
-                      color: "#111",
-                      cursor: "pointer"
-                    }}
-                  >
-                    Hapus
-                  </button>
-                </div>
-              ))}
+          <div className="create-post-field">
+            <span>Hashtag</span>
+            <div className="create-post-tag-input">
+              <FiHash />
+              <input
+                type="text"
+                placeholder="Add tags"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleTagKeyDown}
+              />
+              <button type="button" onClick={addTag}>
+                Add Tag
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={addPollOption}
-              style={{
-                marginTop: "12px",
-                padding: "10px 14px",
-                borderRadius: "8px",
-                border: "1px solid #ccc",
-                background: "#fff",
-                color: "#111",
-                cursor: "pointer"
-              }}
-            >
-              + Add Option
+            {tags.length > 0 && (
+              <div className="create-post-tags">
+                {tags.map((tag, index) => (
+                  <div key={index}>
+                    <span>#{tag}</span>
+                    <button type="button" onClick={() => removeTag(tag)} aria-label={`Hapus tag ${tag}`}>
+                      <FiX />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="create-post-editor">
+            <span>Content</span>
+            <RichTextEditor value={content} onChange={setContent} />
+          </div>
+
+          {postType === "poll" && (
+            <div className="create-post-poll">
+              <div className="create-post-section-title">
+                <h2>Polling Options</h2>
+                <p>Minimal dua opsi agar polling bisa dibuat.</p>
+              </div>
+
+              <div className="create-post-poll-options">
+                {pollOptions.map((option, index) => (
+                  <div key={index} className="create-post-poll-option">
+                    <input
+                      type="text"
+                      placeholder={`Option ${index + 1}`}
+                      value={option}
+                      onChange={(e) => handlePollOptionChange(index, e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePollOption(index)}
+                      aria-label={`Hapus option ${index + 1}`}
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button className="create-post-add-option" type="button" onClick={addPollOption}>
+                <FiPlus />
+                Add Option
+              </button>
+            </div>
+          )}
+
+          <div className="create-post-actions">
+            <button className="create-post-draft" type="button" disabled>
+              Save Draft
+            </button>
+
+            <button className="create-post-submit" type="submit">
+              <FiSend />
+              Post
             </button>
           </div>
-        )}
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "12px"
-          }}
-        >
-          <button
-            type="button"
-            style={{
-              padding: "12px 18px",
-              borderRadius: "999px",
-              border: "1px solid #ddd",
-              background: "#f3f3f3",
-              color: "#999",
-              cursor: "not-allowed"
-            }}
-          >
-            Save Draft
-          </button>
-
-          <button
-            type="submit"
-            style={{
-              padding: "12px 18px",
-              borderRadius: "999px",
-              border: "none",
-              background: "#ff4500",
-              color: "#fff",
-              fontWeight: "bold",
-              cursor: "pointer"
-            }}
-          >
-            Post
-          </button>
-        </div>
-      </form>
-    </div>
+        </form>
+      </section>
+    </main>
   );
 }
 
