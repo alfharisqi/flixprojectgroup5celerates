@@ -2,26 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   FaBookmark,
-  FaChevronLeft,
-  FaChevronRight,
   FaFacebookF,
   FaFilter,
-  FaPlay,
   FaRegBookmark,
   FaSearch,
-  FaShareAlt,
   FaStar,
   FaTimes,
   FaTwitter,
   FaYoutube,
 } from "react-icons/fa";
 import SiteNavbar from "../components/SiteNavbar";
-import amazonPrimeVideoIcon from "../assets/platformstream-logo/amazonprimevideo-icon.png";
-import appleTvIcon from "../assets/platformstream-logo/appletv-icon.png";
-import catchplayIcon from "../assets/platformstream-logo/catchplay-icon.png";
-import disneyHotstarIcon from "../assets/platformstream-logo/disneyhotstar-icon.png";
-import hboMaxIcon from "../assets/platformstream-logo/HBOmax-icon.png";
-import netflixIcon from "../assets/platformstream-logo/netflix-icon.png";
 import "./TVSeriesPage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -64,24 +54,6 @@ const defaultGenreLookup = {
   10768: "Perang & Politik",
 };
 
-const providerIconMatchers = [
-  { icon: netflixIcon, matches: ["netflix"] },
-  { icon: disneyHotstarIcon, matches: ["disney", "hotstar"] },
-  { icon: hboMaxIcon, matches: ["hbo", "max"] },
-  { icon: catchplayIcon, matches: ["catchplay"] },
-  { icon: appleTvIcon, matches: ["apple tv"] },
-  { icon: amazonPrimeVideoIcon, matches: ["amazon", "prime video"] },
-];
-
-const getLocalProviderIcon = (providerName = "") => {
-  const normalizedName = providerName.toLowerCase();
-  const match = providerIconMatchers.find(({ matches }) =>
-    matches.some((keyword) => normalizedName.includes(keyword)),
-  );
-
-  return match?.icon || null;
-};
-
 const getSeriesYear = (date) => date?.slice(0, 4) || "-";
 
 const formatAirDate = (date) => {
@@ -118,50 +90,6 @@ const getShortOverview = (overview) => {
   }
 
   return `${cleanOverview.slice(0, 157).trim()}...`;
-};
-
-const getProviderLogos = (watchProviders) => {
-  const preferredProviders =
-    watchProviders?.flatrate?.length > 0
-      ? watchProviders.flatrate
-      : watchProviders?.all || [];
-  const seenProviderKeys = new Set();
-
-  return preferredProviders
-    .map((provider) => {
-      const localIcon = getLocalProviderIcon(provider.provider_name);
-      const icon = localIcon || provider.logo_url;
-      const providerKey = localIcon || provider.provider_id || provider.provider_name;
-
-      return {
-        id: provider.provider_id,
-        name: provider.provider_name,
-        icon,
-        providerKey,
-      };
-    })
-    .filter((provider) => {
-      if (!provider.icon || seenProviderKeys.has(provider.providerKey)) {
-        return false;
-      }
-
-      seenProviderKeys.add(provider.providerKey);
-      return true;
-    })
-    .slice(0, 4);
-};
-
-const getTrailerUrl = (videos = []) => {
-  const youtubeVideos = videos.filter((video) => video.youtube_url);
-  const trailer =
-    youtubeVideos.find(
-      (video) => video.official && video.type?.toLowerCase() === "trailer",
-    ) ||
-    youtubeVideos.find((video) => video.type?.toLowerCase() === "trailer") ||
-    youtubeVideos.find((video) => video.type?.toLowerCase() === "teaser") ||
-    youtubeVideos[0];
-
-  return trailer?.youtube_url || null;
 };
 
 const mapTmdbSeries = (series) => ({
@@ -274,8 +202,6 @@ function TVSeriesPage() {
   const [allSeries, setAllSeries] = useState(fallbackSeries);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const [popularCarouselIndex, setPopularCarouselIndex] = useState(0);
-  const [heroProvidersBySeriesId, setHeroProvidersBySeriesId] = useState({});
-  const [heroTrailerUrls, setHeroTrailerUrls] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
   const [genreLookup, setGenreLookup] = useState(defaultGenreLookup);
   const [loading, setLoading] = useState(true);
@@ -288,12 +214,6 @@ function TVSeriesPage() {
   const heroSeries = trendingSeries.slice(0, 4);
   const activeHeroSeries =
     heroSeries[activeHeroIndex] || heroSeries[0] || fallbackSeries[0];
-  const activeHeroProviders =
-    heroProvidersBySeriesId[activeHeroSeries.id] || activeHeroSeries.providers || [];
-  const hasLoadedActiveHeroProviders = Object.prototype.hasOwnProperty.call(
-    heroProvidersBySeriesId,
-    activeHeroSeries.id,
-  );
   const topTenPopularSeries = popularSeries.slice(0, 10);
   const visiblePopularSeries = useMemo(() => {
     const visibleCount = Math.min(5, topTenPopularSeries.length);
@@ -421,51 +341,6 @@ function TVSeriesPage() {
     return () => window.clearInterval(intervalId);
   }, [topTenPopularSeries.length]);
 
-  useEffect(() => {
-    const seriesId = activeHeroSeries?.id;
-
-    if (!Number.isInteger(Number(seriesId)) || heroProvidersBySeriesId[seriesId]) {
-      return undefined;
-    }
-
-    let shouldIgnore = false;
-
-    const loadHeroProvider = async () => {
-      try {
-        const response = await fetch(
-          `${apiUrl}/api/tv-series/${seriesId}/watch-providers`,
-        );
-
-        if (!response.ok) {
-          throw new Error("Gagal mengambil provider TV series");
-        }
-
-        const data = await response.json();
-        const providerLogos = getProviderLogos(data);
-
-        if (!shouldIgnore) {
-          setHeroProvidersBySeriesId((currentProviders) => ({
-            ...currentProviders,
-            [seriesId]: providerLogos,
-          }));
-        }
-      } catch {
-        if (!shouldIgnore) {
-          setHeroProvidersBySeriesId((currentProviders) => ({
-            ...currentProviders,
-            [seriesId]: [],
-          }));
-        }
-      }
-    };
-
-    loadHeroProvider();
-
-    return () => {
-      shouldIgnore = true;
-    };
-  }, [activeHeroSeries?.id, heroProvidersBySeriesId]);
-
   const openSeries = (seriesId) => {
     if (Number.isInteger(Number(seriesId))) {
       navigate(`/tv-series/${seriesId}`);
@@ -486,169 +361,30 @@ function TVSeriesPage() {
     });
   };
 
-  const moveHero = (direction) => {
-    setActiveHeroIndex((currentIndex) => {
-      const totalSeries = heroSeries.length || 1;
-      return (currentIndex + direction + totalSeries) % totalSeries;
-    });
-  };
-
-  const handleShareHero = async () => {
-    const url = `${window.location.origin}/tv-series/${activeHeroSeries.id}`;
-
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      window.prompt("Salin link series:", url);
-    }
-  };
-
-  const handleWatchTrailer = async () => {
-    const seriesId = activeHeroSeries.id;
-
-    if (!Number.isInteger(Number(seriesId))) {
-      return;
-    }
-
-    if (heroTrailerUrls[seriesId]) {
-      window.open(heroTrailerUrls[seriesId], "_blank", "noopener,noreferrer");
-      return;
-    }
-
-    try {
-      const fetchVideos = async (language) => {
-        const response = await fetch(
-          `${apiUrl}/api/tv-series/${seriesId}/videos?language=${language}`,
-        );
-
-        if (!response.ok) {
-          return [];
-        }
-
-        const data = await response.json();
-        return data.results || [];
-      };
-
-      const localizedVideos = await fetchVideos("id-ID");
-      const fallbackVideos =
-        localizedVideos.length > 0 ? [] : await fetchVideos("en-US");
-      const trailerUrl = getTrailerUrl([...localizedVideos, ...fallbackVideos]);
-
-      if (!trailerUrl) {
-        window.alert("Trailer belum tersedia untuk series ini.");
-        return;
-      }
-
-      setHeroTrailerUrls((currentUrls) => ({
-        ...currentUrls,
-        [seriesId]: trailerUrl,
-      }));
-      window.open(trailerUrl, "_blank", "noopener,noreferrer");
-    } catch {
-      window.alert("Gagal membuka trailer series.");
-    }
-  };
-
   return (
     <main className="tv-series-page">
       <SiteNavbar mode="fixed" activeKey="tv" />
 
       <section
-        className="tv-series-hero"
-        style={{ "--tv-series-hero-backdrop": `url(${activeHeroSeries.backdrop})` }}
+        className="tv-series-showcase"
+        style={{ "--tv-series-showcase-backdrop": `url(${activeHeroSeries.backdrop})` }}
       >
-        <button
-          className="tv-series-hero-arrow tv-series-hero-arrow-left"
-          type="button"
-          onClick={() => moveHero(-1)}
-          aria-label="Series sebelumnya"
-        >
-          <FaChevronLeft />
-        </button>
-
-        <div className="tv-series-hero-copy">
-          <div className="tv-series-hero-eyebrow">
-            <span className="tv-series-available-label">AVAILABLE ON</span>
-            {activeHeroProviders.length > 0 ? (
-              <div
-                className="tv-series-provider-logos"
-                aria-label="Platform streaming"
-              >
-                {activeHeroProviders.map((provider) => (
-                  <img
-                    src={provider.icon}
-                    alt={provider.name}
-                    key={`${provider.providerKey}-${provider.name}`}
-                    title={provider.name}
-                  />
-                ))}
-              </div>
-            ) : (
-              <strong>
-                {hasLoadedActiveHeroProviders ? "Belum tersedia" : "Memuat..."}
-              </strong>
-            )}
-            <span className="tv-series-hero-divider" />
-            <span>{activeHeroSeries.releaseLabel}</span>
+        <div className="tv-series-showcase-copy">
+          <div className="tv-series-showcase-eyebrow">
+            <span />
+            TV SERIES
           </div>
-
-          <h1>{activeHeroSeries.title}</h1>
-
-          <div className="tv-series-hero-meta">
-            <span className="tv-series-stars">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <FaStar key={star} />
-              ))}
-            </span>
-            <span>{activeHeroSeries.rating}</span>
-            <span>Series</span>
-            <span>Trending</span>
-          </div>
-
-          <p>{activeHeroSeries.overview}</p>
-
-          <div className="tv-series-hero-buttons">
-            <button type="button" onClick={handleWatchTrailer}>
-              <FaPlay />
-              Tonton Trailer
-            </button>
-            <button type="button" onClick={() => toggleWatchlist(activeHeroSeries)}>
-              {savedSeriesIds.has(String(activeHeroSeries.id)) ? (
-                <FaBookmark />
-              ) : (
-                <FaRegBookmark />
-              )}
-              Simpan ke Watchlist
-            </button>
-            <button type="button" onClick={handleShareHero} aria-label="Bagikan series">
-              <FaShareAlt />
-            </button>
-          </div>
-        </div>
-
-        <button
-          className="tv-series-hero-arrow tv-series-hero-arrow-right"
-          type="button"
-          onClick={() => moveHero(1)}
-          aria-label="Series berikutnya"
-        >
-          <FaChevronRight />
-        </button>
-
-        <div className="tv-series-hero-dots" aria-label="Pilih series hero">
-          {heroSeries.map((series, index) => (
-            <button
-              className={activeHeroIndex === index ? "is-active" : ""}
-              type="button"
-              key={series.id}
-              onClick={() => setActiveHeroIndex(index)}
-              aria-label={`Tampilkan ${series.title}`}
-            />
-          ))}
+          <h1>
+            Jelajahi <strong>Series</strong> Terbaik
+          </h1>
+          <p>Dari drama Korea hingga thriller Amerika - semua ada di FLIX</p>
         </div>
       </section>
 
-      <section className="tv-series-section tv-series-popular-section">
+      <section
+        className="tv-series-section tv-series-popular-section"
+        id="series-popular"
+      >
         <div className="tv-series-section-header">
           <h2>
             Series <strong>Populer</strong>

@@ -1,7 +1,7 @@
 .tv-series-page {
   min-height: 100vh;
   box-sizing: border-box;
-  padding-top: 127px;
+  padding-top: 0;
   background: #232323;
   color: #ffffff;
 }
@@ -28,6 +28,104 @@
 .tv-series-page input:focus-visible {
   outline: 2px solid rgba(229, 9, 20, 0.95);
   outline-offset: 4px;
+}
+
+.tv-series-showcase {
+  position: relative;
+  width: 100%;
+  min-height: 462px;
+  margin: 0 auto;
+  border-radius: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  display: block;
+  padding: 0;
+  background: #232323;
+  box-shadow: none;
+}
+
+.tv-series-showcase::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180.75deg, #232323 -34.34%, rgba(35, 35, 35, 0) 34.75%, #232323 107.94%),
+    rgba(0, 0, 0, 0.44);
+  pointer-events: none;
+}
+
+.tv-series-showcase::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--tv-series-showcase-backdrop);
+  background-size: cover;
+  background-position: center;
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+.tv-series-showcase-copy {
+  position: relative;
+  z-index: 2;
+  width: min(1364px, calc(100% - 76px));
+  padding-top: 183px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.tv-series-showcase-eyebrow {
+  box-sizing: border-box;
+  width: 345px;
+  height: 54px;
+  border: 1px solid #f20712;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 22px;
+  padding: 12px 46px 12px 47px;
+  color: #ffffff;
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.tv-series-showcase-eyebrow span {
+  width: 29px;
+  height: 2px;
+  background: #ffffff;
+}
+
+.tv-series-showcase h1 {
+  width: min(883px, 100%);
+  margin: 0;
+  color: #ffffff;
+  font-size: 80px;
+  line-height: 95px;
+  font-weight: 500;
+  letter-spacing: -1px;
+}
+
+.tv-series-showcase h1 strong {
+  color: #f20712;
+  font-weight: 500;
+}
+
+.tv-series-showcase-copy > p {
+  width: min(883px, 100%);
+  margin: 0;
+  color: #d2d2d2;
+  font-size: 21px;
+  line-height: 32px;
+  font-weight: 400;
 }
 
 .tv-series-hero {
@@ -248,10 +346,21 @@
 }
 
 .tv-series-section {
+  position: relative;
   width: min(1364px, calc(100% - 76px));
   margin: 74px auto 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  border-top: 0;
   padding-top: 35px;
+}
+
+.tv-series-section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .tv-series-section-header {
@@ -447,7 +556,21 @@
 }
 
 .tv-series-popular-section {
-  margin-top: 86px;
+  margin-top: 0;
+  padding-top: 42px;
+}
+
+.tv-series-popular-section::before {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.12) 38%,
+    rgba(229, 9, 20, 0.2) 46%,
+    rgba(242, 7, 18, 0.9) 50%,
+    rgba(229, 9, 20, 0.2) 54%,
+    rgba(255, 255, 255, 0.12) 62%,
+    rgba(255, 255, 255, 0.12) 100%
+  );
 }
 
 .tv-series-popular-window {
@@ -616,7 +739,20 @@
 
 @media (max-width: 1180px) {
   .tv-series-page {
-    padding-top: 150px;
+    padding-top: 0;
+  }
+
+  .tv-series-showcase {
+    width: 100%;
+    min-height: 462px;
+    border-radius: 0;
+    padding: 0;
+  }
+
+  .tv-series-showcase-copy {
+    width: calc(100% - 80px);
+    margin: 0 auto;
+    padding-top: 176px;
   }
 
   .tv-series-hero {
@@ -638,6 +774,46 @@
 }
 
 @media (max-width: 760px) {
+  .tv-series-showcase {
+    width: 100%;
+    min-height: 420px;
+    border-radius: 0;
+    padding: 0;
+  }
+
+  .tv-series-showcase-copy {
+    width: calc(100% - 32px);
+    margin: 0 auto;
+    padding-top: 146px;
+    gap: 14px;
+  }
+
+  .tv-series-showcase-eyebrow {
+    width: 244px;
+    height: 46px;
+    min-height: 0;
+    border-radius: 16px;
+    gap: 14px;
+    padding: 0 20px;
+    font-size: 17px;
+    line-height: 22px;
+  }
+
+  .tv-series-showcase-eyebrow span {
+    width: 24px;
+  }
+
+  .tv-series-showcase h1 {
+    font-size: clamp(42px, 12vw, 56px);
+    line-height: 1.1;
+    letter-spacing: 0;
+  }
+
+  .tv-series-showcase-copy > p {
+    font-size: 16px;
+    line-height: 1.45;
+  }
+
   .tv-series-hero {
     width: calc(100% - 28px);
     min-height: 560px;
