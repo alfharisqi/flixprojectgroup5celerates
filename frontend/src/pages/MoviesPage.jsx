@@ -41,7 +41,24 @@ const fallbackMovies = Array.from({ length: 10 }, (_, index) => ({
   overview:
     "Seorang ayah berusaha melindungi bayinya dalam perjalanan penuh risiko setelah wabah mengubah dunia.",
   releaseLabel: "15 February 2024",
+  genre_ids: [18, 53],
 }));
+
+const defaultGenreLookup = {
+  12: "Petualangan",
+  14: "Fantasi",
+  16: "Animasi",
+  18: "Drama",
+  27: "Horor",
+  28: "Aksi",
+  35: "Komedi",
+  53: "Thriller",
+  80: "Kriminal",
+  878: "Sci-Fi",
+  9648: "Misteri",
+  10749: "Romantis",
+  10751: "Keluarga",
+};
 
 const providerIconMatchers = [
   {
@@ -171,6 +188,7 @@ const mapTmdbMovie = (movie) => ({
   overview: getShortOverview(movie.overview),
   releaseLabel: formatReleaseDate(movie.release_date),
   providers: [],
+  genre_ids: movie.genre_ids || [],
 });
 
 const uniqueById = (movies) => {
@@ -210,8 +228,14 @@ function MovieCard({
   isSaved,
   onOpen,
   onToggleWatchlist,
+  genreLookup = defaultGenreLookup,
   removeMode = false,
 }) {
+  const movieGenres = (movie.genre_ids || [])
+    .map((genreId) => genreLookup[genreId])
+    .filter(Boolean)
+    .slice(0, 2);
+
   return (
     <article className="movies-card" onClick={() => onOpen(movie.id)}>
       <div className="movies-card-poster">
@@ -229,6 +253,14 @@ function MovieCard({
         >
           {removeMode ? <FaTimes /> : isSaved ? <FaBookmark /> : <FaRegBookmark />}
         </button>
+        <div className="movies-card-overlay" aria-hidden="true">
+          <div className="movies-card-genres">
+            {(movieGenres.length > 0 ? movieGenres : ["Film"]).map((genre) => (
+              <span key={genre}>{genre}</span>
+            ))}
+          </div>
+          <p>{getShortOverview(movie.overview)}</p>
+        </div>
       </div>
       <h3>{movie.title}</h3>
       <p>
@@ -254,6 +286,7 @@ function MoviesPage() {
   const [heroProvidersByMovieId, setHeroProvidersByMovieId] = useState({});
   const [heroTrailerUrls, setHeroTrailerUrls] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [genreLookup, setGenreLookup] = useState(defaultGenreLookup);
   const [loading, setLoading] = useState(true);
 
   const savedMovieIds = useMemo(
@@ -276,6 +309,32 @@ function MoviesPage() {
   useEffect(() => {
     localStorage.setItem(watchlistKey, JSON.stringify(watchlist));
   }, [watchlist, watchlistKey]);
+
+  useEffect(() => {
+    const loadGenres = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/api/movies/genres?language=id-ID`);
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+        const genres = Object.fromEntries(
+          (data.genres || []).map((genre) => [genre.id, genre.name]),
+        );
+
+        setGenreLookup({
+          ...defaultGenreLookup,
+          ...genres,
+        });
+      } catch {
+        setGenreLookup(defaultGenreLookup);
+      }
+    };
+
+    loadGenres();
+  }, []);
 
   useEffect(() => {
     const loadMovies = async () => {
@@ -559,6 +618,7 @@ function MoviesPage() {
                 isSaved={savedMovieIds.has(String(movie.id))}
                 onOpen={openMovie}
                 onToggleWatchlist={toggleWatchlist}
+                genreLookup={genreLookup}
                 removeMode
               />
             ))}
@@ -585,6 +645,7 @@ function MoviesPage() {
                 isSaved={savedMovieIds.has(String(movie.id))}
                 onOpen={openMovie}
                 onToggleWatchlist={toggleWatchlist}
+                genreLookup={genreLookup}
               />
             </div>
           ))}
@@ -624,6 +685,7 @@ function MoviesPage() {
               isSaved={savedMovieIds.has(String(movie.id))}
               onOpen={openMovie}
               onToggleWatchlist={toggleWatchlist}
+              genreLookup={genreLookup}
             />
           ))}
         </div>

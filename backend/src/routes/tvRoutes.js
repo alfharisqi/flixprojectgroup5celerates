@@ -6,6 +6,7 @@ import {
   getTopRatedTvSeries,
   getTrendingTvSeries,
   getTvGenres,
+  getTvSeriesDetail,
   getTvSeriesVideos,
   getTvSeriesWatchProviders,
   searchTvSeries,
@@ -22,5 +23,6 @@ router.get("/genres", getTvGenres);
 router.get("/discover", discoverTvSeries);
 router.get("/:id/videos", getTvSeriesVideos);
 router.get("/:id/watch-providers", getTvSeriesWatchProviders);
+router.get("/:id", getTvSeriesDetail);
 
 export default router;

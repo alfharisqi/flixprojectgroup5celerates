@@ -335,12 +335,75 @@
   place-items: center;
   padding: 0;
   font-size: 20px;
+  z-index: 3;
 }
 
 .tv-series-card-save:hover,
 .tv-series-card-save:focus-visible {
   background: rgba(229, 9, 20, 0.88);
   transform: translateY(-2px);
+}
+
+.tv-series-card-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  box-sizing: border-box;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 12px;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.06) 0%,
+    rgba(0, 0, 0, 0.56) 46%,
+    rgba(0, 0, 0, 0.92) 100%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.tv-series-card:hover .tv-series-card-overlay,
+.tv-series-card:focus-within .tv-series-card-overlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tv-series-card-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-right: 48px;
+}
+
+.tv-series-card-genres span {
+  max-width: 100%;
+  min-height: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(229, 9, 20, 0.74);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 9px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.tv-series-card-overlay p {
+  margin: 0;
+  color: #ededed;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 400;
 }
 
 .tv-series-card h3 {
