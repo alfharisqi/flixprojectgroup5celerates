@@ -365,6 +365,8 @@ export const discoverMovies = async (req, res) => {
       page: getPage(req),
       sort_by: req.query.sort_by || "popularity.desc",
       with_genres: req.query.genre || req.query.with_genres,
+      with_original_language: req.query.with_original_language,
+      with_origin_country: req.query.with_origin_country,
       primary_release_year: req.query.year,
       "vote_average.gte": req.query.min_rating,
       include_adult: "false",

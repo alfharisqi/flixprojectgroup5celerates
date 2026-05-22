@@ -28,12 +28,15 @@ function App() {
     "/movies",
     "/genre",
     "/tv-series",
+    "/community",
+    "/create-post",
     "/",
   ];
   const hideNavbar =
     authAndHomePaths.includes(location.pathname) ||
     location.pathname.startsWith("/movie/") ||
-    location.pathname.startsWith("/tv-series/");
+    location.pathname.startsWith("/tv-series/") ||
+    location.pathname.startsWith("/post/");
 
   return (
     <>

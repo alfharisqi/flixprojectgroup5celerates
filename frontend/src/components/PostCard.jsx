@@ -1,6 +1,17 @@
 import { useNavigate } from "react-router-dom";
-import { FiBarChart2, FiMessageCircle } from "react-icons/fi";
+import {
+  FiBarChart2,
+  FiHeart,
+  FiMessageCircle,
+  FiSend,
+  FiShare2,
+  FiSmile,
+  FiThumbsUp,
+  FiTrash2,
+  FiZap,
+} from "react-icons/fi";
 import RichContent from "./RichContent";
+import "./PostCard.css";
 
 function PostCard({
   post,
@@ -39,6 +50,7 @@ function PostCard({
     Number(post.total_reactions || 0) +
     totalPollVotes;
   const totalInsight = Number(post.total_insight ?? fallbackTotalInsight);
+  const authorInitial = (post.username || "F").slice(0, 1).toUpperCase();
 
   const handleCardAction = (event, action) => {
     event.stopPropagation();
@@ -46,60 +58,38 @@ function PostCard({
   };
 
   return (
-    <div
+    <article
+      className="community-post-card"
       onClick={() => navigate(`/post/${post.id_post}`)}
-      style={{
-        border: "1px solid #ddd",
-        borderRadius: "12px",
-        padding: "16px",
-        background: "#fff",
-        cursor: "pointer",
-      }}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "start",
-          gap: "12px",
-        }}
-      >
-        <div>
-          <h3 style={{ margin: 0 }}>{post.title || "Untitled Post"}</h3>
-          <div style={{ marginTop: "6px", fontSize: "14px", color: "#666" }}>
-            by {post.username} - {new Date(post.created_at).toLocaleString()}
+      <div className="community-post-card__header">
+        <div className="community-post-card__author">
+          <span className="community-post-card__avatar">{authorInitial}</span>
+          <div>
+            <h3>{post.title || "Untitled Post"}</h3>
+            <p>
+              by {post.username} <span />{" "}
+              {new Date(post.created_at).toLocaleString()}
+            </p>
           </div>
         </div>
 
         {canDelete && (
           <button
+            className="community-post-card__delete"
             type="button"
             onClick={(event) =>
               handleCardAction(event, () => handleDeletePost(post.id_post))
             }
-            style={{
-              background: "crimson",
-              color: "white",
-              border: "none",
-              padding: "8px 12px",
-              borderRadius: "6px",
-              cursor: "pointer",
-            }}
+            aria-label="Hapus post"
           >
-            Hapus
+            <FiTrash2 />
           </button>
         )}
       </div>
 
       {post.tags?.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            gap: "8px",
-            flexWrap: "wrap",
-            marginTop: "12px",
-          }}
-        >
+        <div className="community-post-card__tags">
           {post.tags.map((tag, index) => (
             <button
               key={index}
@@ -107,15 +97,6 @@ function PostCard({
               onClick={(event) =>
                 handleCardAction(event, () => handleTagClick?.(tag))
               }
-              style={{
-                background: "#f3f4f6",
-                color: "#111",
-                padding: "4px 10px",
-                borderRadius: "999px",
-                fontSize: "12px",
-                border: "1px solid transparent",
-                cursor: "pointer",
-              }}
               title={`Lihat post dengan hashtag #${tag}`}
             >
               #{tag}
@@ -124,45 +105,25 @@ function PostCard({
         </div>
       )}
 
-      <div style={{ marginTop: "12px" }}>
+      <div className="community-post-card__content">
         <RichContent html={post.content} />
       </div>
 
       {post.image_url && (
         <img
+          className="community-post-card__image"
           src={`${import.meta.env.VITE_API_URL}${post.image_url}`}
           alt="Post"
-          style={{
-            maxWidth: "260px",
-            marginTop: "10px",
-            borderRadius: "10px",
-            display: "block",
-          }}
         />
       )}
 
       {post.post_type === "poll" && pollOptions.length > 0 && (
-        <div
-          style={{
-            marginTop: "14px",
-            border: "1px solid #e5e7eb",
-            borderRadius: "10px",
-            padding: "10px",
-            background: "#fafafa",
-          }}
-        >
-          <div
-            style={{
-              marginBottom: "8px",
-              fontSize: "13px",
-              fontWeight: 700,
-              color: "#111",
-            }}
-          >
+        <div className="community-post-card__poll">
+          <div className="community-post-card__poll-title">
             Polling
           </div>
 
-          <div style={{ display: "grid", gap: "8px" }}>
+          <div className="community-post-card__poll-options">
             {pollOptions.map((option) => {
               const voteCount = Number(option.vote_count || 0);
               const percent =
@@ -172,6 +133,7 @@ function PostCard({
 
               return (
                 <button
+                  className="community-post-card__poll-option"
                   key={option.id_option}
                   type="button"
                   onClick={(event) =>
@@ -183,40 +145,18 @@ function PostCard({
                       )
                     )
                   }
-                  style={{
-                    position: "relative",
-                    overflow: "hidden",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "8px",
-                    background: "#fff",
-                    padding: "9px 10px",
-                    cursor: "pointer",
-                    color: "#111",
-                    textAlign: "left",
-                  }}
                 >
                   <span
+                    className="community-post-card__poll-fill"
                     style={{
-                      position: "absolute",
-                      inset: 0,
                       width: `${percent}%`,
-                      background: "#ffe8df",
-                      pointerEvents: "none",
                     }}
                   />
-                  <span
-                    style={{
-                      position: "relative",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: "12px",
-                      alignItems: "center",
-                    }}
-                  >
+                  <span className="community-post-card__poll-label">
                     <span>{option.option_text || "Opsi polling kosong"}</span>
-                    <span style={{ whiteSpace: "nowrap", color: "#555" }}>
+                    <small>
                       {voteCount} vote{totalPollVotes > 0 ? ` (${percent}%)` : ""}
-                    </span>
+                    </small>
                   </span>
                 </button>
               );
@@ -225,21 +165,16 @@ function PostCard({
         </div>
       )}
 
-      <div
-        style={{
-          display: "flex",
-          gap: "8px",
-          flexWrap: "wrap",
-          marginTop: "12px",
-        }}
-      >
+      <div className="community-post-card__actions">
         <button
           type="button"
           onClick={(event) =>
             handleCardAction(event, () => handleLike(post.id_post))
           }
         >
-          Like ({post.like_count || 0})
+          <FiThumbsUp />
+          <span>Like</span>
+          <small>{post.like_count || 0}</small>
         </button>
 
         <button
@@ -248,7 +183,9 @@ function PostCard({
             handleCardAction(event, () => handleReaction(post.id_post, "love"))
           }
         >
-          Love {post.love_count || 0}
+          <FiHeart />
+          <span>Love</span>
+          <small>{post.love_count || 0}</small>
         </button>
 
         <button
@@ -257,7 +194,9 @@ function PostCard({
             handleCardAction(event, () => handleReaction(post.id_post, "funny"))
           }
         >
-          Funny {post.funny_count || 0}
+          <FiSmile />
+          <span>Funny</span>
+          <small>{post.funny_count || 0}</small>
         </button>
 
         <button
@@ -266,7 +205,9 @@ function PostCard({
             handleCardAction(event, () => handleReaction(post.id_post, "wow"))
           }
         >
-          Wow {post.wow_count || 0}
+          <FiZap />
+          <span>Wow</span>
+          <small>{post.wow_count || 0}</small>
         </button>
 
         <button
@@ -275,7 +216,9 @@ function PostCard({
             handleCardAction(event, () => handleReaction(post.id_post, "sad"))
           }
         >
-          Sad {post.sad_count || 0}
+          <FiMessageCircle />
+          <span>Sad</span>
+          <small>{post.sad_count || 0}</small>
         </button>
 
         <button
@@ -284,7 +227,9 @@ function PostCard({
             handleCardAction(event, () => handleReaction(post.id_post, "angry"))
           }
         >
-          Angry {post.angry_count || 0}
+          <FiZap />
+          <span>Angry</span>
+          <small>{post.angry_count || 0}</small>
         </button>
 
         <button
@@ -293,41 +238,29 @@ function PostCard({
             handleCardAction(event, () => handleShare(post.id_post))
           }
         >
-          Share
+          <FiShare2 />
+          <span>Share</span>
         </button>
 
         <button
+          className="community-post-card__insight"
           type="button"
           onClick={(event) =>
             handleCardAction(event, () => handleInsight(post.id_post))
           }
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-          }}
           aria-label={`Total insight ${totalInsight}`}
           title="Total insight"
         >
-          <FiBarChart2 size={16} />
+          <FiBarChart2 />
           <span>{totalInsight}</span>
         </button>
       </div>
 
-      <div
-        style={{
-          marginTop: "10px",
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          color: "#666",
-          fontSize: "14px",
-        }}
-      >
-        <FiMessageCircle size={16} />
+      <div className="community-post-card__reply-count">
+        <FiSend />
         <span>Total Replies: {replyCount}</span>
       </div>
-    </div>
+    </article>
   );
 }
 
