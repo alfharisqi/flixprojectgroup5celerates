@@ -692,7 +692,7 @@ function TVSeriesDetail() {
           <Link to="/">Home</Link>
           <Link to="/movies">Movie</Link>
           <Link to="/tv-series">TV Series</Link>
-          <Link to="/movies">Genre</Link>
+          <Link to="/genre">Genre</Link>
           <Link to="/community">Community</Link>
         </nav>
         <div>

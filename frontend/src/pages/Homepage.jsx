@@ -467,7 +467,7 @@ function Homepage() {
           <Link to="/">Home</Link>
           <Link to="/movies">Movie</Link>
           <Link to="/tv-series">TV Series</Link>
-          <a href="#mood">Genre</a>
+          <Link to="/genre">Genre</Link>
           <Link to="/community">Community</Link>
         </nav>
         <div className="homepage-socials">

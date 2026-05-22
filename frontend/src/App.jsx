@@ -8,6 +8,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Homepage from "./pages/Homepage";
 import MovieDetail from "./pages/MovieDetail";
 import MoviesPage from "./pages/MoviesPage";
+import GenrePage from "./pages/GenrePage";
 import TVSeriesPage from "./pages/TVSeriesPage";
 import TVSeriesDetail from "./pages/TVSeriesDetail";
 import Community from "./pages/Community";
@@ -25,6 +26,7 @@ function App() {
     "/forgot-password",
     "/reset-password",
     "/movies",
+    "/genre",
     "/tv-series",
     "/",
   ];
@@ -39,6 +41,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Homepage />} />
         <Route path="/movies" element={<MoviesPage />} />
+        <Route path="/genre" element={<GenrePage />} />
         <Route path="/tv-series" element={<TVSeriesPage />} />
         <Route path="/movie/:id" element={<MovieDetail />} />
         <Route path="/tv-series/:id" element={<TVSeriesDetail />} />
