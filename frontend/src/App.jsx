@@ -9,6 +9,7 @@ import Homepage from "./pages/Homepage";
 import MovieDetail from "./pages/MovieDetail";
 import MoviesPage from "./pages/MoviesPage";
 import TVSeriesPage from "./pages/TVSeriesPage";
+import TVSeriesDetail from "./pages/TVSeriesDetail";
 import Community from "./pages/Community";
 import AdminPage from "./pages/AdminPage";
 import ModeratorPage from "./pages/ModeratorPage";
@@ -29,7 +30,8 @@ function App() {
   ];
   const hideNavbar =
     authAndHomePaths.includes(location.pathname) ||
-    location.pathname.startsWith("/movie/");
+    location.pathname.startsWith("/movie/") ||
+    location.pathname.startsWith("/tv-series/");
 
   return (
     <>
@@ -39,6 +41,7 @@ function App() {
         <Route path="/movies" element={<MoviesPage />} />
         <Route path="/tv-series" element={<TVSeriesPage />} />
         <Route path="/movie/:id" element={<MovieDetail />} />
+        <Route path="/tv-series/:id" element={<TVSeriesDetail />} />
         <Route path="/community" element={<Community />} />
         <Route path="/post/:id" element={<PostDetail />} />
         <Route path="/create-post" element={<CreatePostPage />} />

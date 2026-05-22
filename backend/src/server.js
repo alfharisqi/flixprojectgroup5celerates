@@ -21,9 +21,11 @@ import postViewRoutes from "./routes/postViewRoutes.js";
 import movieRoutes from "./routes/movieRoutes.js";
 import tvRoutes from "./routes/tvRoutes.js";
 import movieReviewRoutes from "./routes/movieReviewRoutes.js";
+import tvSeriesReviewRoutes from "./routes/tvSeriesReviewRoutes.js";
 import { initializePostViewsTable } from "./config/initPostViews.js";
 import { initializePasswordResetTable } from "./config/initPasswordReset.js";
 import { initializeMovieReviewsTable } from "./config/initMovieReviews.js";
+import { initializeTvSeriesReviewsTable } from "./config/initTvSeriesReviews.js";
 
 dotenv.config();
 
@@ -56,6 +58,7 @@ app.use("/api/tmdb", movieRoutes);
 app.use("/api/tv-series", tvRoutes);
 app.use("/api/tv", tvRoutes);
 app.use("/api/movie-reviews", movieReviewRoutes);
+app.use("/api/tv-series-reviews", tvSeriesReviewRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
@@ -73,6 +76,7 @@ Promise.all([
   initializePostViewsTable(),
   initializePasswordResetTable(),
   initializeMovieReviewsTable(),
+  initializeTvSeriesReviewsTable(),
 ])
   .then(() => {
     app.listen(PORT, () => {

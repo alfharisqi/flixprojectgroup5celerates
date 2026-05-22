@@ -121,6 +121,24 @@ const mapVideo = (video) => ({
       : null,
 });
 
+const mapCast = (person) => ({
+  id: person.id,
+  name: person.name,
+  character: person.character,
+  order: person.order,
+  profile_path: person.profile_path,
+  profile_url: mapImageUrl(person.profile_path),
+});
+
+const mapCrew = (person) => ({
+  id: person.id,
+  name: person.name,
+  job: person.job,
+  department: person.department,
+  profile_path: person.profile_path,
+  profile_url: mapImageUrl(person.profile_path),
+});
+
 const mapWatchProvider = (provider, type) => ({
   provider_id: provider.provider_id,
   provider_name: provider.provider_name,
@@ -205,6 +223,32 @@ const mapTvWatchProviders = (
     all: uniqueWatchProviders([...flatrate, ...free, ...ads, ...rent, ...buy]),
   };
 };
+
+const mapTvSeriesDetail = (series) => ({
+  ...mapTvSeries(series),
+  genres: series.genres || [],
+  tagline: series.tagline,
+  status: series.status,
+  type: series.type,
+  homepage: series.homepage,
+  original_language: series.original_language,
+  episode_run_time: series.episode_run_time || [],
+  first_air_date: series.first_air_date,
+  last_air_date: series.last_air_date,
+  number_of_episodes: series.number_of_episodes,
+  number_of_seasons: series.number_of_seasons,
+  in_production: series.in_production,
+  created_by: series.created_by || [],
+  networks: series.networks || [],
+  production_companies: series.production_companies || [],
+  seasons: series.seasons || [],
+  videos: (series.videos?.results || []).map(mapVideo),
+  cast: (series.credits?.cast || []).slice(0, 12).map(mapCast),
+  crew: (series.credits?.crew || []).slice(0, 12).map(mapCrew),
+  recommendations: series.recommendations
+    ? mapTvSeriesPage(series.recommendations)
+    : undefined,
+});
 
 const getLanguage = (req) => req.query.language || "en-US";
 const getPage = (req) => req.query.page || 1;
@@ -323,6 +367,26 @@ export const discoverTvSeries = async (req, res) => {
     return res.json(mapTvSeriesPage(data));
   } catch (error) {
     return handleTmdbError(res, error, "Gagal memfilter TV series");
+  }
+};
+
+export const getTvSeriesDetail = async (req, res) => {
+  try {
+    const region = req.query.region || DEFAULT_WATCH_PROVIDER_REGION;
+    const [data, watchProviders] = await Promise.all([
+      requestTmdb(`/tv/${req.params.id}`, {
+        language: getLanguage(req),
+        append_to_response: "videos,credits,recommendations",
+      }),
+      requestTmdb(`/tv/${req.params.id}/watch/providers`),
+    ]);
+
+    return res.json({
+      ...mapTvSeriesDetail(data),
+      watch_providers: mapTvWatchProviders(watchProviders, region),
+    });
+  } catch (error) {
+    return handleTmdbError(res, error, "Gagal mengambil detail TV series");
   }
 };
 

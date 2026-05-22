@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   FaBookmark,
   FaChevronLeft,
@@ -42,7 +42,27 @@ const fallbackSeries = Array.from({ length: 10 }, (_, index) => ({
     "Dua penyintas melakukan perjalanan melewati dunia yang berubah, membawa harapan di tengah bahaya dan kehilangan.",
   releaseLabel: "15 Januari 2023",
   providers: [],
+  genre_ids: [18, 10765],
 }));
+
+const defaultGenreLookup = {
+  16: "Animasi",
+  18: "Drama",
+  35: "Komedi",
+  37: "Western",
+  80: "Kriminal",
+  99: "Dokumenter",
+  9648: "Misteri",
+  10751: "Keluarga",
+  10759: "Aksi & Petualangan",
+  10762: "Anak",
+  10763: "Berita",
+  10764: "Reality",
+  10765: "Sci-Fi & Fantasi",
+  10766: "Soap",
+  10767: "Talk",
+  10768: "Perang & Politik",
+};
 
 const providerIconMatchers = [
   { icon: netflixIcon, matches: ["netflix"] },
@@ -154,6 +174,7 @@ const mapTmdbSeries = (series) => ({
   overview: getShortOverview(series.overview),
   releaseLabel: formatAirDate(series.first_air_date),
   providers: [],
+  genre_ids: series.genre_ids || [],
 });
 
 const uniqueById = (seriesList) => {
@@ -194,8 +215,14 @@ function SeriesCard({
   isSaved,
   onOpen,
   onToggleWatchlist,
+  genreLookup = defaultGenreLookup,
   removeMode = false,
 }) {
+  const seriesGenres = (series.genre_ids || [])
+    .map((genreId) => genreLookup[genreId])
+    .filter(Boolean)
+    .slice(0, 2);
+
   return (
     <article className="tv-series-card" onClick={() => onOpen(series.id)}>
       <div className="tv-series-card-poster">
@@ -215,6 +242,14 @@ function SeriesCard({
         >
           {removeMode ? <FaTimes /> : isSaved ? <FaBookmark /> : <FaRegBookmark />}
         </button>
+        <div className="tv-series-card-overlay" aria-hidden="true">
+          <div className="tv-series-card-genres">
+            {(seriesGenres.length > 0 ? seriesGenres : ["Series"]).map((genre) => (
+              <span key={genre}>{genre}</span>
+            ))}
+          </div>
+          <p>{getShortOverview(series.overview)}</p>
+        </div>
       </div>
       <h3>{series.title}</h3>
       <p>
@@ -230,6 +265,7 @@ function SeriesCard({
 }
 
 function TVSeriesPage() {
+  const navigate = useNavigate();
   const user = useMemo(() => getStoredUser(), []);
   const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
   const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
@@ -241,6 +277,7 @@ function TVSeriesPage() {
   const [heroProvidersBySeriesId, setHeroProvidersBySeriesId] = useState({});
   const [heroTrailerUrls, setHeroTrailerUrls] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [genreLookup, setGenreLookup] = useState(defaultGenreLookup);
   const [loading, setLoading] = useState(true);
 
   const savedSeriesIds = useMemo(
@@ -276,6 +313,32 @@ function TVSeriesPage() {
   useEffect(() => {
     localStorage.setItem(watchlistKey, JSON.stringify(watchlist));
   }, [watchlist, watchlistKey]);
+
+  useEffect(() => {
+    const loadGenres = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/api/tv-series/genres?language=id-ID`);
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+        const genres = Object.fromEntries(
+          (data.genres || []).map((genre) => [genre.id, genre.name]),
+        );
+
+        setGenreLookup({
+          ...defaultGenreLookup,
+          ...genres,
+        });
+      } catch {
+        setGenreLookup(defaultGenreLookup);
+      }
+    };
+
+    loadGenres();
+  }, []);
 
   useEffect(() => {
     const loadSeries = async () => {
@@ -405,11 +468,7 @@ function TVSeriesPage() {
 
   const openSeries = (seriesId) => {
     if (Number.isInteger(Number(seriesId))) {
-      window.open(
-        `https://www.themoviedb.org/tv/${seriesId}`,
-        "_blank",
-        "noopener,noreferrer",
-      );
+      navigate(`/tv-series/${seriesId}`);
     }
   };
 
@@ -435,7 +494,7 @@ function TVSeriesPage() {
   };
 
   const handleShareHero = async () => {
-    const url = `https://www.themoviedb.org/tv/${activeHeroSeries.id}`;
+    const url = `${window.location.origin}/tv-series/${activeHeroSeries.id}`;
 
     try {
       await navigator.clipboard.writeText(url);
@@ -606,6 +665,7 @@ function TVSeriesPage() {
                 isSaved={savedSeriesIds.has(String(series.id))}
                 onOpen={openSeries}
                 onToggleWatchlist={toggleWatchlist}
+                genreLookup={genreLookup}
               />
             </div>
           ))}
@@ -627,6 +687,7 @@ function TVSeriesPage() {
                 isSaved={savedSeriesIds.has(String(series.id))}
                 onOpen={openSeries}
                 onToggleWatchlist={toggleWatchlist}
+                genreLookup={genreLookup}
                 removeMode
               />
             ))}
@@ -673,6 +734,7 @@ function TVSeriesPage() {
               isSaved={savedSeriesIds.has(String(series.id))}
               onOpen={openSeries}
               onToggleWatchlist={toggleWatchlist}
+              genreLookup={genreLookup}
             />
           ))}
         </div>
