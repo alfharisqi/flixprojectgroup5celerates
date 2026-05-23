@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import EmojiPicker from "emoji-picker-react";
-import { FiBarChart2, FiSmile } from "react-icons/fi";
+import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react";
+import {
+  FiBarChart2,
+  FiCornerUpLeft,
+  FiFlag,
+  FiHeart,
+  FiShare2,
+  FiSmile,
+  FiThumbsUp,
+} from "react-icons/fi";
 import GifPickerModal from "../components/GifPickerModal";
 import PostInsightModal from "../components/PostInsightModal";
 import RichContent from "../components/RichContent";
@@ -342,80 +350,129 @@ function PostDetail() {
     );
   };
 
+  const getReplyInitial = (username = "") => {
+    return username.trim().charAt(0).toUpperCase() || "U";
+  };
+
+  const formatReplyDate = (date) => {
+    return new Date(date).toLocaleString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const handleReportClick = (targetType, targetId) => {
+    alert(`Fitur report ${targetType} #${targetId} akan ditambahkan.`);
+  };
+
   const renderCommentTree = (allComments, items, postId, level = 0) => {
     return items.map((comment) => {
       const childComments = getChildComments(allComments, comment.id_comment);
       const inputKey = `comment-${comment.id_comment}`;
+      const replyNumber =
+        allComments.findIndex(
+          (item) => item.id_comment === comment.id_comment,
+        ) + 1;
 
       return (
         <div
           key={comment.id_comment}
-          style={{
-            marginLeft: `${level * 20}px`,
-            marginTop: "10px",
-          }}>
-          <div
-            style={{
-              background: "#f7f7f7",
-              padding: "10px",
-              borderRadius: "6px",
-            }}>
-            <strong>{comment.username}</strong>
-            <div style={{ fontSize: "12px", color: "#666" }}>
-              {new Date(comment.created_at).toLocaleString()}
-            </div>
+          className={`post-reply-item ${
+            level > 0 ? "post-reply-item--nested" : ""
+          }`}>
+          <article className="post-reply-card">
+            <header className="post-reply-header">
+              <div className="post-reply-author">
+                <div className="post-reply-avatar" aria-hidden="true">
+                  {getReplyInitial(comment.username)}
+                </div>
+                <div className="post-reply-meta">
+                  <strong>{comment.username}</strong>
+                  <time dateTime={comment.created_at}>
+                    {formatReplyDate(comment.created_at)}
+                  </time>
+                </div>
+              </div>
 
-            <div style={{ margin: "6px 0 8px 0" }}>
+              <div className="post-reply-tools">
+                <span className="post-reply-number">#{replyNumber}</span>
+                <button
+                  type="button"
+                  className="post-report-button"
+                  aria-label={`Report reply dari ${comment.username}`}
+                  title="Report reply"
+                  onClick={() =>
+                    handleReportClick("reply", comment.id_comment)
+                  }>
+                  <FiFlag />
+                </button>
+              </div>
+            </header>
+
+            <div className="post-reply-content">
               <RichContent html={comment.content} />
             </div>
 
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              {token && (
-                <button type="button" onClick={() => toggleReplyBox(inputKey)}>
-                  {activeReplyBox[inputKey] ? "Tutup Balasan" : "Balas"}
-                </button>
-              )}
+            <div className="post-reply-actions">
+              <span
+                className="post-reply-like-pill"
+                aria-label="Reply like count">
+                <FiThumbsUp />
+                <span>{comment.like_count || 0}</span>
+              </span>
 
               {childComments.length > 0 && (
                 <button
                   type="button"
+                  className="post-reply-text-action"
                   onClick={() => toggleChildReplies(comment.id_comment)}>
                   {showChildReplies[comment.id_comment]
-                    ? `Hide Replies (${childComments.length})`
-                    : `Show Replies (${childComments.length})`}
+                    ? "Tutup"
+                    : `${childComments.length} balasan`}
+                </button>
+              )}
+
+              {token && (
+                <button
+                  type="button"
+                  className="post-reply-text-action post-reply-text-action--reply"
+                  onClick={() => toggleReplyBox(inputKey)}>
+                  <FiCornerUpLeft />
+                  {activeReplyBox[inputKey] ? "Batal" : "Balas"}
                 </button>
               )}
             </div>
 
             {activeReplyBox[inputKey] && token && (
-              <div style={{ marginTop: "10px" }}>
-                <div style={{ display: "flex", gap: "8px" }}>
+              <div className="post-reply-form">
+                <div className="post-reply-input-row">
                   <input
+                    className="post-reply-input"
                     type="text"
                     placeholder="Tulis balasan..."
                     value={replyInputs[inputKey] || ""}
                     onChange={(e) =>
                       handleReplyChange(inputKey, e.target.value)
                     }
-                    style={{
-                      flex: 1,
-                      padding: "10px",
-                      border: "1px solid #ccc",
-                      borderRadius: "6px",
-                    }}
                   />
                   <button
                     type="button"
+                    className="post-reply-icon-button"
                     onClick={() => toggleEmojiPicker(inputKey)}>
                     <FiSmile />
                   </button>
                   <button
                     type="button"
+                    className="post-reply-gif-button"
                     onClick={() => toggleGifPicker(inputKey)}>
                     GIF
                   </button>
                   <button
                     type="button"
+                    className="post-reply-submit"
                     onClick={() =>
                       handleCreateReply(postId, comment.id_comment, inputKey)
                     }>
@@ -424,28 +481,30 @@ function PostDetail() {
                 </div>
 
                 {selectedGifs[inputKey]?.preview && (
-                  <div style={{ marginTop: "10px" }}>
+                  <div className="post-reply-gif-preview">
                     <img
                       src={selectedGifs[inputKey].preview}
                       alt="GIF preview"
-                      style={{
-                        maxWidth: "180px",
-                        borderRadius: "10px",
-                        display: "block",
-                      }}
                     />
                     <button
                       type="button"
-                      onClick={() => removeSelectedGif(inputKey)}
-                      style={{ marginTop: "8px" }}>
+                      onClick={() => removeSelectedGif(inputKey)}>
                       Hapus GIF
                     </button>
                   </div>
                 )}
 
                 {showEmojiPicker[inputKey] && (
-                  <div style={{ marginTop: "10px" }}>
+                  <div className="post-detail-emoji-picker">
                     <EmojiPicker
+                      theme={Theme.DARK}
+                      emojiStyle={EmojiStyle.NATIVE}
+                      width="100%"
+                      height={360}
+                      lazyLoadEmojis
+                      skinTonesDisabled
+                      searchPlaceholder="Cari emote"
+                      previewConfig={{ showPreview: false }}
                       onEmojiClick={(emojiData) =>
                         handleReplyChange(
                           inputKey,
@@ -463,10 +522,18 @@ function PostDetail() {
                 />
               </div>
             )}
-          </div>
+          </article>
 
-          {showChildReplies[comment.id_comment] &&
-            renderCommentTree(allComments, childComments, postId, level + 1)}
+          {showChildReplies[comment.id_comment] && (
+            <div className="post-reply-children">
+              {renderCommentTree(
+                allComments,
+                childComments,
+                postId,
+                level + 1,
+              )}
+            </div>
+          )}
         </div>
       );
     });
@@ -496,16 +563,19 @@ function PostDetail() {
         type="button"
         onClick={() => navigate(-1)}
         style={{ marginBottom: "16px" }}>
-        ← Kembali
+        &lt; Kembali
       </button>
 
-      <div
-        style={{
-          border: "1px solid #ddd",
-          borderRadius: "8px",
-          padding: "16px",
-          background: "#fff",
-        }}>
+      <div className="post-detail-card">
+        <button
+          type="button"
+          className="post-report-button post-detail-report-button"
+          aria-label="Report post"
+          title="Report post"
+          onClick={() => handleReportClick("post", post.id_post)}>
+          <FiFlag />
+        </button>
+
         <h2 style={{ margin: 0 }}>{post.title || "Untitled Post"}</h2>
 
         <div
@@ -617,41 +687,48 @@ function PostDetail() {
             marginTop: "12px",
           }}>
           <button type="button" onClick={() => handleLike(post.id_post)}>
-            👍 Like ({post.like_count || 0})
+            <FiThumbsUp size={15} />
+            Like ({post.like_count || 0})
           </button>
 
           <button
             type="button"
             onClick={() => handleReaction(post.id_post, "love")}>
-            ❤️ {post.love_count || 0}
+            <FiHeart size={15} />
+            {post.love_count || 0}
           </button>
 
           <button
             type="button"
             onClick={() => handleReaction(post.id_post, "funny")}>
-            😂 {post.funny_count || 0}
+            <span aria-hidden="true">{"\u{1F602}"}</span>
+            {post.funny_count || 0}
           </button>
 
           <button
             type="button"
             onClick={() => handleReaction(post.id_post, "wow")}>
-            😮 {post.wow_count || 0}
+            <span aria-hidden="true">{"\u{1F62E}"}</span>
+            {post.wow_count || 0}
           </button>
 
           <button
             type="button"
             onClick={() => handleReaction(post.id_post, "sad")}>
-            😢 {post.sad_count || 0}
+            <span aria-hidden="true">{"\u{1F622}"}</span>
+            {post.sad_count || 0}
           </button>
 
           <button
             type="button"
             onClick={() => handleReaction(post.id_post, "angry")}>
-            😡 {post.angry_count || 0}
+            <span aria-hidden="true">{"\u{1F621}"}</span>
+            {post.angry_count || 0}
           </button>
 
           <button type="button" onClick={() => handleShare(post.id_post)}>
-            🔗 Share
+            <FiShare2 size={15} />
+            Share
           </button>
 
           <button
@@ -667,43 +744,39 @@ function PostDetail() {
           Total Replies: {comments.length}
         </div>
 
-        <div
-          style={{
-            marginTop: "16px",
-            paddingTop: "12px",
-            borderTop: "1px solid #eee",
-          }}>
-          <h4 style={{ marginBottom: "12px" }}>Replies</h4>
+        <section className="post-replies-section">
+          <div className="post-replies-header">
+            <h4>Replies</h4>
+            <span>{comments.length}</span>
+          </div>
 
           {token ? (
-            <div style={{ marginBottom: "16px" }}>
-              <div style={{ display: "flex", gap: "8px" }}>
+            <div className="post-reply-composer">
+              <div className="post-reply-input-row">
                 <input
+                  className="post-reply-input"
                   type="text"
                   placeholder="Tulis reply ke post..."
                   value={replyInputs[postReplyKey] || ""}
                   onChange={(e) =>
                     handleReplyChange(postReplyKey, e.target.value)
                   }
-                  style={{
-                    flex: 1,
-                    padding: "10px",
-                    border: "1px solid #ccc",
-                    borderRadius: "6px",
-                  }}
                 />
                 <button
                   type="button"
+                  className="post-reply-icon-button"
                   onClick={() => toggleEmojiPicker(postReplyKey)}>
                   <FiSmile />
                 </button>
                 <button
                   type="button"
+                  className="post-reply-gif-button"
                   onClick={() => toggleGifPicker(postReplyKey)}>
                   GIF
                 </button>
                 <button
                   type="button"
+                  className="post-reply-submit"
                   onClick={() =>
                     handleCreateReply(post.id_post, null, postReplyKey)
                   }>
@@ -712,28 +785,30 @@ function PostDetail() {
               </div>
 
               {selectedGifs[postReplyKey]?.preview && (
-                <div style={{ marginTop: "10px" }}>
+                <div className="post-reply-gif-preview">
                   <img
                     src={selectedGifs[postReplyKey].preview}
                     alt="GIF preview"
-                    style={{
-                      maxWidth: "180px",
-                      borderRadius: "10px",
-                      display: "block",
-                    }}
                   />
                   <button
                     type="button"
-                    onClick={() => removeSelectedGif(postReplyKey)}
-                    style={{ marginTop: "8px" }}>
+                    onClick={() => removeSelectedGif(postReplyKey)}>
                     Hapus GIF
                   </button>
                 </div>
               )}
 
               {showEmojiPicker[postReplyKey] && (
-                <div style={{ marginTop: "10px" }}>
+                <div className="post-detail-emoji-picker">
                   <EmojiPicker
+                    theme={Theme.DARK}
+                    emojiStyle={EmojiStyle.NATIVE}
+                    width="100%"
+                    height={360}
+                    lazyLoadEmojis
+                    skinTonesDisabled
+                    searchPlaceholder="Cari emote"
+                    previewConfig={{ showPreview: false }}
                     onEmojiClick={(emojiData) =>
                       handleReplyChange(
                         postReplyKey,
@@ -751,24 +826,19 @@ function PostDetail() {
               />
             </div>
           ) : (
-            <small style={{ display: "block", marginBottom: "12px" }}>
+            <small className="post-reply-login-note">
               Login untuk membalas post.
             </small>
           )}
 
           {rootComments.length > 0 ? (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-              }}>
+            <div className="post-reply-list">
               {renderCommentTree(comments, rootComments, post.id_post, 0)}
             </div>
           ) : (
-            <p style={{ color: "#777" }}>Belum ada reply.</p>
+            <p className="post-reply-empty">Belum ada reply.</p>
           )}
-        </div>
+        </section>
       </div>
 
       <PostInsightModal

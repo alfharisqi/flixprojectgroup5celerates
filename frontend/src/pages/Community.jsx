@@ -31,6 +31,9 @@ function Community() {
     (total, item) => total + (Array.isArray(item) ? item.length : 0),
     0
   );
+  const allComments = Object.values(comments).flatMap((item) =>
+    Array.isArray(item) ? item : []
+  );
   const totalInsight = posts.reduce(
     (total, post) => total + Number(post.total_insight || post.view_count || 0),
     0
@@ -44,6 +47,115 @@ function Community() {
   const topTags = Object.entries(trendingTags)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6);
+  const currentUserId = Number(user?.id_user || 0);
+  const userPosts = currentUserId
+    ? posts.filter((post) => Number(post.id_user) === currentUserId)
+    : [];
+  const userComments = currentUserId
+    ? allComments.filter((comment) => Number(comment.id_user) === currentUserId)
+    : [];
+
+  const getReplyCount = (post) => {
+    return Number(post.reply_count ?? (comments[post.id_post] || []).length);
+  };
+
+  const getPostInsight = (post) => {
+    const pollVotes = (post.poll?.options || []).reduce(
+      (total, option) => total + Number(option.vote_count || 0),
+      0
+    );
+
+    const fallbackInsight =
+      Number(post.view_count || 0) +
+      Number(post.like_count || 0) +
+      getReplyCount(post) +
+      Number(post.share_count || 0) +
+      Number(post.total_reactions || 0) +
+      pollVotes;
+
+    return Number(post.total_insight ?? fallbackInsight);
+  };
+
+  const getPollVoteCount = (post) => {
+    const optionVotes = (post.poll?.options || []).reduce(
+      (total, option) => total + Number(option.vote_count || 0),
+      0
+    );
+
+    return Number(post.poll_vote_count ?? optionVotes);
+  };
+
+  const userPollPosts = userPosts.filter((post) => post.post_type === "poll");
+  const userPostInsight = userPosts.reduce(
+    (total, post) => total + getPostInsight(post),
+    0
+  );
+  const userPostLikes = userPosts.reduce(
+    (total, post) => total + Number(post.like_count || 0),
+    0
+  );
+  const userPostReactions = userPosts.reduce(
+    (total, post) => total + Number(post.total_reactions || 0),
+    0
+  );
+  const userPostShares = userPosts.reduce(
+    (total, post) => total + Number(post.share_count || 0),
+    0
+  );
+  const userPollVotes = userPollPosts.reduce(
+    (total, post) => total + getPollVoteCount(post),
+    0
+  );
+
+  const activityStats = [
+    { label: "Post Dibuat", value: userPosts.length },
+    { label: "Reply/Response", value: userComments.length },
+    { label: "Like Diterima", value: userPostLikes },
+    { label: "Reaction Diterima", value: userPostReactions },
+    { label: "Share Post Kamu", value: userPostShares },
+    { label: "Polling Kamu", value: userPollPosts.length },
+    { label: "Vote di Polling Kamu", value: userPollVotes },
+    { label: "Insight Post Kamu", value: userPostInsight },
+  ];
+
+  const displayedPosts = [...posts]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  const latestActivities = posts
+    .flatMap((post) => {
+      const isUserPost = Number(post.id_user) === currentUserId;
+      const postActivities = isUserPost
+        ? [
+            {
+              id: `post-${post.id_post}`,
+              postId: post.id_post,
+              type: "Post",
+              title: post.title || "Untitled Post",
+              actor: "Kamu",
+              time: post.created_at,
+            },
+          ]
+        : [];
+
+      const replyActivities = (comments[post.id_post] || [])
+        .filter((comment) => Number(comment.id_user) === currentUserId)
+        .map((comment) => ({
+          id: `reply-${comment.id_comment}`,
+          postId: post.id_post,
+          type: "Reply",
+          title: post.title || "Untitled Post",
+          actor: "Kamu",
+          time: comment.created_at,
+        }));
+
+      return [...postActivities, ...replyActivities];
+    })
+    .sort((a, b) => new Date(b.time) - new Date(a.time))
+    .slice(0, 5);
+
+  const feedTitle = activeTag
+    ? `Post dengan #${activeTag}`
+    : "Diskusi terbaru";
 
   const fetchPosts = async () => {
     try {
@@ -300,43 +412,46 @@ function Community() {
               <FiUsers />
               Aktivitas
             </h3>
-            <p>
-              Gunakan post, polling, like, reaction, share, dan insight seperti
-              sebelumnya. Perubahan ini hanya menyentuh tampilan.
-            </p>
+            {!token && (
+              <p>Login untuk melihat aktivitas pribadi kamu di komunitas.</p>
+            )}
+
+            <div className="community-activity-summary">
+              {activityStats.map((item) => (
+                <div key={item.label}>
+                  <strong>{item.value}</strong>
+                  <span>{item.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="community-activity-list">
+              <strong>Aktivitas terbaru</strong>
+              {latestActivities.length > 0 ? (
+                latestActivities.map((activity) => (
+                  <button
+                    key={activity.id}
+                    type="button"
+                    onClick={() => navigate(`/post/${activity.postId}`)}
+                  >
+                    <small>{activity.type}</small>
+                    <span>{activity.actor}</span>
+                    <em>{activity.title}</em>
+                  </button>
+                ))
+              ) : (
+                <p>Aktivitasmu akan muncul setelah kamu membuat post atau reply.</p>
+              )}
+            </div>
           </div>
 
-          <div className="community-tags-panel">
-            <h3>
-              <FiTrendingUp />
-              Trending Hashtag
-            </h3>
-            {topTags.length > 0 ? (
-              <div className="community-tag-list">
-                {topTags.map(([tag, count]) => (
-                  <button
-                    type="button"
-                    key={tag}
-                    onClick={() => handleTagClick(tag)}
-                    className={activeTag === tag ? "is-active" : ""}
-                  >
-                    <FiHash />
-                    <span>#{tag}</span>
-                    <small>{count}</small>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p>Hashtag akan muncul setelah post memiliki tag.</p>
-            )}
-          </div>
         </aside>
 
         <section className="community-feed" aria-live="polite">
           <div className="community-feed__header">
             <div>
               <span>Community Post</span>
-              <h2>{activeTag ? `Post dengan #${activeTag}` : "Diskusi terbaru"}</h2>
+              <h2>{feedTitle}</h2>
             </div>
             {token && (
               <button type="button" onClick={() => navigate("/create-post")}>
@@ -360,8 +475,8 @@ function Community() {
           )}
 
           <div className="community-post-list">
-            {posts.length > 0 ? (
-              posts.map((post) => (
+            {displayedPosts.length > 0 ? (
+              displayedPosts.map((post) => (
                 <PostCard
                   key={post.id_post}
                   post={post}
@@ -388,6 +503,33 @@ function Community() {
             )}
           </div>
         </section>
+
+        <aside className="community-right-sidebar" aria-label="Trending hashtag">
+          <div className="community-tags-panel">
+            <h3>
+              <FiTrendingUp />
+              Trending Hashtag
+            </h3>
+            {topTags.length > 0 ? (
+              <div className="community-tag-list">
+                {topTags.map(([tag, count]) => (
+                  <button
+                    type="button"
+                    key={tag}
+                    onClick={() => handleTagClick(tag)}
+                    className={activeTag === tag ? "is-active" : ""}
+                  >
+                    <FiHash />
+                    <span>#{tag}</span>
+                    <small>{count}</small>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p>Hashtag akan muncul setelah post memiliki tag.</p>
+            )}
+          </div>
+        </aside>
       </section>
 
       <PostInsightModal

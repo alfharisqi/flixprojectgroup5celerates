@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { FiSearch, FiX } from "react-icons/fi";
+import "./GifPickerModal.css";
 
 function GifPickerModal({ isOpen, onClose, onSelectGif }) {
   const [search, setSearch] = useState("");
@@ -51,112 +52,69 @@ function GifPickerModal({ isOpen, onClose, onSelectGif }) {
 
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.45)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 999,
-      }}>
+      className="gif-picker-modal"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div
-        style={{
-          width: "90%",
-          maxWidth: "760px",
-          maxHeight: "80vh",
-          overflow: "auto",
-          background: "#fff",
-          borderRadius: "14px",
-          padding: "16px",
-        }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "12px",
-          }}>
-          <h3 style={{ margin: 0 }}>Pilih GIF</h3>
+        className="gif-picker-modal__panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="gif-picker-title"
+      >
+        <div className="gif-picker-modal__header">
+          <h3 id="gif-picker-title">Pilih GIF</h3>
           <button
             type="button"
             onClick={onClose}
-            style={{
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              fontSize: "20px",
-            }}>
+            aria-label="Tutup GIF picker"
+          >
             <FiX />
           </button>
         </div>
 
         <form
           onSubmit={handleSearch}
-          style={{ display: "flex", gap: "8px", marginBottom: "14px" }}>
+          className="gif-picker-modal__search"
+        >
           <input
             type="text"
             placeholder="Cari GIF..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{
-              flex: 1,
-              padding: "10px",
-              border: "1px solid #ccc",
-              borderRadius: "8px",
-            }}
           />
-          <button
-            type="submit"
-            style={{
-              border: "none",
-              background: "#111",
-              color: "#fff",
-              padding: "10px 14px",
-              borderRadius: "8px",
-              cursor: "pointer",
-            }}>
+          <button type="submit" aria-label="Cari GIF">
             <FiSearch />
           </button>
         </form>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-            gap: "10px",
-          }}>
-          {gifs.map((gif) => (
-            <button
-              key={gif.id}
-              type="button"
-              onClick={() =>
-                onSelectGif({
-                  id: gif.id,
-                  url: gif.images.fixed_height.url,
-                  preview: gif.images.fixed_height_small.url,
-                })
-              }
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: "10px",
-                padding: "6px",
-                background: "#fff",
-                cursor: "pointer",
-              }}>
-              <img
-                src={gif.images.fixed_height_small.url}
-                alt={gif.title}
-                style={{
-                  width: "100%",
-                  height: "120px",
-                  objectFit: "cover",
-                  borderRadius: "8px",
-                }}
-              />
-            </button>
-          ))}
-        </div>
+        {gifs.length > 0 ? (
+          <div className="gif-picker-modal__grid">
+            {gifs.map((gif) => (
+              <button
+                key={gif.id}
+                type="button"
+                onClick={() =>
+                  onSelectGif({
+                    id: gif.id,
+                    url: gif.images.fixed_height.url,
+                    preview: gif.images.fixed_height_small.url,
+                  })
+                }
+              >
+                <img src={gif.images.fixed_height_small.url} alt={gif.title} />
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="gif-picker-modal__empty">
+            GIF belum tersedia. Coba kata kunci lain.
+          </div>
+        )}
       </div>
     </div>
   );
