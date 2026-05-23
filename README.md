@@ -6,13 +6,13 @@
 Clone repository dari GitHub:
 
 ```bash
-git clone https://github.com/alfharisqi/testprojectawalflix.git
+git clone https://github.com/alfharisqi/flixprojectgroup5celerates.git
 ```
 
 Masuk ke folder project:
 
 ```bash
-cd testprojectawalflix
+cd flixprojectgroup5celerates
 ```
 
 Install dependency backend:
