@@ -1,19 +1,18 @@
-# FLIX
 
-FLIX adalah website rekomendasi film dan TV series berbasis React, Express, dan PostgreSQL. Website ini mengambil data film/series dari TMDB, menyediakan rekomendasi berdasarkan mood, serta memiliki fitur komunitas untuk membuat post, komentar, polling, review, dan interaksi antar user.
+# FLIX
 
 ## 1. Cara Clone Website Ini
 
 Clone repository dari GitHub:
 
 ```bash
-git clone https://github.com/alfharisqi/testprojectawalflix.git
+git clone https://github.com/alfharisqi/flixprojectgroup5celerates.git
 ```
 
 Masuk ke folder project:
 
 ```bash
-cd testprojectawalflix
+cd flixprojectgroup5celerates
 ```
 
 Install dependency backend:
