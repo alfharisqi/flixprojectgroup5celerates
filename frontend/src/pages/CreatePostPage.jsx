@@ -124,10 +124,6 @@ function CreatePostPage() {
           Kembali
         </button>
 
-        <div className="create-post-eyebrow">
-          <span />
-          COMMUNITY
-        </div>
         <h1>
           Buat <strong>Post</strong> Baru
         </h1>
