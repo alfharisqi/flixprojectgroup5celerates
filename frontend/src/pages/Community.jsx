@@ -21,6 +21,8 @@ function Community() {
   const [comments, setComments] = useState({});
   const [insight, setInsight] = useState(null);
   const [showInsight, setShowInsight] = useState(false);
+  const [showActivityDetail, setShowActivityDetail] = useState(false);
+  const [showAllActivities, setShowAllActivities] = useState(false);
 
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -110,13 +112,15 @@ function Community() {
   const activityStats = [
     { label: "Post Dibuat", value: userPosts.length },
     { label: "Reply/Response", value: userComments.length },
+    { label: "Insight", value: userPostInsight },
     { label: "Like Diterima", value: userPostLikes },
     { label: "Reaction Diterima", value: userPostReactions },
     { label: "Share Post Kamu", value: userPostShares },
     { label: "Polling Kamu", value: userPollPosts.length },
     { label: "Vote di Polling Kamu", value: userPollVotes },
-    { label: "Insight Post Kamu", value: userPostInsight },
   ];
+  const primaryActivityStats = activityStats.slice(0, 3);
+  const detailActivityStats = activityStats.slice(3);
 
   const displayedPosts = [...posts]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -152,6 +156,9 @@ function Community() {
     })
     .sort((a, b) => new Date(b.time) - new Date(a.time))
     .slice(0, 5);
+  const visibleActivities = showAllActivities
+    ? latestActivities
+    : latestActivities.slice(0, 2);
 
   const feedTitle = activeTag
     ? `Post dengan #${activeTag}`
@@ -161,6 +168,11 @@ function Community() {
     try {
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/posts`, {
         params: activeTag ? { tag: activeTag } : {},
+        headers: token
+          ? {
+              Authorization: `Bearer ${token}`,
+            }
+          : {},
       });
       setPosts(res.data);
       setComments({});
@@ -243,7 +255,7 @@ function Community() {
   const handleReaction = async (postId, reactionType) => {
     if (!token) {
       alert("Silakan login terlebih dahulu");
-      return;
+      return false;
     }
 
     try {
@@ -258,8 +270,10 @@ function Community() {
       );
 
       fetchPosts();
+      return true;
     } catch (error) {
       alert(error.response?.data?.message || "Gagal memberi reaction");
+      return false;
     }
   };
 
@@ -310,6 +324,10 @@ function Community() {
     }
   };
 
+  const handleReportPost = (postId) => {
+    alert(`Fitur report post #${postId} akan ditambahkan.`);
+  };
+
   const handleVotePoll = async (postId, pollId, optionId) => {
     if (!token) {
       alert("Silakan login terlebih dahulu");
@@ -336,7 +354,7 @@ function Community() {
 
   useEffect(() => {
     fetchPosts();
-  }, [activeTag]);
+  }, [activeTag, token]);
 
   return (
     <main className="community-page">
@@ -417,7 +435,7 @@ function Community() {
             )}
 
             <div className="community-activity-summary">
-              {activityStats.map((item) => (
+              {primaryActivityStats.map((item) => (
                 <div key={item.label}>
                   <strong>{item.value}</strong>
                   <span>{item.label}</span>
@@ -425,20 +443,51 @@ function Community() {
               ))}
             </div>
 
+            <button
+              type="button"
+              className="community-activity-toggle"
+              onClick={() => setShowActivityDetail((prev) => !prev)}
+            >
+              {showActivityDetail ? "Sembunyikan detail" : "Lihat detail aktivitas"}
+            </button>
+
+            {showActivityDetail && (
+              <div className="community-activity-detail">
+                {detailActivityStats.map((item) => (
+                  <div key={item.label}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="community-activity-list">
               <strong>Aktivitas terbaru</strong>
               {latestActivities.length > 0 ? (
-                latestActivities.map((activity) => (
-                  <button
-                    key={activity.id}
-                    type="button"
-                    onClick={() => navigate(`/post/${activity.postId}`)}
-                  >
-                    <small>{activity.type}</small>
-                    <span>{activity.actor}</span>
-                    <em>{activity.title}</em>
-                  </button>
-                ))
+                <>
+                  {visibleActivities.map((activity) => (
+                    <button
+                      key={activity.id}
+                      type="button"
+                      onClick={() => navigate(`/post/${activity.postId}`)}
+                    >
+                      <small>{activity.type}</small>
+                      <span>{activity.actor}</span>
+                      <em>{activity.title}</em>
+                    </button>
+                  ))}
+
+                  {latestActivities.length > 2 && (
+                    <button
+                      type="button"
+                      className="community-activity-more"
+                      onClick={() => setShowAllActivities((prev) => !prev)}
+                    >
+                      {showAllActivities ? "Tampilkan lebih sedikit" : "Lihat semua"}
+                    </button>
+                  )}
+                </>
               ) : (
                 <p>Aktivitasmu akan muncul setelah kamu membuat post atau reply.</p>
               )}
@@ -487,6 +536,7 @@ function Community() {
                   handleReaction={handleReaction}
                   handleShare={handleShare}
                   handleInsight={handleInsight}
+                  handleReportPost={handleReportPost}
                   handleVotePoll={handleVotePoll}
                   handleTagClick={handleTagClick}
                 />

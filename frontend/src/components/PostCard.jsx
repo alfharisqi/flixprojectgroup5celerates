@@ -1,17 +1,23 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiBarChart2,
-  FiHeart,
-  FiMessageCircle,
+  FiFlag,
   FiSend,
   FiShare2,
-  FiSmile,
   FiThumbsUp,
   FiTrash2,
-  FiZap,
 } from "react-icons/fi";
 import RichContent from "./RichContent";
 import "./PostCard.css";
+
+const reactionOptions = [
+  { type: "love", label: "Love", icon: "\u2764\uFE0F" },
+  { type: "funny", label: "Funny", icon: "\u{1F602}" },
+  { type: "wow", label: "Wow", icon: "\u{1F62E}" },
+  { type: "sad", label: "Sad", icon: "\u{1F622}" },
+  { type: "angry", label: "Angry", icon: "\u{1F621}" },
+];
 
 function PostCard({
   post,
@@ -22,10 +28,15 @@ function PostCard({
   handleReaction,
   handleShare,
   handleInsight,
+  handleReportPost,
   handleVotePoll,
   handleTagClick,
 }) {
   const navigate = useNavigate();
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const [selectedReaction, setSelectedReaction] = useState(
+    post.user_reaction || null
+  );
 
   const canDelete =
     user &&
@@ -57,6 +68,21 @@ function PostCard({
     action();
   };
 
+  const selectedReactionOption = reactionOptions.find(
+    (item) => item.type === selectedReaction
+  );
+
+  const handleReactionSelect = async (reactionType) => {
+    const success = await handleReaction(post.id_post, reactionType);
+
+    if (!success) return;
+
+    setSelectedReaction((current) =>
+      current === reactionType ? null : reactionType
+    );
+    setShowReactionPicker(false);
+  };
+
   return (
     <article
       className="community-post-card"
@@ -74,7 +100,20 @@ function PostCard({
           </div>
         </div>
 
-        {canDelete && (
+        <div className="community-post-card__tools">
+          <button
+            className="community-post-card__report"
+            type="button"
+            onClick={(event) =>
+              handleCardAction(event, () => handleReportPost?.(post.id_post))
+            }
+            aria-label="Report post"
+            title="Report post"
+          >
+            <FiFlag />
+          </button>
+
+          {canDelete && (
           <button
             className="community-post-card__delete"
             type="button"
@@ -85,7 +124,8 @@ function PostCard({
           >
             <FiTrash2 />
           </button>
-        )}
+          )}
+        </div>
       </div>
 
       {post.tags?.length > 0 && (
@@ -177,60 +217,49 @@ function PostCard({
           <small>{post.like_count || 0}</small>
         </button>
 
-        <button
-          type="button"
-          onClick={(event) =>
-            handleCardAction(event, () => handleReaction(post.id_post, "love"))
-          }
-        >
-          <FiHeart />
-          <span>Love</span>
-          <small>{post.love_count || 0}</small>
-        </button>
+        <div className="community-post-card__reaction">
+          <button
+            type="button"
+            className="community-post-card__reaction-button"
+            onClick={(event) =>
+              handleCardAction(event, () =>
+                setShowReactionPicker((current) => !current)
+              )
+            }
+          >
+            <span aria-hidden="true">
+              {selectedReactionOption?.icon || "\u{1F60A}"}
+            </span>
+            <span>{selectedReactionOption?.label || "Reaction"}</span>
+            <small>{post.total_reactions || 0}</small>
+          </button>
 
-        <button
-          type="button"
-          onClick={(event) =>
-            handleCardAction(event, () => handleReaction(post.id_post, "funny"))
-          }
-        >
-          <FiSmile />
-          <span>Funny</span>
-          <small>{post.funny_count || 0}</small>
-        </button>
-
-        <button
-          type="button"
-          onClick={(event) =>
-            handleCardAction(event, () => handleReaction(post.id_post, "wow"))
-          }
-        >
-          <FiZap />
-          <span>Wow</span>
-          <small>{post.wow_count || 0}</small>
-        </button>
-
-        <button
-          type="button"
-          onClick={(event) =>
-            handleCardAction(event, () => handleReaction(post.id_post, "sad"))
-          }
-        >
-          <FiMessageCircle />
-          <span>Sad</span>
-          <small>{post.sad_count || 0}</small>
-        </button>
-
-        <button
-          type="button"
-          onClick={(event) =>
-            handleCardAction(event, () => handleReaction(post.id_post, "angry"))
-          }
-        >
-          <FiZap />
-          <span>Angry</span>
-          <small>{post.angry_count || 0}</small>
-        </button>
+          {showReactionPicker && (
+            <div
+              className="community-post-card__reaction-picker"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {reactionOptions.map((reaction) => (
+                <button
+                  key={reaction.type}
+                  type="button"
+                  className={
+                    selectedReaction === reaction.type ? "is-selected" : ""
+                  }
+                  onClick={(event) =>
+                    handleCardAction(event, () =>
+                      handleReactionSelect(reaction.type)
+                    )
+                  }
+                >
+                  <span aria-hidden="true">{reaction.icon}</span>
+                  <span>{reaction.label}</span>
+                  <small>{post[`${reaction.type}_count`] || 0}</small>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <button
           type="button"

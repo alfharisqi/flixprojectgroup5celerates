@@ -7,7 +7,7 @@ import {
   createPost,
   deletePost,
 } from "../controllers/postController.js";
-import { verifyToken } from "../middleware/authMiddleware.js";
+import { optionalToken, verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -39,8 +39,8 @@ const upload = multer({
   },
 });
 
-router.get("/", getPosts);
-router.get("/:id", getPostById);
+router.get("/", optionalToken, getPosts);
+router.get("/:id", optionalToken, getPostById);
 router.post("/", verifyToken, upload.single("image"), createPost);
 router.delete("/:id", verifyToken, deletePost);
 

@@ -3,7 +3,7 @@ import pool from "../config/db.js";
 export const getPosts = async (req, res) => {
   try {
     const tag = typeof req.query.tag === "string" ? req.query.tag.trim() : "";
-    const values = [];
+    const values = [req.user?.id_user || null];
     let tagFilter = "";
 
     if (tag) {
@@ -12,7 +12,7 @@ export const getPosts = async (req, res) => {
        WHERE EXISTS (
          SELECT 1
          FROM unnest(p.tags) AS tag_name
-         WHERE LOWER(tag_name) = LOWER($1)
+         WHERE LOWER(tag_name) = LOWER($${values.length})
        )`;
     }
 
@@ -39,6 +39,7 @@ export const getPosts = async (req, res) => {
           COALESCE(r.wow_count, 0) AS wow_count,
           COALESCE(r.sad_count, 0) AS sad_count,
           COALESCE(r.angry_count, 0) AS angry_count,
+          ur.reaction_type AS user_reaction,
           COALESCE(po.total_votes, 0) AS poll_vote_count,
 
           (
@@ -100,6 +101,10 @@ export const getPosts = async (req, res) => {
          GROUP BY id_post
        ) r ON p.id_post = r.id_post
 
+       LEFT JOIN flix.post_reactions ur
+         ON p.id_post = ur.id_post
+        AND ur.id_user = $1
+
        LEFT JOIN flix.post_polls pp ON p.id_post = pp.id_post
 
        LEFT JOIN LATERAL (
@@ -138,6 +143,7 @@ export const getPosts = async (req, res) => {
 export const getPostById = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user?.id_user || null;
 
     const result = await pool.query(
       `SELECT 
@@ -162,6 +168,7 @@ export const getPostById = async (req, res) => {
           COALESCE(r.wow_count, 0) AS wow_count,
           COALESCE(r.sad_count, 0) AS sad_count,
           COALESCE(r.angry_count, 0) AS angry_count,
+          ur.reaction_type AS user_reaction,
           COALESCE(pv.poll_vote_count, 0) AS poll_vote_count,
 
           (
@@ -213,6 +220,10 @@ export const getPostById = async (req, res) => {
          GROUP BY id_post
        ) r ON p.id_post = r.id_post
 
+       LEFT JOIN flix.post_reactions ur
+         ON p.id_post = ur.id_post
+        AND ur.id_user = $2
+
        LEFT JOIN (
          SELECT pp.id_post, COUNT(v.id_vote) AS poll_vote_count
          FROM flix.post_polls pp
@@ -222,7 +233,7 @@ export const getPostById = async (req, res) => {
        ) pv ON p.id_post = pv.id_post
 
        WHERE p.id_post = $1`,
-      [id]
+      [id, userId]
     );
 
     if (result.rows.length === 0) {

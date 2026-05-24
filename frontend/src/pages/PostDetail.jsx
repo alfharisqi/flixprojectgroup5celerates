@@ -6,7 +6,7 @@ import {
   FiBarChart2,
   FiCornerUpLeft,
   FiFlag,
-  FiHeart,
+  FiSend,
   FiShare2,
   FiSmile,
   FiThumbsUp,
@@ -15,7 +15,16 @@ import GifPickerModal from "../components/GifPickerModal";
 import PostInsightModal from "../components/PostInsightModal";
 import RichContent from "../components/RichContent";
 import SiteNavbar from "../components/SiteNavbar";
+import "../components/PostCard.css";
 import "./PostDetail.css";
+
+const postReactionOptions = [
+  { type: "love", label: "Love", icon: "\u2764\uFE0F" },
+  { type: "funny", label: "Funny", icon: "\u{1F602}" },
+  { type: "wow", label: "Wow", icon: "\u{1F62E}" },
+  { type: "sad", label: "Sad", icon: "\u{1F622}" },
+  { type: "angry", label: "Angry", icon: "\u{1F621}" },
+];
 
 function PostDetail() {
   const { id } = useParams();
@@ -34,6 +43,8 @@ function PostDetail() {
 
   const [insight, setInsight] = useState(null);
   const [showInsight, setShowInsight] = useState(false);
+  const [showPostReactionPicker, setShowPostReactionPicker] = useState(false);
+  const [selectedPostReaction, setSelectedPostReaction] = useState(null);
 
   const token = localStorage.getItem("token");
   const storedUser = localStorage.getItem("user");
@@ -43,8 +54,16 @@ function PostDetail() {
     try {
       const res = await axios.get(
         `${import.meta.env.VITE_API_URL}/api/posts/${id}`,
+        {
+          headers: token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : {},
+        },
       );
       setPost(res.data);
+      setSelectedPostReaction(res.data.user_reaction || null);
     } catch (error) {
       console.error(error);
       setPost(null);
@@ -183,7 +202,7 @@ function PostDetail() {
   };
 
   const handleTagClick = (tag) => {
-    navigate(`/?tag=${encodeURIComponent(tag)}`);
+    navigate(`/community?tag=${encodeURIComponent(tag)}`);
   };
 
   const renderContentWithGif = (text) => {
@@ -239,9 +258,22 @@ function PostDetail() {
         },
       );
       fetchPost();
+      return true;
     } catch (error) {
       alert(error.response?.data?.message || "Gagal memberi reaction");
+      return false;
     }
+  };
+
+  const handlePostReactionSelect = async (reactionType) => {
+    const success = await handleReaction(post.id_post, reactionType);
+
+    if (!success) return;
+
+    setSelectedPostReaction((current) =>
+      current === reactionType ? null : reactionType,
+    );
+    setShowPostReactionPicker(false);
   };
 
   const handleShare = async (postId) => {
@@ -554,6 +586,15 @@ function PostDetail() {
   const postReplyKey = `post-${post.id_post}`;
   const viewCount = Number(post.view_count || 0);
   const totalInsight = Number(post.total_insight || viewCount);
+  const pollOptions = pollData?.options || [];
+  const totalPollVotes = pollOptions.reduce(
+    (total, option) => total + Number(option.vote_count || 0),
+    0,
+  );
+  const authorInitial = (post.username || "F").slice(0, 1).toUpperCase();
+  const selectedPostReactionOption = postReactionOptions.find(
+    (item) => item.type === selectedPostReaction,
+  );
 
   return (
     <main className="post-detail-page">
@@ -566,64 +607,44 @@ function PostDetail() {
         &lt; Kembali
       </button>
 
-      <div className="post-detail-card">
-        <button
-          type="button"
-          className="post-report-button post-detail-report-button"
-          aria-label="Report post"
-          title="Report post"
-          onClick={() => handleReportClick("post", post.id_post)}>
-          <FiFlag />
-        </button>
+      <div className="post-detail-card community-post-card">
+        <div className="community-post-card__header">
+          <div className="community-post-card__author">
+            <span className="community-post-card__avatar">{authorInitial}</span>
+            <div>
+              <h3>{post.title || "Untitled Post"}</h3>
+              <p>
+                by {post.username}
+                <span aria-hidden="true" />
+                {new Date(post.created_at).toLocaleString()}
+                <span aria-hidden="true" />
+                <em className="post-detail-view-count">
+                  <FiBarChart2 size={14} />
+                  {viewCount} views
+                </em>
+              </p>
+            </div>
+          </div>
 
-        <h2 style={{ margin: 0 }}>{post.title || "Untitled Post"}</h2>
-
-        <div
-          style={{
-            marginTop: "8px",
-            color: "#666",
-            fontSize: "14px",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            flexWrap: "wrap",
-          }}>
-          <span>
-            by {post.username} - {new Date(post.created_at).toLocaleString()}
-          </span>
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "5px",
-            }}>
-            <FiBarChart2 size={14} />
-            {viewCount} views
-          </span>
+          <div className="community-post-card__tools">
+            <button
+              type="button"
+              className="community-post-card__report post-report-button"
+              aria-label="Report post"
+              title="Report post"
+              onClick={() => handleReportClick("post", post.id_post)}>
+              <FiFlag />
+            </button>
+          </div>
         </div>
 
         {post.tags?.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-              flexWrap: "wrap",
-              marginTop: "12px",
-            }}>
+          <div className="community-post-card__tags">
             {post.tags.map((tag, index) => (
               <button
                 key={index}
                 type="button"
                 onClick={() => handleTagClick(tag)}
-                style={{
-                  background: "#f3f4f6",
-                  padding: "4px 10px",
-                  borderRadius: "999px",
-                  fontSize: "12px",
-                  border: "1px solid transparent",
-                  color: "#111",
-                  cursor: "pointer",
-                }}
                 title={`Lihat post dengan hashtag #${tag}`}
               >
                 #{tag}
@@ -632,116 +653,117 @@ function PostDetail() {
           </div>
         )}
 
-        <div style={{ marginTop: "12px" }}>
+        <div className="community-post-card__content">
           <RichContent html={post.content} />
         </div>
 
         {post.image_url && (
           <img
+            className="community-post-card__image"
             src={`${import.meta.env.VITE_API_URL}${post.image_url}`}
             alt="Post"
-            style={{
-              maxWidth: "260px",
-              marginTop: "10px",
-              borderRadius: "10px",
-              display: "block",
-            }}
           />
         )}
 
-        {post.post_type === "poll" && pollData && (
-          <div style={{ marginTop: "16px" }}>
-            <h3 style={{ color: "#111" }}>Polling</h3>
+        {post.post_type === "poll" && pollOptions.length > 0 && (
+          <div className="community-post-card__poll">
+            <div className="community-post-card__poll-title">Polling</div>
 
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {pollData.options.map((option) => (
-                <button
-                  key={option.id_option}
-                  type="button"
-                  onClick={() =>
-                    handleVotePoll(pollData.poll.id_poll, option.id_option)
-                  }
-                  style={{
-                    textAlign: "left",
-                    padding: "12px 14px",
-                    borderRadius: "10px",
-                    border: "1px solid #ccc",
-                    background: "#fff",
-                    color: "#111",
-                    cursor: "pointer",
-                  }}>
-                  {option.option_text || "Opsi polling kosong"} -{" "}
-                  {option.vote_count} vote
-                </button>
-              ))}
+            <div className="community-post-card__poll-options">
+              {pollOptions.map((option) => {
+                const voteCount = Number(option.vote_count || 0);
+                const percent =
+                  totalPollVotes > 0
+                    ? Math.round((voteCount / totalPollVotes) * 100)
+                    : 0;
+
+                return (
+                  <button
+                    className="community-post-card__poll-option"
+                    key={option.id_option}
+                    type="button"
+                    onClick={() =>
+                      handleVotePoll(pollData.poll.id_poll, option.id_option)
+                    }>
+                    <span
+                      className="community-post-card__poll-fill"
+                      style={{ width: `${percent}%` }}
+                    />
+                    <span className="community-post-card__poll-label">
+                      <span>{option.option_text || "Opsi polling kosong"}</span>
+                      <small>
+                        {voteCount} vote
+                        {totalPollVotes > 0 ? ` (${percent}%)` : ""}
+                      </small>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
 
-        <div
-          style={{
-            display: "flex",
-            gap: "8px",
-            flexWrap: "wrap",
-            marginTop: "12px",
-          }}>
+        <div className="community-post-card__actions post-detail-action-row">
           <button type="button" onClick={() => handleLike(post.id_post)}>
             <FiThumbsUp size={15} />
-            Like ({post.like_count || 0})
+            <span>Like</span>
+            <small>{post.like_count || 0}</small>
           </button>
 
-          <button
-            type="button"
-            onClick={() => handleReaction(post.id_post, "love")}>
-            <FiHeart size={15} />
-            {post.love_count || 0}
-          </button>
+          <div className="community-post-card__reaction post-detail-reaction">
+            <button
+              type="button"
+              className="community-post-card__reaction-button"
+              onClick={() =>
+                setShowPostReactionPicker((current) => !current)
+              }>
+              <span aria-hidden="true">
+                {selectedPostReactionOption?.icon || "\u{1F60A}"}
+              </span>
+              <span>{selectedPostReactionOption?.label || "Reaction"}</span>
+              <small>{post.total_reactions || 0}</small>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => handleReaction(post.id_post, "funny")}>
-            <span aria-hidden="true">{"\u{1F602}"}</span>
-            {post.funny_count || 0}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleReaction(post.id_post, "wow")}>
-            <span aria-hidden="true">{"\u{1F62E}"}</span>
-            {post.wow_count || 0}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleReaction(post.id_post, "sad")}>
-            <span aria-hidden="true">{"\u{1F622}"}</span>
-            {post.sad_count || 0}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleReaction(post.id_post, "angry")}>
-            <span aria-hidden="true">{"\u{1F621}"}</span>
-            {post.angry_count || 0}
-          </button>
+            {showPostReactionPicker && (
+              <div className="community-post-card__reaction-picker post-detail-reaction-picker">
+                {postReactionOptions.map((reaction) => (
+                  <button
+                    key={reaction.type}
+                    type="button"
+                    className={
+                      selectedPostReaction === reaction.type
+                        ? "is-selected"
+                        : ""
+                    }
+                    onClick={() => handlePostReactionSelect(reaction.type)}>
+                    <span aria-hidden="true">{reaction.icon}</span>
+                    <span>{reaction.label}</span>
+                    <small>{post[`${reaction.type}_count`] || 0}</small>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <button type="button" onClick={() => handleShare(post.id_post)}>
             <FiShare2 size={15} />
-            Share
+            <span>Share</span>
           </button>
 
           <button
             type="button"
+            className="community-post-card__insight"
             onClick={fetchInsight}
-            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+            aria-label={`Total insight ${totalInsight}`}
+            title="Total insight">
             <FiBarChart2 size={16} />
-            Insight ({totalInsight})
+            <span>{totalInsight}</span>
           </button>
         </div>
 
-        <div style={{ marginTop: "10px", color: "#666", fontSize: "14px" }}>
-          Total Replies: {comments.length}
+        <div className="community-post-card__reply-count">
+          <FiSend />
+          <span>Total Replies: {comments.length}</span>
         </div>
 
         <section className="post-replies-section">
