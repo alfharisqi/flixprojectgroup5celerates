@@ -293,6 +293,98 @@
   margin: 0;
 }
 
+.logout-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(12px);
+}
+
+.logout-confirm__panel {
+  width: min(468px, calc(100vw - 48px));
+  min-height: 204px;
+  border-radius: 36px;
+  background: #141414;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 38px 34px;
+  box-sizing: border-box;
+  box-shadow:
+    0 44px 54px rgba(164, 164, 255, 0.34),
+    0 18px 32px rgba(0, 0, 0, 0.46);
+}
+
+.logout-confirm__panel h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 500;
+  text-align: center;
+}
+
+.logout-confirm__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.logout-confirm__actions button {
+  border: 0;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.logout-confirm__logout {
+  min-height: 48px;
+  background: transparent;
+  color: #d2d2d2;
+  padding: 0 8px;
+  text-decoration: underline;
+  text-underline-offset: 6px;
+}
+
+.logout-confirm__logout:hover,
+.logout-confirm__logout:focus-visible {
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.logout-confirm__cancel {
+  min-width: 88px;
+  min-height: 48px;
+  border-radius: 12px;
+  background: #f20712;
+  color: #ffffff;
+  padding: 0 22px;
+  box-shadow: 0 12px 22px rgba(242, 7, 18, 0.18);
+}
+
+.logout-confirm__cancel:hover,
+.logout-confirm__cancel:focus-visible {
+  background: #ff1722;
+  transform: translateY(-1px);
+  box-shadow: 0 16px 28px rgba(242, 7, 18, 0.25);
+}
+
 @media (max-width: 1040px) {
   .site-navbar {
     height: auto;
@@ -338,5 +430,9 @@
   .site-navbar__login {
     display: none;
   }
-}
 
+  .logout-confirm__panel {
+    border-radius: 28px;
+    min-height: 190px;
+  }
+}
