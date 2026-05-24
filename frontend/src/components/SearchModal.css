@@ -169,6 +169,26 @@
   background: #232323;
 }
 
+.flix-search-modal__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f20712, #7d050b);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.flix-search-modal__result--post {
+  grid-template-columns: 48px minmax(0, 1fr);
+}
+
+.flix-search-modal__result--post small mark {
+  color: #f20712;
+}
+
 .flix-search-modal__result span {
   min-width: 0;
   display: flex;
