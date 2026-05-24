@@ -7,6 +7,8 @@ import {
   FiHash,
   FiMessageCircle,
   FiPlus,
+  FiSearch,
+  FiSliders,
   FiTrendingUp,
   FiUsers,
   FiX,
@@ -14,6 +16,7 @@ import {
 import SiteNavbar from "../components/SiteNavbar";
 import PostCard from "../components/PostCard";
 import PostInsightModal from "../components/PostInsightModal";
+import PostSearchModal from "../components/PostSearchModal";
 import "./Community.css";
 
 function Community() {
@@ -23,6 +26,7 @@ function Community() {
   const [showInsight, setShowInsight] = useState(false);
   const [showActivityDetail, setShowActivityDetail] = useState(false);
   const [showAllActivities, setShowAllActivities] = useState(false);
+  const [showPostSearch, setShowPostSearch] = useState(false);
 
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -502,12 +506,14 @@ function Community() {
               <span>Community Post</span>
               <h2>{feedTitle}</h2>
             </div>
-            {token && (
-              <button type="button" onClick={() => navigate("/create-post")}>
-                <FiPlus />
-                Post Baru
-              </button>
-            )}
+            <button
+              type="button"
+              className="community-filter-button"
+              onClick={() => alert("Fitur filter post akan ditambahkan.")}
+            >
+              <FiSliders />
+              Filter
+            </button>
           </div>
 
           {activeTag && (
@@ -555,6 +561,16 @@ function Community() {
         </section>
 
         <aside className="community-right-sidebar" aria-label="Trending hashtag">
+          <button
+            type="button"
+            className="community-post-search"
+            onClick={() => setShowPostSearch(true)}
+            aria-label="Temukan diskusi community"
+          >
+            <FiSearch />
+            <span>Temukan diskusi...</span>
+          </button>
+
           <div className="community-tags-panel">
             <h3>
               <FiTrendingUp />
@@ -586,6 +602,14 @@ function Community() {
         isOpen={showInsight}
         onClose={() => setShowInsight(false)}
         insight={insight}
+      />
+
+      <PostSearchModal
+        open={showPostSearch}
+        posts={displayedPosts}
+        comments={comments}
+        onClose={() => setShowPostSearch(false)}
+        onOpenPost={(postId) => navigate(`/post/${postId}`)}
       />
     </main>
   );

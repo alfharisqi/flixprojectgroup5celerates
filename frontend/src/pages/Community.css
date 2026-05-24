@@ -512,9 +512,9 @@
 
 .community-feed__header button {
   height: 44px;
-  border: 0;
+  border: 1px solid rgba(242, 7, 18, 0.72);
   border-radius: 20px;
-  background: #f20712;
+  background: rgba(0, 0, 0, 0.32);
   color: #ffffff;
   display: inline-flex;
   align-items: center;
@@ -528,8 +528,53 @@
 
 .community-feed__header button:hover,
 .community-feed__header button:focus-visible {
-  background: #ff1722;
+  background: rgba(242, 7, 18, 0.16);
   transform: translateY(-2px);
+}
+
+.community-post-search {
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  border-radius: 16px;
+  background: rgba(20, 20, 20, 0.94);
+  color: #979797;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  margin: 0;
+  box-shadow: 0 20px 42px rgba(0, 0, 0, 0.2);
+  box-sizing: border-box;
+  font-size: 15px;
+  line-height: 1;
+  text-align: left;
+  cursor: pointer;
+}
+
+.community-post-search svg {
+  width: 20px;
+  height: 20px;
+  color: #979797;
+  flex: 0 0 auto;
+}
+
+.community-post-search span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.community-post-search:hover,
+.community-post-search:focus-visible {
+  background: #0b0b0b;
+  color: #ffffff;
+}
+
+.community-post-search:hover svg,
+.community-post-search:focus-visible svg {
+  color: #ffffff;
 }
 
 .community-active-filter {
