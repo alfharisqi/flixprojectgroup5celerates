@@ -45,6 +45,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
   const token = localStorage.getItem("token");
   const user = getStoredUser();
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const currentActiveKey = getActiveKey(location.pathname, activeKey);
   const userInitial = (user?.username || user?.email || "M").slice(0, 1).toUpperCase();
 
@@ -154,7 +155,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
                   <button
                     className="site-navbar__profile-item site-navbar__profile-item--logout"
                     type="button"
-                    onClick={handleLogout}
+                    onClick={() => setShowLogoutConfirm(true)}
                   >
                     <img src={logoutIcon} alt="" />
                     <span>Logout</span>
@@ -179,6 +180,40 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
         open={showSearchModal}
         onClose={() => setShowSearchModal(false)}
       />
+
+      {showLogoutConfirm && (
+        <div
+          className="logout-confirm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="logout-confirm-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowLogoutConfirm(false);
+            }
+          }}
+        >
+          <section className="logout-confirm__panel">
+            <h2 id="logout-confirm-title">Apakah Anda yakin ingin keluar?</h2>
+            <div className="logout-confirm__actions">
+              <button
+                type="button"
+                className="logout-confirm__logout"
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+              <button
+                type="button"
+                className="logout-confirm__cancel"
+                onClick={() => setShowLogoutConfirm(false)}
+              >
+                Batal
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </>
   );
 }
