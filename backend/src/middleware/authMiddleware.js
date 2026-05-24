@@ -22,6 +22,23 @@ export const verifyToken = (req, res, next) => {
   }
 };
 
+export const optionalToken = (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return next();
+    }
+
+    const token = authHeader.split(" ")[1];
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (error) {
+    req.user = null;
+  }
+
+  return next();
+};
+
 export const allowRoles = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {

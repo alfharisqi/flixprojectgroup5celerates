@@ -33,7 +33,7 @@
 
 .post-detail-shell > button:first-child {
   min-height: 38px;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border: 0 !important;
   border-radius: 999px !important;
   background: rgba(0, 0, 0, 0.34) !important;
   color: #ffffff !important;
@@ -44,11 +44,10 @@
 
 .post-detail-shell > button:first-child:hover,
 .post-detail-shell > button:first-child:focus-visible {
-  border-color: rgba(242, 7, 18, 0.76) !important;
   background: rgba(242, 7, 18, 0.16) !important;
 }
 
-.post-detail-shell > div:not(.post-detail-empty) {
+.post-detail-shell > div:not(.post-detail-empty):not(.community-post-card) {
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-radius: 22px !important;
   background: rgba(20, 20, 20, 0.96) !important;
@@ -100,9 +99,9 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border: 0 !important;
   border-radius: 999px !important;
-  background: rgba(255, 255, 255, 0.04) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
   color: #ffffff !important;
   min-height: 34px;
   cursor: pointer;
@@ -110,7 +109,6 @@
 
 .post-detail-shell button:not(.EmojiPickerReact button):hover,
 .post-detail-shell button:not(.EmojiPickerReact button):focus-visible {
-  border-color: rgba(242, 7, 18, 0.72) !important;
   background: rgba(242, 7, 18, 0.16) !important;
   transform: translateY(-1px);
 }
@@ -181,6 +179,55 @@
 
 .post-detail-shell .embedded-gif {
   max-width: 220px !important;
+}
+
+.post-detail-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.post-detail-reaction {
+  position: relative;
+  display: inline-flex;
+}
+
+.post-detail-reaction-picker {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 30;
+  min-width: 164px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: #141414;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.36);
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.post-detail-shell .post-detail-reaction-picker button {
+  width: 100%;
+  min-height: 34px;
+  justify-content: flex-start;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  padding: 0 9px !important;
+}
+
+.post-detail-shell .post-detail-reaction-picker button:hover,
+.post-detail-shell .post-detail-reaction-picker button:focus-visible,
+.post-detail-shell .post-detail-reaction-picker button.is-selected {
+  background: rgba(242, 7, 18, 0.16) !important;
+  transform: none;
+}
+
+.post-detail-reaction-picker small {
+  margin-left: auto;
+  color: #979797;
 }
 
 .post-replies-section {
@@ -257,7 +304,52 @@
 
 .post-detail-shell .post-detail-card {
   position: relative;
-  padding-right: 64px !important;
+}
+
+.post-detail-shell .post-detail-card.community-post-card {
+  cursor: default;
+  padding: 18px !important;
+}
+
+.post-detail-shell .post-detail-card.community-post-card:hover,
+.post-detail-shell .post-detail-card.community-post-card:focus-within {
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+  transform: none;
+}
+
+.post-detail-view-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #d2d2d2;
+  font-style: normal;
+}
+
+.post-detail-shell .community-post-card__image {
+  width: min(100%, 360px) !important;
+  max-width: min(100%, 360px) !important;
+}
+
+.post-detail-shell .post-detail-card.community-post-card .community-post-card__poll-option {
+  width: 100%;
+  min-height: 44px;
+  display: block !important;
+  justify-content: stretch !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: #0b0b0b !important;
+  padding: 0 !important;
+  text-align: left;
+}
+
+.post-detail-shell .post-detail-card.community-post-card .community-post-card__poll-option:hover,
+.post-detail-shell .post-detail-card.community-post-card .community-post-card__poll-option:focus-visible {
+  background: rgba(242, 7, 18, 0.12) !important;
+}
+
+.post-detail-shell .community-post-card__poll-label {
+  color: #ffffff;
 }
 
 .post-detail-shell button.post-report-button {
