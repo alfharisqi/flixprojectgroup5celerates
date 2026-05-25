@@ -71,6 +71,16 @@ const formatRuntime = (minutes) => {
 
 const getYear = (date) => date?.slice(0, 4) || "-";
 
+const buildGenrePath = (genre, media = "movie") => {
+  const params = new URLSearchParams({
+    media,
+    genre: String(genre.id),
+    name: genre.name,
+  });
+
+  return `/genre?${params.toString()}`;
+};
+
 const formatRating = (rating) => {
   const numericRating = Number(rating);
 
@@ -339,7 +349,7 @@ function MovieDetail() {
   }
 
   const backdrop = movie.backdrop_url || movie.poster_url;
-  const cast = (movie.cast || []).slice(0, 4);
+  const cast = movie.cast || [];
   const watchProviders = movie.watch_providers?.all || [];
   const visibleWatchProviders = watchProviders.slice(0, 6);
   const hasWatchProviders = visibleWatchProviders.length > 0;
@@ -391,7 +401,9 @@ function MovieDetail() {
           <h3>Genre</h3>
           <div className="movie-detail-tags">
             {(movie.genres || []).slice(0, 4).map((genre) => (
-              <span key={genre.id}>{genre.name}</span>
+              <Link key={genre.id} to={buildGenrePath(genre, "movie")}>
+                {genre.name}
+              </Link>
             ))}
           </div>
         </div>

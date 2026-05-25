@@ -95,6 +95,17 @@
   flex: 0 0 auto;
 }
 
+.community-post-card__report img,
+.community-post-card__delete img,
+.community-post-card__actions img,
+.post-report-button img {
+  width: 17px;
+  height: 17px;
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+}
+
 .community-post-card__report {
   border: 0;
   background: transparent;
