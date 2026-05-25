@@ -4,6 +4,7 @@ import axios from "axios";
 import {
   FaBookmark,
   FaFacebookF,
+  FaRegBookmark,
   FaRegStar,
   FaShareAlt,
   FaStar,
@@ -80,6 +81,31 @@ const buildGenrePath = (genre, media = "movie") => {
 
   return `/genre?${params.toString()}`;
 };
+
+const getWatchlistKey = (user) =>
+  `flix_movie_watchlist_${user?.id_user || "guest"}`;
+
+const readWatchlist = (key) => {
+  try {
+    const savedWatchlist = JSON.parse(localStorage.getItem(key));
+    return Array.isArray(savedWatchlist) ? savedWatchlist : [];
+  } catch {
+    return [];
+  }
+};
+
+const mapMovieToWatchlist = (movie) => ({
+  id: movie.id,
+  title: movie.title || movie.original_title || "Untitled",
+  year: getYear(movie.release_date),
+  rating: formatRating(movie.vote_average),
+  poster: movie.poster_url,
+  backdrop: movie.backdrop_url || movie.poster_url,
+  overview: movie.overview,
+  releaseLabel: movie.release_date || "-",
+  providers: [],
+  genre_ids: movie.genre_ids || (movie.genres || []).map((genre) => genre.id),
+});
 
 const formatRating = (rating) => {
   const numericRating = Number(rating);
@@ -159,6 +185,8 @@ function MovieDetail() {
   }, []);
 
   const [movie, setMovie] = useState(null);
+  const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
+  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
   const [reviews, setReviews] = useState([]);
   const [reviewSummary, setReviewSummary] = useState({
     average_rating: 0,
@@ -179,6 +207,11 @@ function MovieDetail() {
   const audienceRating = Number(reviewSummary.average_rating || 0);
   const detailRating = audienceRating || Number(formatRating(movie?.vote_average));
   const ratingPercent = Math.min((detailRating / 5) * 100, 100);
+  const savedMovieIds = useMemo(
+    () => new Set(watchlist.map((savedMovie) => String(savedMovie.id))),
+    [watchlist],
+  );
+  const isSaved = savedMovieIds.has(String(movie?.id));
 
   const fetchMovie = async () => {
     const res = await axios.get(`${apiUrl}/api/movies/${id}`, {
@@ -192,6 +225,10 @@ function MovieDetail() {
     setReviews(res.data.reviews || []);
     setReviewSummary(res.data.summary || { average_rating: 0, review_count: 0 });
   };
+
+  useEffect(() => {
+    localStorage.setItem(watchlistKey, JSON.stringify(watchlist));
+  }, [watchlist, watchlistKey]);
 
   useEffect(() => {
     const loadDetail = async () => {
@@ -256,6 +293,24 @@ function MovieDetail() {
       window.removeEventListener("resize", measureSynopsis);
     };
   }, [activeTab, movie?.overview]);
+
+  const toggleWatchlist = () => {
+    if (!movie) {
+      return;
+    }
+
+    const watchlistMovie = mapMovieToWatchlist(movie);
+
+    setWatchlist((currentWatchlist) => {
+      const movieId = String(watchlistMovie.id);
+
+      if (currentWatchlist.some((savedMovie) => String(savedMovie.id) === movieId)) {
+        return currentWatchlist.filter((savedMovie) => String(savedMovie.id) !== movieId);
+      }
+
+      return [watchlistMovie, ...currentWatchlist].slice(0, 20);
+    });
+  };
 
   const handleSubmitReview = async (event) => {
     event.preventDefault();
@@ -372,9 +427,9 @@ function MovieDetail() {
             </div>
 
             <div className="movie-detail-buttons">
-              <button type="button">
-                <FaBookmark />
-                Simpan ke Watchlist
+              <button type="button" onClick={toggleWatchlist}>
+                {isSaved ? <FaBookmark /> : <FaRegBookmark />}
+                {isSaved ? "Tersimpan di Watchlist" : "Simpan ke Watchlist"}
               </button>
               <button type="button" aria-label="Bagikan film">
                 <FaShareAlt />
