@@ -6,6 +6,7 @@ import {
   FaChevronRight,
   FaFacebookF,
   FaPlay,
+  FaRegBookmark,
   FaSlidersH,
   FaStar,
   FaTwitter,
@@ -13,6 +14,7 @@ import {
 } from "react-icons/fa";
 import SiteNavbar from "../components/SiteNavbar";
 import FilterPopup from "../components/FilterPopup";
+import WatchlistConfirmModal from "../components/WatchlistConfirmModal";
 import menegangkanIcon from "../assets/emoticon/menegangkan-emoticon.png";
 import pikiranIcon from "../assets/emoticon/pikiran-emoticon.png";
 import romantisIcon from "../assets/emoticon/romantis-emoticon.png";
@@ -245,14 +247,37 @@ const uniqueById = (movies) => {
   });
 };
 
+const getStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user"));
+  } catch {
+    return null;
+  }
+};
+
+const getWatchlistKey = (user) => `flix_movie_watchlist_${user?.id_user || "guest"}`;
+
+const readWatchlist = (key) => {
+  try {
+    const savedWatchlist = JSON.parse(localStorage.getItem(key));
+    return Array.isArray(savedWatchlist) ? savedWatchlist : [];
+  } catch {
+    return [];
+  }
+};
+
 function Homepage() {
   const navigate = useNavigate();
   const moodScrollerRef = useRef(null);
+  const user = useMemo(() => getStoredUser(), []);
+  const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
 
   const [selectedMood, setSelectedMood] = useState(moods[0]);
   const [hitMovies, setHitMovies] = useState([fallbackHeroMovie, ...fallbackMovies]);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const [moodMovies, setMoodMovies] = useState(fallbackMovies);
+  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const [pendingWatchlistMovie, setPendingWatchlistMovie] = useState(null);
   const [providersByMovieId, setProvidersByMovieId] = useState({});
   const [filterValues, setFilterValues] = useState(defaultFilterValues);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -265,6 +290,14 @@ function Homepage() {
     filterValues,
     providersByMovieId,
   );
+  const savedMovieIds = useMemo(
+    () => new Set(watchlist.map((movie) => String(movie.id))),
+    [watchlist],
+  );
+
+  useEffect(() => {
+    localStorage.setItem(watchlistKey, JSON.stringify(watchlist));
+  }, [watchlist, watchlistKey]);
 
   useEffect(() => {
     const fetchGenres = async () => {
@@ -440,6 +473,39 @@ function Homepage() {
     if (Number.isInteger(Number(movieId))) {
       navigate(`/movie/${movieId}`);
     }
+  };
+
+  const saveMovieToWatchlist = (movie) => {
+    setWatchlist((currentWatchlist) => {
+      const movieId = String(movie.id);
+
+      if (currentWatchlist.some((savedMovie) => String(savedMovie.id) === movieId)) {
+        return currentWatchlist;
+      }
+
+      return [movie, ...currentWatchlist].slice(0, 20);
+    });
+  };
+
+  const toggleWatchlist = (movie) => {
+    const movieId = String(movie.id);
+
+    if (savedMovieIds.has(movieId)) {
+      setWatchlist((currentWatchlist) =>
+        currentWatchlist.filter((savedMovie) => String(savedMovie.id) !== movieId),
+      );
+      return;
+    }
+
+    setPendingWatchlistMovie(movie);
+  };
+
+  const confirmSaveToWatchlist = () => {
+    if (pendingWatchlistMovie) {
+      saveMovieToWatchlist(pendingWatchlistMovie);
+    }
+
+    setPendingWatchlistMovie(null);
   };
 
   return (
@@ -625,10 +691,21 @@ function Homepage() {
                   <img src={movie.poster} alt={movie.title} />
                   <button
                     type="button"
-                    aria-label={`Simpan ${movie.title}`}
-                    onClick={(event) => event.stopPropagation()}
+                    aria-label={
+                      savedMovieIds.has(String(movie.id))
+                        ? `Hapus ${movie.title} dari watchlist`
+                        : `Simpan ${movie.title}`
+                    }
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleWatchlist(movie);
+                    }}
                   >
-                    <FaBookmark />
+                    {savedMovieIds.has(String(movie.id)) ? (
+                      <FaBookmark />
+                    ) : (
+                      <FaRegBookmark />
+                    )}
                   </button>
                   <div className="homepage-movie-overlay" aria-hidden="true">
                     <div className="homepage-movie-genres">
@@ -678,6 +755,14 @@ function Homepage() {
         sortOptions={movieSortOptions}
         onChange={setFilterValues}
         onClose={() => setIsFilterOpen(false)}
+      />
+
+      <WatchlistConfirmModal
+        open={Boolean(pendingWatchlistMovie)}
+        item={pendingWatchlistMovie}
+        mediaLabel="Film"
+        onCancel={() => setPendingWatchlistMovie(null)}
+        onConfirm={confirmSaveToWatchlist}
       />
     </main>
   );

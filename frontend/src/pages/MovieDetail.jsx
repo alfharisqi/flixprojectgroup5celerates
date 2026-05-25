@@ -13,6 +13,7 @@ import {
   FaYoutube,
 } from "react-icons/fa";
 import SiteNavbar from "../components/SiteNavbar";
+import WatchlistConfirmModal from "../components/WatchlistConfirmModal";
 import amazonPrimeVideoIcon from "../assets/platformstream-logo/amazonprimevideo-icon.png";
 import appleTvIcon from "../assets/platformstream-logo/appletv-icon.png";
 import catchplayIcon from "../assets/platformstream-logo/catchplay-icon.png";
@@ -187,6 +188,7 @@ function MovieDetail() {
   const [movie, setMovie] = useState(null);
   const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
   const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const [pendingWatchlistMovie, setPendingWatchlistMovie] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [reviewSummary, setReviewSummary] = useState({
     average_rating: 0,
@@ -294,22 +296,42 @@ function MovieDetail() {
     };
   }, [activeTab, movie?.overview]);
 
+  const saveMovieToWatchlist = (watchlistMovie) => {
+    setWatchlist((currentWatchlist) => {
+      const movieId = String(watchlistMovie.id);
+
+      if (currentWatchlist.some((savedMovie) => String(savedMovie.id) === movieId)) {
+        return currentWatchlist;
+      }
+
+      return [watchlistMovie, ...currentWatchlist].slice(0, 20);
+    });
+  };
+
   const toggleWatchlist = () => {
     if (!movie) {
       return;
     }
 
     const watchlistMovie = mapMovieToWatchlist(movie);
+    const movieId = String(watchlistMovie.id);
 
-    setWatchlist((currentWatchlist) => {
-      const movieId = String(watchlistMovie.id);
+    if (savedMovieIds.has(movieId)) {
+      setWatchlist((currentWatchlist) =>
+        currentWatchlist.filter((savedMovie) => String(savedMovie.id) !== movieId),
+      );
+      return;
+    }
 
-      if (currentWatchlist.some((savedMovie) => String(savedMovie.id) === movieId)) {
-        return currentWatchlist.filter((savedMovie) => String(savedMovie.id) !== movieId);
-      }
+    setPendingWatchlistMovie(watchlistMovie);
+  };
 
-      return [watchlistMovie, ...currentWatchlist].slice(0, 20);
-    });
+  const confirmSaveToWatchlist = () => {
+    if (pendingWatchlistMovie) {
+      saveMovieToWatchlist(pendingWatchlistMovie);
+    }
+
+    setPendingWatchlistMovie(null);
   };
 
   const handleSubmitReview = async (event) => {
@@ -695,6 +717,14 @@ function MovieDetail() {
         </div>
         <p>Copyright 2026 - Kelompok 5</p>
       </footer>
+
+      <WatchlistConfirmModal
+        open={Boolean(pendingWatchlistMovie)}
+        item={pendingWatchlistMovie}
+        mediaLabel="Film"
+        onCancel={() => setPendingWatchlistMovie(null)}
+        onConfirm={confirmSaveToWatchlist}
+      />
     </main>
   );
 }
