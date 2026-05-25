@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   FaBookmark,
   FaFacebookF,
@@ -103,6 +103,8 @@ const fallbackMovies = Array.from({ length: 10 }, (_, index) => ({
   genre_ids: [18, 53],
 }));
 
+const getMediaType = (media) => (media === "tv" ? "tv" : "movie");
+
 const getMovieYear = (date) => date?.slice(0, 4) || "-";
 
 const getMovieRating = (voteAverage) => {
@@ -129,15 +131,21 @@ const getShortOverview = (overview) => {
   return `${cleanOverview.slice(0, 147).trim()}...`;
 };
 
-const mapTmdbMovie = (movie) => ({
+const mapTmdbMediaItem = (movie, mediaType = "movie") => ({
   id: movie.id,
-  title: movie.title || movie.original_title || "Untitled",
-  year: getMovieYear(movie.release_date),
+  title:
+    movie.title ||
+    movie.name ||
+    movie.original_title ||
+    movie.original_name ||
+    "Untitled",
+  year: getMovieYear(movie.release_date || movie.first_air_date),
   rating: getMovieRating(movie.vote_average),
   poster: movie.poster_url,
   backdrop: movie.backdrop_url || movie.poster_url,
   overview: getShortOverview(movie.overview),
   genre_ids: movie.genre_ids || [],
+  media_type: mediaType,
 });
 
 const normalizeGenre = (genre) => ({
@@ -152,7 +160,7 @@ const normalizeGenre = (genre) => ({
     "Rekomendasi film pilihan berdasarkan kategori ini.",
 });
 
-const buildDiscoverUrl = (query = {}) => {
+const buildDiscoverUrl = (query = {}, mediaType = "movie") => {
   const params = new URLSearchParams({
     sort_by: "popularity.desc",
     language: "id-ID",
@@ -165,7 +173,9 @@ const buildDiscoverUrl = (query = {}) => {
     }
   });
 
-  return `${apiUrl}/api/movies/discover?${params.toString()}`;
+  const endpoint = mediaType === "tv" ? "tv-series" : "movies";
+
+  return `${apiUrl}/api/${endpoint}/discover?${params.toString()}`;
 };
 
 const uniqueById = (movies) => {
@@ -203,6 +213,7 @@ const readWatchlist = (key) => {
 
 function GenreMovieCard({
   movie,
+  mediaType,
   isSaved,
   genreLookup,
   onOpen,
@@ -214,7 +225,10 @@ function GenreMovieCard({
     .slice(0, 2);
 
   return (
-    <article className="genre-movie-card" onClick={() => onOpen(movie.id)}>
+    <article
+      className="genre-movie-card"
+      onClick={() => onOpen(movie.id, movie.media_type)}
+    >
       <div className="genre-movie-poster">
         <img src={movie.poster} alt={movie.title} />
         <button
@@ -232,7 +246,10 @@ function GenreMovieCard({
         </button>
         <div className="genre-movie-overlay" aria-hidden="true">
           <div className="genre-movie-tags">
-            {(movieGenres.length > 0 ? movieGenres : ["Film"]).map((genre) => (
+            {(movieGenres.length > 0
+              ? movieGenres
+              : [mediaType === "tv" ? "TV Series" : "Film"]
+            ).map((genre) => (
               <span key={genre}>{genre}</span>
             ))}
           </div>
@@ -254,12 +271,17 @@ function GenreMovieCard({
 
 function GenrePage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryMedia = getMediaType(searchParams.get("media"));
+  const queryGenreId = searchParams.get("genre");
+  const queryGenreName = searchParams.get("name");
   const user = useMemo(() => getStoredUser(), []);
   const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
   const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
   const [genres, setGenres] = useState(fallbackGenres.map(normalizeGenre));
   const [genreImages, setGenreImages] = useState({});
   const [selectedGenre, setSelectedGenre] = useState(null);
+  const [selectedMedia, setSelectedMedia] = useState(queryMedia);
   const [movies, setMovies] = useState([]);
   const [genreLoading, setGenreLoading] = useState(false);
   const [moviesLoading, setMoviesLoading] = useState(false);
@@ -279,16 +301,45 @@ function GenrePage() {
     () => new Set(watchlist.map((movie) => String(movie.id))),
     [watchlist],
   );
+  const selectedMediaLabel = selectedMedia === "tv" ? "TV Series" : "Film";
+  const selectedMediaCountLabel = selectedMedia === "tv" ? "series" : "film";
 
   useEffect(() => {
     localStorage.setItem(watchlistKey, JSON.stringify(watchlist));
   }, [watchlist, watchlistKey]);
 
   useEffect(() => {
+    if (!queryGenreId && !queryGenreName) {
+      return;
+    }
+
+    const matchingGenre =
+      genres.find((genre) => String(genre.id) === String(queryGenreId)) ||
+      genres.find(
+        (genre) =>
+          queryGenreName &&
+          genre.name.toLowerCase() === queryGenreName.toLowerCase(),
+      );
+
+    setSelectedMedia(queryMedia);
+    setSelectedGenre(
+      matchingGenre ||
+        normalizeGenre({
+          id: queryGenreId || queryGenreName,
+          name: queryGenreName || "Genre",
+          query: queryGenreId ? { genre: queryGenreId } : {},
+        }),
+    );
+  }, [genres, queryGenreId, queryGenreName, queryMedia]);
+
+  useEffect(() => {
     const loadGenres = async () => {
       try {
         setGenreLoading(true);
-        const response = await fetch(`${apiUrl}/api/movies/genres?language=id-ID`);
+        const genreEndpoint = queryMedia === "tv" ? "tv-series" : "movies";
+        const response = await fetch(
+          `${apiUrl}/api/${genreEndpoint}/genres?language=id-ID`,
+        );
 
         if (!response.ok) {
           throw new Error("Gagal mengambil genre");
@@ -304,9 +355,12 @@ function GenrePage() {
               query: { genre: String(genre.id) },
             }),
           );
-          const customGenreCards = fallbackGenres
-            .filter((genre) => genre.type === "regional")
-            .map(normalizeGenre);
+          const customGenreCards =
+            queryMedia === "movie"
+              ? fallbackGenres
+                  .filter((genre) => genre.type === "regional")
+                  .map(normalizeGenre)
+              : [];
 
           setGenres([...fetchedGenreCards, ...customGenreCards]);
         }
@@ -318,7 +372,7 @@ function GenrePage() {
     };
 
     loadGenres();
-  }, []);
+  }, [queryMedia]);
 
   useEffect(() => {
     const genresWithoutImage = genres.filter((genre) => !genreImages[genre.id]);
@@ -333,7 +387,7 @@ function GenrePage() {
       const imageEntries = await Promise.all(
         genresWithoutImage.map(async (genre) => {
           try {
-            const response = await fetch(buildDiscoverUrl(genre.query));
+            const response = await fetch(buildDiscoverUrl(genre.query, queryMedia));
 
             if (!response.ok) {
               throw new Error("Gagal mengambil gambar genre");
@@ -367,7 +421,7 @@ function GenrePage() {
     return () => {
       shouldIgnore = true;
     };
-  }, [genreImages, genres]);
+  }, [genreImages, genres, queryMedia]);
 
   useEffect(() => {
     if (!selectedGenre) {
@@ -381,14 +435,16 @@ function GenrePage() {
       try {
         setMoviesLoading(true);
         setErrorMessage("");
-        const response = await fetch(buildDiscoverUrl(selectedGenre.query));
+        const response = await fetch(buildDiscoverUrl(selectedGenre.query, selectedMedia));
 
         if (!response.ok) {
           throw new Error("Gagal mengambil rekomendasi film");
         }
 
         const data = await response.json();
-        const mappedMovies = uniqueById((data.results || []).map(mapTmdbMovie));
+        const mappedMovies = uniqueById(
+          (data.results || []).map((item) => mapTmdbMediaItem(item, selectedMedia)),
+        );
 
         if (!shouldIgnore) {
           setMovies(mappedMovies.length > 0 ? mappedMovies.slice(0, 15) : []);
@@ -410,12 +466,24 @@ function GenrePage() {
     return () => {
       shouldIgnore = true;
     };
-  }, [selectedGenre]);
+  }, [selectedGenre, selectedMedia]);
 
-  const openMovie = (movieId) => {
+  const openMovie = (movieId, mediaType = selectedMedia) => {
     if (Number.isInteger(Number(movieId))) {
-      navigate(`/movie/${movieId}`);
+      navigate(mediaType === "tv" ? `/tv-series/${movieId}` : `/movie/${movieId}`);
     }
+  };
+
+  const selectGenre = (genre) => {
+    const mediaType = selectedMedia;
+
+    setSelectedMedia(mediaType);
+    setSelectedGenre(genre);
+    setSearchParams({
+      media: mediaType,
+      genre: String(genre.id),
+      name: genre.name,
+    });
   };
 
   const toggleWatchlist = (movie) => {
@@ -463,7 +531,7 @@ function GenrePage() {
               className={selectedGenre?.id === genre.id ? "is-active" : ""}
               key={genre.id}
               type="button"
-              onClick={() => setSelectedGenre(genre)}
+              onClick={() => selectGenre(genre)}
               style={{
                 "--genre-card-image": `url(${genreImages[genre.id] || fallbackGenreImage})`,
               }}
@@ -479,17 +547,17 @@ function GenrePage() {
       <section className="genre-recommendations" aria-live="polite">
         <div className="genre-section-header">
           <div>
-            <p>Rekomendasi Film</p>
+            <p>Rekomendasi {selectedMediaLabel}</p>
             <h2>
               {selectedGenre
-                ? `Film untuk genre ${selectedGenre.name}`
+                ? `${selectedMediaLabel} untuk genre ${selectedGenre.name}`
                 : "Pilih genre untuk melihat rekomendasi"}
             </h2>
           </div>
           {selectedGenre && (
             <span>
               <FaSearch />
-              {moviesLoading ? "Mencari..." : `${movies.length} film`}
+              {moviesLoading ? "Mencari..." : `${movies.length} ${selectedMediaCountLabel}`}
             </span>
           )}
         </div>
@@ -497,14 +565,23 @@ function GenrePage() {
         {!selectedGenre ? (
           <div className="genre-empty-state">
             <h3>Rekomendasi belum ditampilkan</h3>
-            <p>Pilih satu genre di atas untuk menampilkan daftar film yang sesuai.</p>
+            <p>
+              Pilih satu genre di atas untuk menampilkan daftar{" "}
+              {selectedMediaCountLabel} yang sesuai.
+            </p>
           </div>
         ) : (
           <>
             {errorMessage && <p className="genre-status">{errorMessage}</p>}
-            {moviesLoading && <p className="genre-status">Memuat rekomendasi film...</p>}
+            {moviesLoading && (
+              <p className="genre-status">
+                Memuat rekomendasi {selectedMediaCountLabel}...
+              </p>
+            )}
             {!moviesLoading && movies.length === 0 && (
-              <p className="genre-status">Film untuk genre ini belum ditemukan.</p>
+              <p className="genre-status">
+                {selectedMediaLabel} untuk genre ini belum ditemukan.
+              </p>
             )}
 
             <div className="genre-movie-grid">
@@ -512,6 +589,7 @@ function GenrePage() {
                 <GenreMovieCard
                   key={movie.id}
                   movie={movie}
+                  mediaType={selectedMedia}
                   isSaved={savedMovieIds.has(String(movie.id))}
                   genreLookup={genreLookup}
                   onOpen={openMovie}

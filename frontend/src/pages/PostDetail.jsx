@@ -5,9 +5,7 @@ import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react";
 import {
   FiBarChart2,
   FiCornerUpLeft,
-  FiFlag,
   FiSend,
-  FiShare2,
   FiSmile,
   FiThumbsUp,
 } from "react-icons/fi";
@@ -15,6 +13,8 @@ import GifPickerModal from "../components/GifPickerModal";
 import PostInsightModal from "../components/PostInsightModal";
 import RichContent from "../components/RichContent";
 import SiteNavbar from "../components/SiteNavbar";
+import reportIcon from "../assets/icon/report-icon.svg";
+import shareIcon from "../assets/icon/share-icon.svg";
 import "../components/PostCard.css";
 import "./PostDetail.css";
 
@@ -439,7 +439,7 @@ function PostDetail() {
                   onClick={() =>
                     handleReportClick("reply", comment.id_comment)
                   }>
-                  <FiFlag />
+                  <img src={reportIcon} alt="" aria-hidden="true" />
                 </button>
               </div>
             </header>
@@ -633,7 +633,7 @@ function PostDetail() {
               aria-label="Report post"
               title="Report post"
               onClick={() => handleReportClick("post", post.id_post)}>
-              <FiFlag />
+              <img src={reportIcon} alt="" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -746,7 +746,7 @@ function PostDetail() {
           </div>
 
           <button type="button" onClick={() => handleShare(post.id_post)}>
-            <FiShare2 size={15} />
+            <img src={shareIcon} alt="" aria-hidden="true" />
             <span>Share</span>
           </button>
 

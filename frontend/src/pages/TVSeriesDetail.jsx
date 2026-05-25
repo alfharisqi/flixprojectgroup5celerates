@@ -42,6 +42,16 @@ const getLocalProviderIcon = (providerName = "") => {
 
 const getYear = (date) => date?.slice(0, 4) || "-";
 
+const buildGenrePath = (genre, media = "tv") => {
+  const params = new URLSearchParams({
+    media,
+    genre: String(genre.id),
+    name: genre.name,
+  });
+
+  return `/genre?${params.toString()}`;
+};
+
 const formatRating = (rating) => {
   const numericRating = Number(rating);
 
@@ -412,7 +422,7 @@ function TVSeriesDetail() {
   }
 
   const backdrop = series.backdrop_url || series.poster_url;
-  const cast = (series.cast || []).slice(0, 4);
+  const cast = series.cast || [];
   const watchProviders = series.watch_providers?.all || [];
   const visibleWatchProviders = watchProviders.slice(0, 6);
   const hasWatchProviders = visibleWatchProviders.length > 0;
@@ -464,7 +474,9 @@ function TVSeriesDetail() {
           <h3>Genre</h3>
           <div className="movie-detail-tags">
             {(series.genres || []).slice(0, 4).map((genre) => (
-              <span key={genre.id}>{genre.name}</span>
+              <Link key={genre.id} to={buildGenrePath(genre, "tv")}>
+                {genre.name}
+              </Link>
             ))}
           </div>
         </div>
