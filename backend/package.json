@@ -4,6 +4,7 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
+    "check-db": "node src/scripts/checkDb.js",
     "dev": "nodemon src/server.js",
     "start": "node src/server.js"
   },

@@ -117,7 +117,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
                     <span>Profile</span>
                   </Link>
 
-                  <Link className="site-navbar__profile-item" to="/movies">
+                  <Link className="site-navbar__profile-item" to="/watchlist">
                     <img src={myWatchlistIcon} alt="" />
                     <span>Watchlist</span>
                   </Link>

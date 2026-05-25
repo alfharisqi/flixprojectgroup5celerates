@@ -1,7 +1,7 @@
 import pg from "pg";
 import dotenv from "dotenv";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const { Pool } = pg;
 
@@ -10,7 +10,9 @@ const pool = new Pool({
   port: Number(process.env.DB_PORT),
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD
+  password: process.env.DB_PASSWORD,
+  options: "-c search_path=flix,public",
+  connectionTimeoutMillis: 5000
 });
 
 export default pool;

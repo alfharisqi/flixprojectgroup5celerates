@@ -33,9 +33,9 @@ Buat file environment untuk backend di `backend/.env`:
 
 ```env
 PORT=5000
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=nama_database
+DB_HOST=127.0.0.1
+DB_PORT=5433
+DB_NAME=flix_db_1
 DB_USER=postgres
 DB_PASSWORD=password_database
 JWT_SECRET=secret_jwt
@@ -61,8 +61,11 @@ Jalankan backend:
 
 ```bash
 cd backend
+npm run check-db
 npm run dev
 ```
+
+Jika `npm run check-db` gagal dengan pesan password salah, perbarui `DB_PASSWORD` di `backend/.env` sesuai password user `postgres` yang dipakai PostgreSQL/pgAdmin. Jika gagal karena koneksi ditolak, samakan `DB_PORT` dengan port PostgreSQL di pgAdmin. Pada konfigurasi lokal ini PostgreSQL berjalan di port `5433`.
 
 Jalankan frontend di terminal lain:
 
@@ -128,6 +131,9 @@ Endpoint utama:
 | `/api/movie-reviews/likes/:reviewId` | POST | Like/unlike review film |
 | `/api/tv-series-reviews/:seriesId` | GET, POST | Melihat dan membuat review TV series |
 | `/api/tv-series-reviews/likes/:reviewId` | POST | Like/unlike review TV series |
+| `/api/watchlist` | GET, POST | Melihat dan menyimpan film/TV series ke watchlist user login |
+| `/api/watchlist/status/:mediaType/:tmdbId` | GET | Mengecek apakah film/TV series sudah ada di watchlist |
+| `/api/watchlist/:id` | PATCH, DELETE | Mengubah status sudah ditonton atau menghapus item watchlist |
 | `/api/admin/dashboard` | GET | Dashboard khusus admin |
 | `/api/moderator/dashboard` | GET | Dashboard moderator dan admin |
 
@@ -150,6 +156,7 @@ FLIX dibuat sebagai platform rekomendasi tontonan. User dapat mencari film atau 
 - Halaman Genre untuk eksplorasi konten berdasarkan genre.
 - Detail film dan TV series berisi poster, backdrop, sinopsis, rating, genre, trailer, cast, rekomendasi, dan watch provider.
 - Review film dan TV series dengan rating 1 sampai 5, reply review, dan like review.
+- Watchlist user login untuk menyimpan film/TV series, mencari koleksi, memfilter status belum/sudah ditonton, dan menghapus item.
 - Community page untuk melihat post dari user lain.
 - Create post dengan rich text editor, upload gambar, tag, GIF, dan polling.
 - Detail post dengan komentar, reply komentar, like, reaction, share, view, dan insight.
@@ -207,7 +214,7 @@ flix/
 
 ## 6. Catatan Database
 
-Backend menggunakan schema PostgreSQL bernama `flix`. Beberapa tabel tambahan dibuat otomatis saat backend dijalankan, seperti:
+Backend menggunakan database PostgreSQL `flix_db_1` dengan schema bernama `flix`. Untuk database baru, buat database `flix_db_1`, lalu import `flix_db.sql` agar tabel utama tersedia. Backend juga memastikan schema `flix` ada saat startup dan membuat beberapa tabel tambahan jika belum tersedia, seperti:
 
 - `flix.password_reset_tokens`
 - `flix.post_views`
@@ -215,6 +222,7 @@ Backend menggunakan schema PostgreSQL bernama `flix`. Beberapa tabel tambahan di
 - `flix.movie_review_likes`
 - `flix.tv_series_reviews`
 - `flix.tv_series_review_likes`
+- `flix.watchlist`
 
 File SQL tambahan tersedia di folder `backend/sql`.
 

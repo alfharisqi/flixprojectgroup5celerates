@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import {
   FaBookmark,
   FaFacebookF,
+  FaRegBookmark,
   FaRegStar,
   FaShareAlt,
   FaStar,
@@ -111,29 +112,15 @@ const buildReviewTree = (reviews) => {
   return roots;
 };
 
-const getWatchlistKey = (user) =>
-  `flix_tv_watchlist_${user?.id_user || "guest"}`;
-
-const readWatchlist = (key) => {
-  try {
-    const savedWatchlist = JSON.parse(localStorage.getItem(key));
-    return Array.isArray(savedWatchlist) ? savedWatchlist : [];
-  } catch {
-    return [];
-  }
-};
-
 const mapSeriesToWatchlist = (series) => ({
-  id: series.id,
+  media_type: "tv",
+  tmdb_id: series.id,
   title: series.name || series.title || series.original_name || "Untitled",
-  year: getYear(series.first_air_date),
-  rating: formatRating(series.vote_average),
-  poster: series.poster_url,
-  backdrop: series.backdrop_url || series.poster_url,
+  poster_url: series.poster_url,
+  backdrop_url: series.backdrop_url || series.poster_url,
+  release_date: series.first_air_date,
   overview: series.overview,
-  releaseLabel: series.first_air_date || "-",
-  providers: [],
-  genre_ids: series.genre_ids || (series.genres || []).map((genre) => genre.id),
+  vote_average: series.vote_average,
 });
 
 function RatingStars({ value, onChange, readonly = false }) {
@@ -164,6 +151,7 @@ function RatingStars({ value, onChange, readonly = false }) {
 
 function TVSeriesDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const user = useMemo(() => {
     try {
@@ -173,9 +161,9 @@ function TVSeriesDetail() {
     }
   }, []);
 
-  const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
   const [series, setSeries] = useState(null);
-  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const [watchlistItem, setWatchlistItem] = useState(null);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [reviewSummary, setReviewSummary] = useState({
     average_rating: 0,
@@ -193,15 +181,11 @@ function TVSeriesDetail() {
   const synopsisRef = useRef(null);
 
   const reviewTree = useMemo(() => buildReviewTree(reviews), [reviews]);
-  const savedSeriesIds = useMemo(
-    () => new Set(watchlist.map((savedSeries) => String(savedSeries.id))),
-    [watchlist],
-  );
   const audienceRating = Number(reviewSummary.average_rating || 0);
   const detailRating = audienceRating || Number(formatRating(series?.vote_average));
   const ratingPercent = Math.min((detailRating / 5) * 100, 100);
   const seriesTitle = series?.name || series?.title || series?.original_name || "TV Series";
-  const isSaved = savedSeriesIds.has(String(series?.id));
+  const isSaved = Boolean(watchlistItem);
 
   const fetchSeries = async () => {
     const res = await axios.get(`${apiUrl}/api/tv-series/${id}`, {
@@ -216,9 +200,20 @@ function TVSeriesDetail() {
     setReviewSummary(res.data.summary || { average_rating: 0, review_count: 0 });
   };
 
-  useEffect(() => {
-    localStorage.setItem(watchlistKey, JSON.stringify(watchlist));
-  }, [watchlist, watchlistKey]);
+  const fetchWatchlistStatus = async (seriesId) => {
+    if (!token || !seriesId) {
+      setWatchlistItem(null);
+      return;
+    }
+
+    const res = await axios.get(`${apiUrl}/api/watchlist/status/tv/${seriesId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    setWatchlistItem(res.data.item || null);
+  };
 
   useEffect(() => {
     const loadDetail = async () => {
@@ -237,6 +232,10 @@ function TVSeriesDetail() {
 
     loadDetail();
   }, [id]);
+
+  useEffect(() => {
+    fetchWatchlistStatus(series?.id);
+  }, [series?.id, token]);
 
   useEffect(() => {
     if (activeTab !== "synopsis" || !series?.overview) {
@@ -286,24 +285,44 @@ function TVSeriesDetail() {
     };
   }, [activeTab, series?.overview]);
 
-  const toggleWatchlist = () => {
+  const toggleWatchlist = async () => {
+    if (!token) {
+      alert("Silakan login untuk menyimpan watchlist");
+      navigate("/login");
+      return;
+    }
+
     if (!series) {
       return;
     }
 
     const watchlistSeries = mapSeriesToWatchlist(series);
 
-    setWatchlist((currentWatchlist) => {
-      const seriesId = String(watchlistSeries.id);
+    try {
+      setWatchlistLoading(true);
 
-      if (currentWatchlist.some((savedSeries) => String(savedSeries.id) === seriesId)) {
-        return currentWatchlist.filter(
-          (savedSeries) => String(savedSeries.id) !== seriesId,
-        );
+      if (watchlistItem) {
+        await axios.delete(`${apiUrl}/api/watchlist/${watchlistItem.id_watchlist}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setWatchlistItem(null);
+        return;
       }
 
-      return [watchlistSeries, ...currentWatchlist].slice(0, 20);
-    });
+      const res = await axios.post(`${apiUrl}/api/watchlist`, watchlistSeries, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setWatchlistItem(res.data.item || null);
+    } catch (error) {
+      alert(error.response?.data?.message || "Gagal menyimpan watchlist");
+    } finally {
+      setWatchlistLoading(false);
+    }
   };
 
   const handleShare = async () => {
@@ -435,8 +454,8 @@ function TVSeriesDetail() {
             </div>
 
             <div className="movie-detail-buttons">
-              <button type="button" onClick={toggleWatchlist}>
-                <FaBookmark />
+              <button type="button" onClick={toggleWatchlist} disabled={watchlistLoading}>
+                {isSaved ? <FaBookmark /> : <FaRegBookmark />}
                 {isSaved ? "Tersimpan di Watchlist" : "Simpan ke Watchlist"}
               </button>
               <button type="button" onClick={handleShare} aria-label="Bagikan TV series">

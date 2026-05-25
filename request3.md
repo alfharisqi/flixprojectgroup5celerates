@@ -1,0 +1,1 @@
+saat saya melakukan registrasi akun tidak bisa dan muncul terjadi kesalahan tolong perbaiki dan jangan otak atik flix_db di postgreess apabila mau ubah dbnya tolong ubah yang flix_db_1

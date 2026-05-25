@@ -17,6 +17,13 @@ import {
 } from "react-icons/fa";
 import SiteNavbar from "../components/SiteNavbar";
 import FilterPopup from "../components/FilterPopup";
+import {
+  addWatchlistItem,
+  deleteWatchlistItem,
+  fetchWatchlist,
+  findSavedWatchlistItem,
+  mapMovieToWatchlistPayload,
+} from "../utils/watchlist";
 import amazonPrimeVideoIcon from "../assets/platformstream-logo/amazonprimevideo-icon.png";
 import appleTvIcon from "../assets/platformstream-logo/appletv-icon.png";
 import catchplayIcon from "../assets/platformstream-logo/catchplay-icon.png";
@@ -310,6 +317,7 @@ const mapTmdbMovie = (movie) => ({
   poster: movie.poster_url,
   backdrop: movie.backdrop_url || movie.poster_url,
   overview: getShortOverview(movie.overview),
+  release_date: movie.release_date,
   releaseLabel: formatReleaseDate(movie.release_date),
   providers: [],
   genre_ids: movie.genre_ids || [],
@@ -326,25 +334,6 @@ const uniqueById = (movies) => {
     seen.add(movie.id);
     return true;
   });
-};
-
-const getStoredUser = () => {
-  try {
-    return JSON.parse(localStorage.getItem("user"));
-  } catch {
-    return null;
-  }
-};
-
-const getWatchlistKey = (user) => `flix_movie_watchlist_${user?.id_user || "guest"}`;
-
-const readWatchlist = (key) => {
-  try {
-    const savedWatchlist = JSON.parse(localStorage.getItem(key));
-    return Array.isArray(savedWatchlist) ? savedWatchlist : [];
-  } catch {
-    return [];
-  }
 };
 
 function MovieCard({
@@ -401,9 +390,8 @@ function MovieCard({
 
 function MoviesPage() {
   const navigate = useNavigate();
-  const user = useMemo(() => getStoredUser(), []);
-  const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
-  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const token = localStorage.getItem("token");
+  const [watchlist, setWatchlist] = useState([]);
   const [trendingMovies, setTrendingMovies] = useState(fallbackMovies.slice(0, 3));
   const [allMovies, setAllMovies] = useState(fallbackMovies);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
@@ -439,8 +427,22 @@ function MoviesPage() {
   );
 
   useEffect(() => {
-    localStorage.setItem(watchlistKey, JSON.stringify(watchlist));
-  }, [watchlist, watchlistKey]);
+    const loadWatchlist = async () => {
+      if (!token) {
+        setWatchlist([]);
+        return;
+      }
+
+      try {
+        const data = await fetchWatchlist({ token, mediaType: "movie" });
+        setWatchlist(data.items);
+      } catch {
+        setWatchlist([]);
+      }
+    };
+
+    loadWatchlist();
+  }, [token]);
 
   useEffect(() => {
     const loadGenres = async () => {
@@ -615,16 +617,39 @@ function MoviesPage() {
     }
   };
 
-  const toggleWatchlist = (movie) => {
-    setWatchlist((currentWatchlist) => {
-      const movieId = String(movie.id);
+  const toggleWatchlist = async (movie) => {
+    if (!token) {
+      alert("Silakan login untuk menyimpan watchlist");
+      navigate("/login");
+      return;
+    }
 
-      if (currentWatchlist.some((savedMovie) => String(savedMovie.id) === movieId)) {
-        return currentWatchlist.filter((savedMovie) => String(savedMovie.id) !== movieId);
+    if (!Number.isInteger(Number(movie.id))) {
+      alert("Film contoh tidak bisa disimpan ke watchlist");
+      return;
+    }
+
+    try {
+      const savedItem = findSavedWatchlistItem(watchlist, "movie", movie.id);
+
+      if (savedItem) {
+        await deleteWatchlistItem({ token, idWatchlist: savedItem.id_watchlist });
+        setWatchlist((currentWatchlist) =>
+          currentWatchlist.filter(
+            (item) => item.id_watchlist !== savedItem.id_watchlist,
+          ),
+        );
+        return;
       }
 
-      return [movie, ...currentWatchlist].slice(0, 20);
-    });
+      const item = await addWatchlistItem({
+        token,
+        payload: mapMovieToWatchlistPayload(movie),
+      });
+      setWatchlist((currentWatchlist) => [item, ...currentWatchlist]);
+    } catch (error) {
+      alert(error.message || "Gagal menyimpan watchlist");
+    }
   };
 
   const moveHero = (direction) => {
@@ -786,7 +811,11 @@ function MoviesPage() {
       <section className="movies-section">
         <div className="movies-section-header">
           <h2>Tonton Watchlist Kamu</h2>
-          {watchlist.length > 0 && <button type="button">Lihat Semua</button>}
+          {watchlist.length > 0 && (
+            <button type="button" onClick={() => navigate("/watchlist")}>
+              Lihat Semua
+            </button>
+          )}
         </div>
 
         {watchlist.length > 0 ? (

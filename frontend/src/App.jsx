@@ -17,6 +17,7 @@ import ModeratorPage from "./pages/ModeratorPage";
 import ProfilePage from "./pages/ProfilePage";
 import PostDetail from "./pages/PostDetail";
 import CreatePostPage from "./pages/CreatePostPage";
+import Watchlist from "./pages/Watchlist";
 
 function App() {
   const location = useLocation();
@@ -30,6 +31,7 @@ function App() {
     "/tv-series",
     "/community",
     "/create-post",
+    "/watchlist",
     "/",
   ];
   const hideNavbar =
@@ -55,6 +57,15 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+
+        <Route
+          path="/watchlist"
+          element={
+            <ProtectedRoute allowedRoles={["registered_user", "moderator", "admin"]}>
+              <Watchlist />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/profile"

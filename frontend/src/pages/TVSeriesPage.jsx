@@ -13,6 +13,13 @@ import {
 } from "react-icons/fa";
 import SiteNavbar from "../components/SiteNavbar";
 import FilterPopup from "../components/FilterPopup";
+import {
+  addWatchlistItem,
+  deleteWatchlistItem,
+  fetchWatchlist,
+  findSavedWatchlistItem,
+  mapSeriesToWatchlistPayload,
+} from "../utils/watchlist";
 import "./TVSeriesPage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -223,6 +230,7 @@ const mapTmdbSeries = (series) => ({
   poster: series.poster_url,
   backdrop: series.backdrop_url || series.poster_url,
   overview: getShortOverview(series.overview),
+  first_air_date: series.first_air_date,
   releaseLabel: formatAirDate(series.first_air_date),
   providers: [],
   genre_ids: series.genre_ids || [],
@@ -239,26 +247,6 @@ const uniqueById = (seriesList) => {
     seen.add(series.id);
     return true;
   });
-};
-
-const getStoredUser = () => {
-  try {
-    return JSON.parse(localStorage.getItem("user"));
-  } catch {
-    return null;
-  }
-};
-
-const getWatchlistKey = (user) =>
-  `flix_tv_watchlist_${user?.id_user || "guest"}`;
-
-const readWatchlist = (key) => {
-  try {
-    const savedWatchlist = JSON.parse(localStorage.getItem(key));
-    return Array.isArray(savedWatchlist) ? savedWatchlist : [];
-  } catch {
-    return [];
-  }
 };
 
 function SeriesCard({
@@ -317,9 +305,8 @@ function SeriesCard({
 
 function TVSeriesPage() {
   const navigate = useNavigate();
-  const user = useMemo(() => getStoredUser(), []);
-  const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
-  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const token = localStorage.getItem("token");
+  const [watchlist, setWatchlist] = useState([]);
   const [trendingSeries, setTrendingSeries] = useState(fallbackSeries.slice(0, 4));
   const [popularSeries, setPopularSeries] = useState(fallbackSeries);
   const [allSeries, setAllSeries] = useState(fallbackSeries);
@@ -362,8 +349,22 @@ function TVSeriesPage() {
   );
 
   useEffect(() => {
-    localStorage.setItem(watchlistKey, JSON.stringify(watchlist));
-  }, [watchlist, watchlistKey]);
+    const loadWatchlist = async () => {
+      if (!token) {
+        setWatchlist([]);
+        return;
+      }
+
+      try {
+        const data = await fetchWatchlist({ token, mediaType: "tv" });
+        setWatchlist(data.items);
+      } catch {
+        setWatchlist([]);
+      }
+    };
+
+    loadWatchlist();
+  }, [token]);
 
   useEffect(() => {
     const loadGenres = async () => {
@@ -528,18 +529,39 @@ function TVSeriesPage() {
     }
   };
 
-  const toggleWatchlist = (series) => {
-    setWatchlist((currentWatchlist) => {
-      const seriesId = String(series.id);
+  const toggleWatchlist = async (series) => {
+    if (!token) {
+      alert("Silakan login untuk menyimpan watchlist");
+      navigate("/login");
+      return;
+    }
 
-      if (currentWatchlist.some((savedSeries) => String(savedSeries.id) === seriesId)) {
-        return currentWatchlist.filter(
-          (savedSeries) => String(savedSeries.id) !== seriesId,
+    if (!Number.isInteger(Number(series.id))) {
+      alert("Series contoh tidak bisa disimpan ke watchlist");
+      return;
+    }
+
+    try {
+      const savedItem = findSavedWatchlistItem(watchlist, "tv", series.id);
+
+      if (savedItem) {
+        await deleteWatchlistItem({ token, idWatchlist: savedItem.id_watchlist });
+        setWatchlist((currentWatchlist) =>
+          currentWatchlist.filter(
+            (item) => item.id_watchlist !== savedItem.id_watchlist,
+          ),
         );
+        return;
       }
 
-      return [series, ...currentWatchlist].slice(0, 20);
-    });
+      const item = await addWatchlistItem({
+        token,
+        payload: mapSeriesToWatchlistPayload(series),
+      });
+      setWatchlist((currentWatchlist) => [item, ...currentWatchlist]);
+    } catch (error) {
+      alert(error.message || "Gagal menyimpan watchlist");
+    }
   };
 
   return (
@@ -592,7 +614,11 @@ function TVSeriesPage() {
       <section className="tv-series-section">
         <div className="tv-series-section-header">
           <h2>Tonton Watchlist Series Kamu</h2>
-          {watchlist.length > 0 && <button type="button">Lihat Semua</button>}
+          {watchlist.length > 0 && (
+            <button type="button" onClick={() => navigate("/watchlist")}>
+              Lihat Semua
+            </button>
+          )}
         </div>
 
         {watchlist.length > 0 ? (

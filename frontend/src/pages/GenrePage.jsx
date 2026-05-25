@@ -10,6 +10,13 @@ import {
   FaYoutube,
 } from "react-icons/fa";
 import SiteNavbar from "../components/SiteNavbar";
+import {
+  addWatchlistItem,
+  deleteWatchlistItem,
+  fetchWatchlist,
+  findSavedWatchlistItem,
+  mapMovieToWatchlistPayload,
+} from "../utils/watchlist";
 import "./GenrePage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -137,6 +144,7 @@ const mapTmdbMovie = (movie) => ({
   poster: movie.poster_url,
   backdrop: movie.backdrop_url || movie.poster_url,
   overview: getShortOverview(movie.overview),
+  release_date: movie.release_date,
   genre_ids: movie.genre_ids || [],
 });
 
@@ -179,26 +187,6 @@ const uniqueById = (movies) => {
     seen.add(movie.id);
     return true;
   });
-};
-
-const getStoredUser = () => {
-  try {
-    return JSON.parse(localStorage.getItem("user"));
-  } catch {
-    return null;
-  }
-};
-
-const getWatchlistKey = (user) =>
-  `flix_movie_watchlist_${user?.id_user || "guest"}`;
-
-const readWatchlist = (key) => {
-  try {
-    const savedWatchlist = JSON.parse(localStorage.getItem(key));
-    return Array.isArray(savedWatchlist) ? savedWatchlist : [];
-  } catch {
-    return [];
-  }
 };
 
 function GenreMovieCard({
@@ -254,9 +242,8 @@ function GenreMovieCard({
 
 function GenrePage() {
   const navigate = useNavigate();
-  const user = useMemo(() => getStoredUser(), []);
-  const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
-  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const token = localStorage.getItem("token");
+  const [watchlist, setWatchlist] = useState([]);
   const [genres, setGenres] = useState(fallbackGenres.map(normalizeGenre));
   const [genreImages, setGenreImages] = useState({});
   const [selectedGenre, setSelectedGenre] = useState(null);
@@ -281,8 +268,22 @@ function GenrePage() {
   );
 
   useEffect(() => {
-    localStorage.setItem(watchlistKey, JSON.stringify(watchlist));
-  }, [watchlist, watchlistKey]);
+    const loadWatchlist = async () => {
+      if (!token) {
+        setWatchlist([]);
+        return;
+      }
+
+      try {
+        const data = await fetchWatchlist({ token, mediaType: "movie" });
+        setWatchlist(data.items);
+      } catch {
+        setWatchlist([]);
+      }
+    };
+
+    loadWatchlist();
+  }, [token]);
 
   useEffect(() => {
     const loadGenres = async () => {
@@ -418,16 +419,39 @@ function GenrePage() {
     }
   };
 
-  const toggleWatchlist = (movie) => {
-    setWatchlist((currentWatchlist) => {
-      const movieId = String(movie.id);
+  const toggleWatchlist = async (movie) => {
+    if (!token) {
+      alert("Silakan login untuk menyimpan watchlist");
+      navigate("/login");
+      return;
+    }
 
-      if (currentWatchlist.some((savedMovie) => String(savedMovie.id) === movieId)) {
-        return currentWatchlist.filter((savedMovie) => String(savedMovie.id) !== movieId);
+    if (!Number.isInteger(Number(movie.id))) {
+      alert("Film contoh tidak bisa disimpan ke watchlist");
+      return;
+    }
+
+    try {
+      const savedItem = findSavedWatchlistItem(watchlist, "movie", movie.id);
+
+      if (savedItem) {
+        await deleteWatchlistItem({ token, idWatchlist: savedItem.id_watchlist });
+        setWatchlist((currentWatchlist) =>
+          currentWatchlist.filter(
+            (item) => item.id_watchlist !== savedItem.id_watchlist,
+          ),
+        );
+        return;
       }
 
-      return [movie, ...currentWatchlist].slice(0, 20);
-    });
+      const item = await addWatchlistItem({
+        token,
+        payload: mapMovieToWatchlistPayload(movie),
+      });
+      setWatchlist((currentWatchlist) => [item, ...currentWatchlist]);
+    } catch (error) {
+      alert(error.message || "Gagal menyimpan watchlist");
+    }
   };
 
   return (

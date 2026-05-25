@@ -6,6 +6,7 @@ import {
   FaChevronRight,
   FaFacebookF,
   FaPlay,
+  FaRegBookmark,
   FaSlidersH,
   FaStar,
   FaTwitter,
@@ -13,6 +14,14 @@ import {
 } from "react-icons/fa";
 import SiteNavbar from "../components/SiteNavbar";
 import FilterPopup from "../components/FilterPopup";
+import Footer from "../components/Footer";
+import {
+  addWatchlistItem,
+  deleteWatchlistItem,
+  fetchWatchlist,
+  findSavedWatchlistItem,
+  mapMovieToWatchlistPayload,
+} from "../utils/watchlist";
 import menegangkanIcon from "../assets/emoticon/menegangkan-emoticon.png";
 import pikiranIcon from "../assets/emoticon/pikiran-emoticon.png";
 import romantisIcon from "../assets/emoticon/romantis-emoticon.png";
@@ -229,6 +238,7 @@ const mapTmdbMovie = (movie) => ({
   poster: movie.poster_url,
   backdrop: movie.backdrop_url,
   overview: getShortOverview(movie.overview),
+  release_date: movie.release_date,
   genre_ids: movie.genre_ids || [],
 });
 
@@ -248,8 +258,10 @@ const uniqueById = (movies) => {
 function Homepage() {
   const navigate = useNavigate();
   const moodScrollerRef = useRef(null);
+  const token = localStorage.getItem("token");
 
   const [selectedMood, setSelectedMood] = useState(moods[0]);
+  const [watchlist, setWatchlist] = useState([]);
   const [hitMovies, setHitMovies] = useState([fallbackHeroMovie, ...fallbackMovies]);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const [moodMovies, setMoodMovies] = useState(fallbackMovies);
@@ -265,6 +277,28 @@ function Homepage() {
     filterValues,
     providersByMovieId,
   );
+  const savedMovieIds = useMemo(
+    () => new Set(watchlist.map((movie) => String(movie.id))),
+    [watchlist],
+  );
+
+  useEffect(() => {
+    const loadWatchlist = async () => {
+      if (!token) {
+        setWatchlist([]);
+        return;
+      }
+
+      try {
+        const data = await fetchWatchlist({ token, mediaType: "movie" });
+        setWatchlist(data.items);
+      } catch {
+        setWatchlist([]);
+      }
+    };
+
+    loadWatchlist();
+  }, [token]);
 
   useEffect(() => {
     const fetchGenres = async () => {
@@ -442,6 +476,41 @@ function Homepage() {
     }
   };
 
+  const toggleWatchlist = async (movie) => {
+    if (!token) {
+      alert("Silakan login untuk menyimpan watchlist");
+      navigate("/login");
+      return;
+    }
+
+    if (!Number.isInteger(Number(movie.id))) {
+      alert("Film contoh tidak bisa disimpan ke watchlist");
+      return;
+    }
+
+    try {
+      const savedItem = findSavedWatchlistItem(watchlist, "movie", movie.id);
+
+      if (savedItem) {
+        await deleteWatchlistItem({ token, idWatchlist: savedItem.id_watchlist });
+        setWatchlist((currentWatchlist) =>
+          currentWatchlist.filter(
+            (item) => item.id_watchlist !== savedItem.id_watchlist,
+          ),
+        );
+        return;
+      }
+
+      const item = await addWatchlistItem({
+        token,
+        payload: mapMovieToWatchlistPayload(movie),
+      });
+      setWatchlist((currentWatchlist) => [item, ...currentWatchlist]);
+    } catch (error) {
+      alert(error.message || "Gagal menyimpan watchlist");
+    }
+  };
+
   return (
     <main className="homepage">
       <SiteNavbar mode="absolute" activeKey="home" />
@@ -478,7 +547,7 @@ function Homepage() {
               <button
                 className="homepage-secondary-btn"
                 type="button"
-                onClick={() => navigate("/movies")}
+                onClick={() => navigate("/watchlist")}
               >
                 Lihat Watchlist
               </button>
@@ -560,9 +629,8 @@ function Homepage() {
         <div className="homepage-mood-grid">
           {moods.map((mood) => (
             <button
-              className={`homepage-mood-card ${
-                selectedMood.id === mood.id ? "is-selected" : ""
-              }`}
+              className={`homepage-mood-card ${selectedMood.id === mood.id ? "is-selected" : ""
+                }`}
               key={mood.id}
               type="button"
               onClick={() => setSelectedMood(mood)}
@@ -625,10 +693,21 @@ function Homepage() {
                   <img src={movie.poster} alt={movie.title} />
                   <button
                     type="button"
-                    aria-label={`Simpan ${movie.title}`}
-                    onClick={(event) => event.stopPropagation()}
+                    aria-label={
+                      savedMovieIds.has(String(movie.id))
+                        ? `Hapus ${movie.title} dari watchlist`
+                        : `Simpan ${movie.title}`
+                    }
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleWatchlist(movie);
+                    }}
                   >
-                    <FaBookmark />
+                    {savedMovieIds.has(String(movie.id)) ? (
+                      <FaBookmark />
+                    ) : (
+                      <FaRegBookmark />
+                    )}
                   </button>
                   <div className="homepage-movie-overlay" aria-hidden="true">
                     <div className="homepage-movie-genres">
@@ -653,21 +732,7 @@ function Homepage() {
         </div>
       </section>
 
-      <footer className="homepage-footer">
-        <nav aria-label="Footer navigation">
-          <Link to="/">Home</Link>
-          <Link to="/movies">Movie</Link>
-          <Link to="/tv-series">TV Series</Link>
-          <Link to="/genre">Genre</Link>
-          <Link to="/community">Community</Link>
-        </nav>
-        <div className="homepage-socials">
-          <FaFacebookF />
-          <FaTwitter />
-          <FaYoutube />
-        </div>
-        <p>Copyright 2026 - Kelompok 5</p>
-      </footer>
+      <Footer />
 
       <FilterPopup
         open={isFilterOpen}

@@ -22,12 +22,15 @@ import movieRoutes from "./routes/movieRoutes.js";
 import tvRoutes from "./routes/tvRoutes.js";
 import movieReviewRoutes from "./routes/movieReviewRoutes.js";
 import tvSeriesReviewRoutes from "./routes/tvSeriesReviewRoutes.js";
+import watchlistRoutes from "./routes/watchlistRoutes.js";
 import { initializePostViewsTable } from "./config/initPostViews.js";
 import { initializePasswordResetTable } from "./config/initPasswordReset.js";
 import { initializeMovieReviewsTable } from "./config/initMovieReviews.js";
 import { initializeTvSeriesReviewsTable } from "./config/initTvSeriesReviews.js";
+import { initializeDatabaseSchema } from "./config/initDatabase.js";
+import { initializeWatchlistTable } from "./config/initWatchlist.js";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const app = express();
 
@@ -59,6 +62,7 @@ app.use("/api/tv-series", tvRoutes);
 app.use("/api/tv", tvRoutes);
 app.use("/api/movie-reviews", movieReviewRoutes);
 app.use("/api/tv-series-reviews", tvSeriesReviewRoutes);
+app.use("/api/watchlist", watchlistRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
@@ -72,18 +76,40 @@ transporter.verify()
 
 const PORT = process.env.PORT || 5000;
 
-Promise.all([
-  initializePostViewsTable(),
-  initializePasswordResetTable(),
-  initializeMovieReviewsTable(),
-  initializeTvSeriesReviewsTable(),
-])
+const getErrorMessage = (error) => {
+  if (error?.code === "ECONNREFUSED") {
+    return `Tidak bisa konek ke PostgreSQL di ${process.env.DB_HOST}:${process.env.DB_PORT}. Pastikan service PostgreSQL berjalan dan DB_PORT sesuai port di pgAdmin.`;
+  }
+
+  if (error?.code === "28P01") {
+    return `Password PostgreSQL untuk user "${process.env.DB_USER}" tidak cocok. Samakan DB_PASSWORD di backend/.env dengan password user PostgreSQL di pgAdmin.`;
+  }
+
+  if (error?.code === "3D000") {
+    return `Database "${process.env.DB_NAME}" tidak ditemukan. Buat database ini di pgAdmin atau perbaiki DB_NAME di backend/.env.`;
+  }
+
+  if (error?.errors?.length) {
+    return error.errors.map((item) => item.message).join("; ");
+  }
+
+  return error?.message || String(error);
+};
+
+initializeDatabaseSchema()
+  .then(() => Promise.all([
+    initializePostViewsTable(),
+    initializePasswordResetTable(),
+    initializeMovieReviewsTable(),
+    initializeTvSeriesReviewsTable(),
+    initializeWatchlistTable(),
+  ]))
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Server berjalan di http://localhost:${PORT}`);
     });
   })
   .catch((error) => {
-    console.error("Gagal menyiapkan tabel database:", error.message);
+    console.error("Gagal menyiapkan tabel database:", getErrorMessage(error));
     process.exit(1);
   });

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import {
   FaBookmark,
   FaFacebookF,
+  FaRegBookmark,
   FaRegStar,
   FaShareAlt,
   FaStar,
@@ -111,6 +112,17 @@ const buildReviewTree = (reviews) => {
   return roots;
 };
 
+const mapMovieToWatchlist = (movie) => ({
+  media_type: "movie",
+  tmdb_id: movie.id,
+  title: movie.title || movie.original_title || "Untitled",
+  poster_url: movie.poster_url,
+  backdrop_url: movie.backdrop_url || movie.poster_url,
+  release_date: movie.release_date,
+  overview: movie.overview,
+  vote_average: movie.vote_average,
+});
+
 function RatingStars({ value, onChange, readonly = false }) {
   return (
     <div className="movie-stars" aria-label={`Rating ${value} dari 5`}>
@@ -139,6 +151,7 @@ function RatingStars({ value, onChange, readonly = false }) {
 
 function MovieDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const user = useMemo(() => {
     try {
@@ -149,6 +162,8 @@ function MovieDetail() {
   }, []);
 
   const [movie, setMovie] = useState(null);
+  const [watchlistItem, setWatchlistItem] = useState(null);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [reviewSummary, setReviewSummary] = useState({
     average_rating: 0,
@@ -169,6 +184,7 @@ function MovieDetail() {
   const audienceRating = Number(reviewSummary.average_rating || 0);
   const detailRating = audienceRating || Number(formatRating(movie?.vote_average));
   const ratingPercent = Math.min((detailRating / 5) * 100, 100);
+  const isSavedToWatchlist = Boolean(watchlistItem);
 
   const fetchMovie = async () => {
     const res = await axios.get(`${apiUrl}/api/movies/${id}`, {
@@ -181,6 +197,21 @@ function MovieDetail() {
     const res = await axios.get(`${apiUrl}/api/movie-reviews/${id}`);
     setReviews(res.data.reviews || []);
     setReviewSummary(res.data.summary || { average_rating: 0, review_count: 0 });
+  };
+
+  const fetchWatchlistStatus = async (movieId) => {
+    if (!token || !movieId) {
+      setWatchlistItem(null);
+      return;
+    }
+
+    const res = await axios.get(`${apiUrl}/api/watchlist/status/movie/${movieId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    setWatchlistItem(res.data.item || null);
   };
 
   useEffect(() => {
@@ -198,6 +229,52 @@ function MovieDetail() {
 
     loadDetail();
   }, [id]);
+
+  useEffect(() => {
+    fetchWatchlistStatus(movie?.id);
+  }, [movie?.id, token]);
+
+  const toggleWatchlist = async () => {
+    if (!token) {
+      alert("Silakan login untuk menyimpan watchlist");
+      navigate("/login");
+      return;
+    }
+
+    if (!movie || watchlistLoading) {
+      return;
+    }
+
+    try {
+      setWatchlistLoading(true);
+
+      if (watchlistItem) {
+        await axios.delete(`${apiUrl}/api/watchlist/${watchlistItem.id_watchlist}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setWatchlistItem(null);
+        return;
+      }
+
+      const res = await axios.post(
+        `${apiUrl}/api/watchlist`,
+        mapMovieToWatchlist(movie),
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      setWatchlistItem(res.data.item || null);
+    } catch (error) {
+      alert(error.response?.data?.message || "Gagal menyimpan watchlist");
+    } finally {
+      setWatchlistLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (activeTab !== "synopsis" || !movie?.overview) {
@@ -362,9 +439,9 @@ function MovieDetail() {
             </div>
 
             <div className="movie-detail-buttons">
-              <button type="button">
-                <FaBookmark />
-                Simpan ke Watchlist
+              <button type="button" onClick={toggleWatchlist} disabled={watchlistLoading}>
+                {isSavedToWatchlist ? <FaBookmark /> : <FaRegBookmark />}
+                {isSavedToWatchlist ? "Tersimpan di Watchlist" : "Simpan ke Watchlist"}
               </button>
               <button type="button" aria-label="Bagikan film">
                 <FaShareAlt />
