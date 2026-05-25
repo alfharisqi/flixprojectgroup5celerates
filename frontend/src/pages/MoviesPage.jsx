@@ -17,6 +17,7 @@ import {
 } from "react-icons/fa";
 import SiteNavbar from "../components/SiteNavbar";
 import FilterPopup from "../components/FilterPopup";
+import WatchlistConfirmModal from "../components/WatchlistConfirmModal";
 import amazonPrimeVideoIcon from "../assets/platformstream-logo/amazonprimevideo-icon.png";
 import appleTvIcon from "../assets/platformstream-logo/appletv-icon.png";
 import catchplayIcon from "../assets/platformstream-logo/catchplay-icon.png";
@@ -404,6 +405,7 @@ function MoviesPage() {
   const user = useMemo(() => getStoredUser(), []);
   const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
   const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const [pendingWatchlistMovie, setPendingWatchlistMovie] = useState(null);
   const [trendingMovies, setTrendingMovies] = useState(fallbackMovies.slice(0, 3));
   const [allMovies, setAllMovies] = useState(fallbackMovies);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
@@ -615,16 +617,37 @@ function MoviesPage() {
     }
   };
 
-  const toggleWatchlist = (movie) => {
+  const saveMovieToWatchlist = (movie) => {
     setWatchlist((currentWatchlist) => {
       const movieId = String(movie.id);
 
       if (currentWatchlist.some((savedMovie) => String(savedMovie.id) === movieId)) {
-        return currentWatchlist.filter((savedMovie) => String(savedMovie.id) !== movieId);
+        return currentWatchlist;
       }
 
       return [movie, ...currentWatchlist].slice(0, 20);
     });
+  };
+
+  const toggleWatchlist = (movie) => {
+    const movieId = String(movie.id);
+
+    if (savedMovieIds.has(movieId)) {
+      setWatchlist((currentWatchlist) =>
+        currentWatchlist.filter((savedMovie) => String(savedMovie.id) !== movieId),
+      );
+      return;
+    }
+
+    setPendingWatchlistMovie(movie);
+  };
+
+  const confirmSaveToWatchlist = () => {
+    if (pendingWatchlistMovie) {
+      saveMovieToWatchlist(pendingWatchlistMovie);
+    }
+
+    setPendingWatchlistMovie(null);
   };
 
   const moveHero = (direction) => {
@@ -900,6 +923,14 @@ function MoviesPage() {
         sortOptions={movieSortOptions}
         onChange={setFilterValues}
         onClose={() => setIsFilterOpen(false)}
+      />
+
+      <WatchlistConfirmModal
+        open={Boolean(pendingWatchlistMovie)}
+        item={pendingWatchlistMovie}
+        mediaLabel="Film"
+        onCancel={() => setPendingWatchlistMovie(null)}
+        onConfirm={confirmSaveToWatchlist}
       />
     </main>
   );

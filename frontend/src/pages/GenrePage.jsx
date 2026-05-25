@@ -10,6 +10,7 @@ import {
   FaYoutube,
 } from "react-icons/fa";
 import SiteNavbar from "../components/SiteNavbar";
+import WatchlistConfirmModal from "../components/WatchlistConfirmModal";
 import "./GenrePage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -199,8 +200,11 @@ const getStoredUser = () => {
   }
 };
 
-const getWatchlistKey = (user) =>
+const getMovieWatchlistKey = (user) =>
   `flix_movie_watchlist_${user?.id_user || "guest"}`;
+
+const getSeriesWatchlistKey = (user) =>
+  `flix_tv_watchlist_${user?.id_user || "guest"}`;
 
 const readWatchlist = (key) => {
   try {
@@ -227,7 +231,7 @@ function GenreMovieCard({
   return (
     <article
       className="genre-movie-card"
-      onClick={() => onOpen(movie.id, movie.media_type)}
+      onClick={() => onOpen(movie.id, movie.media_type || mediaType)}
     >
       <div className="genre-movie-poster">
         <img src={movie.poster} alt={movie.title} />
@@ -276,8 +280,15 @@ function GenrePage() {
   const queryGenreId = searchParams.get("genre");
   const queryGenreName = searchParams.get("name");
   const user = useMemo(() => getStoredUser(), []);
-  const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
-  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const movieWatchlistKey = useMemo(() => getMovieWatchlistKey(user), [user]);
+  const seriesWatchlistKey = useMemo(() => getSeriesWatchlistKey(user), [user]);
+  const [movieWatchlist, setMovieWatchlist] = useState(() =>
+    readWatchlist(movieWatchlistKey),
+  );
+  const [seriesWatchlist, setSeriesWatchlist] = useState(() =>
+    readWatchlist(seriesWatchlistKey),
+  );
+  const [pendingWatchlistItem, setPendingWatchlistItem] = useState(null);
   const [genres, setGenres] = useState(fallbackGenres.map(normalizeGenre));
   const [genreImages, setGenreImages] = useState({});
   const [selectedGenre, setSelectedGenre] = useState(null);
@@ -298,15 +309,23 @@ function GenrePage() {
   );
 
   const savedMovieIds = useMemo(
-    () => new Set(watchlist.map((movie) => String(movie.id))),
-    [watchlist],
+    () => new Set(movieWatchlist.map((movie) => String(movie.id))),
+    [movieWatchlist],
+  );
+  const savedSeriesIds = useMemo(
+    () => new Set(seriesWatchlist.map((series) => String(series.id))),
+    [seriesWatchlist],
   );
   const selectedMediaLabel = selectedMedia === "tv" ? "TV Series" : "Film";
   const selectedMediaCountLabel = selectedMedia === "tv" ? "series" : "film";
 
   useEffect(() => {
-    localStorage.setItem(watchlistKey, JSON.stringify(watchlist));
-  }, [watchlist, watchlistKey]);
+    localStorage.setItem(movieWatchlistKey, JSON.stringify(movieWatchlist));
+  }, [movieWatchlist, movieWatchlistKey]);
+
+  useEffect(() => {
+    localStorage.setItem(seriesWatchlistKey, JSON.stringify(seriesWatchlist));
+  }, [seriesWatchlist, seriesWatchlistKey]);
 
   useEffect(() => {
     if (!queryGenreId && !queryGenreName) {
@@ -486,16 +505,56 @@ function GenrePage() {
     });
   };
 
-  const toggleWatchlist = (movie) => {
-    setWatchlist((currentWatchlist) => {
-      const movieId = String(movie.id);
+  const isMediaSaved = (mediaItem) => {
+    const mediaType = getMediaType(mediaItem.media_type || selectedMedia);
+    const mediaId = String(mediaItem.id);
 
-      if (currentWatchlist.some((savedMovie) => String(savedMovie.id) === movieId)) {
-        return currentWatchlist.filter((savedMovie) => String(savedMovie.id) !== movieId);
+    return mediaType === "tv" ? savedSeriesIds.has(mediaId) : savedMovieIds.has(mediaId);
+  };
+
+  const saveItemToWatchlist = (mediaItem) => {
+    const mediaType = getMediaType(mediaItem.media_type || selectedMedia);
+    const listSetter = mediaType === "tv" ? setSeriesWatchlist : setMovieWatchlist;
+
+    listSetter((currentWatchlist) => {
+      const mediaId = String(mediaItem.id);
+
+      if (currentWatchlist.some((savedItem) => String(savedItem.id) === mediaId)) {
+        return currentWatchlist;
       }
 
-      return [movie, ...currentWatchlist].slice(0, 20);
+      return [{ ...mediaItem, media_type: mediaType }, ...currentWatchlist].slice(0, 20);
     });
+  };
+
+  const toggleWatchlist = (mediaItem) => {
+    const mediaType = getMediaType(mediaItem.media_type || selectedMedia);
+    const mediaId = String(mediaItem.id);
+
+    if (isMediaSaved(mediaItem)) {
+      const listSetter = mediaType === "tv" ? setSeriesWatchlist : setMovieWatchlist;
+
+      listSetter((currentWatchlist) =>
+        currentWatchlist.filter((savedItem) => String(savedItem.id) !== mediaId),
+      );
+      return;
+    }
+
+    setPendingWatchlistItem({
+      mediaLabel: mediaType === "tv" ? "Series" : "Film",
+      item: {
+        ...mediaItem,
+        media_type: mediaType,
+      },
+    });
+  };
+
+  const confirmSaveToWatchlist = () => {
+    if (pendingWatchlistItem?.item) {
+      saveItemToWatchlist(pendingWatchlistItem.item);
+    }
+
+    setPendingWatchlistItem(null);
   };
 
   return (
@@ -590,7 +649,7 @@ function GenrePage() {
                   key={movie.id}
                   movie={movie}
                   mediaType={selectedMedia}
-                  isSaved={savedMovieIds.has(String(movie.id))}
+                  isSaved={isMediaSaved(movie)}
                   genreLookup={genreLookup}
                   onOpen={openMovie}
                   onToggleWatchlist={toggleWatchlist}
@@ -616,6 +675,14 @@ function GenrePage() {
         </div>
         <p>Copyright 2026 - Kelompok 5</p>
       </footer>
+
+      <WatchlistConfirmModal
+        open={Boolean(pendingWatchlistItem)}
+        item={pendingWatchlistItem?.item}
+        mediaLabel={pendingWatchlistItem?.mediaLabel || "Film"}
+        onCancel={() => setPendingWatchlistItem(null)}
+        onConfirm={confirmSaveToWatchlist}
+      />
     </main>
   );
 }
