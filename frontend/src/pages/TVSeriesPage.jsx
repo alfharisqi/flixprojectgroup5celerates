@@ -592,7 +592,11 @@ function TVSeriesPage() {
       <section className="tv-series-section">
         <div className="tv-series-section-header">
           <h2>Tonton Watchlist Series Kamu</h2>
-          {watchlist.length > 0 && <button type="button">Lihat Semua</button>}
+          {watchlist.length > 0 && (
+            <button type="button" onClick={() => navigate("/watchlist")}>
+              Lihat Semua
+            </button>
+          )}
         </div>
 
         {watchlist.length > 0 ? (

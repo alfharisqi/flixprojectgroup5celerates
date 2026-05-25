@@ -786,7 +786,11 @@ function MoviesPage() {
       <section className="movies-section">
         <div className="movies-section-header">
           <h2>Tonton Watchlist Kamu</h2>
-          {watchlist.length > 0 && <button type="button">Lihat Semua</button>}
+          {watchlist.length > 0 && (
+            <button type="button" onClick={() => navigate("/watchlist")}>
+              Lihat Semua
+            </button>
+          )}
         </div>
 
         {watchlist.length > 0 ? (

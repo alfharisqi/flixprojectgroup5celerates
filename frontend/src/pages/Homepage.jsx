@@ -478,7 +478,7 @@ function Homepage() {
               <button
                 className="homepage-secondary-btn"
                 type="button"
-                onClick={() => navigate("/movies")}
+                onClick={() => navigate("/watchlist")}
               >
                 Lihat Watchlist
               </button>

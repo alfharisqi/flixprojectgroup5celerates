@@ -36,6 +36,7 @@ const getActiveKey = (pathname, activeKey) => {
   if (pathname.startsWith("/tv-series")) return "tv";
   if (pathname.startsWith("/movie") || pathname.startsWith("/movies")) return "movies";
   if (pathname.startsWith("/community") || pathname.startsWith("/post")) return "community";
+  if (pathname.startsWith("/watchlist")) return "";
   return "";
 };
 
@@ -117,7 +118,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
                     <span>Profile</span>
                   </Link>
 
-                  <Link className="site-navbar__profile-item" to="/movies">
+                  <Link className="site-navbar__profile-item" to="/watchlist">
                     <img src={myWatchlistIcon} alt="" />
                     <span>Watchlist</span>
                   </Link>
