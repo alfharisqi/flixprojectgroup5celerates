@@ -1,6 +1,14 @@
 import "./WatchlistConfirmModal.css";
 
-function WatchlistConfirmModal({ open, item, mediaLabel = "Film", onCancel, onConfirm }) {
+function WatchlistConfirmModal({
+  open,
+  item,
+  mediaLabel = "Film",
+  onCancel,
+  onConfirm,
+  loading = false,
+  errorMessage = "",
+}) {
   if (!open || !item) {
     return null;
   }
@@ -32,6 +40,7 @@ function WatchlistConfirmModal({ open, item, mediaLabel = "Film", onCancel, onCo
               className="watchlist-confirm__cancel"
               type="button"
               onClick={onCancel}
+              disabled={loading}
             >
               Batal
             </button>
@@ -39,10 +48,12 @@ function WatchlistConfirmModal({ open, item, mediaLabel = "Film", onCancel, onCo
               className="watchlist-confirm__save"
               type="button"
               onClick={onConfirm}
+              disabled={loading}
             >
-              Simpan
+              {loading ? "Menyimpan..." : "Simpan"}
             </button>
           </div>
+          {errorMessage && <p className="watchlist-confirm__error">{errorMessage}</p>}
         </div>
       </div>
     </div>

@@ -10,9 +10,17 @@ import {
   FaYoutube,
 } from "react-icons/fa";
 import SiteNavbar from "../../components/layout/SiteNavbar";
+import WatchlistConfirmModal from "../../components/watchlist/WatchlistConfirmModal";
+import {
+  addWatchlistItem,
+  deleteWatchlistItem,
+  fetchWatchlist,
+  mapMovieToWatchlistPayload,
+  mapSeriesToWatchlistPayload,
+} from "../../utils/watchlist";
 import "./GenrePage.css";
 
-const apiUrl = import.meta.env.VITE_API_URL;
+const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const fallbackPosterUrl =
   "https://image.tmdb.org/t/p/w500/cdPSUck4tBRvRu6DFk6XciDrssn.jpg";
@@ -145,8 +153,12 @@ const mapTmdbMediaItem = (movie, mediaType = "movie") => ({
   backdrop: movie.backdrop_url || movie.poster_url,
   overview: getShortOverview(movie.overview),
   release_date: movie.release_date,
+  first_air_date: movie.first_air_date,
+  releaseLabel: movie.release_date || movie.first_air_date || "-",
+  vote_average: movie.vote_average,
   genre_ids: movie.genre_ids || [],
   media_type: mediaType,
+  mediaType,
 });
 
 const normalizeGenre = (genre) => ({
@@ -190,26 +202,6 @@ const uniqueById = (movies) => {
     seen.add(movie.id);
     return true;
   });
-};
-
-const getStoredUser = () => {
-  try {
-    return JSON.parse(localStorage.getItem("user"));
-  } catch {
-    return null;
-  }
-};
-
-const getWatchlistKey = (user) =>
-  `flix_movie_watchlist_${user?.id_user || "guest"}`;
-
-const readWatchlist = (key) => {
-  try {
-    const savedWatchlist = JSON.parse(localStorage.getItem(key));
-    return Array.isArray(savedWatchlist) ? savedWatchlist : [];
-  } catch {
-    return [];
-  }
 };
 
 function GenreMovieCard({
@@ -272,13 +264,17 @@ function GenreMovieCard({
 
 function GenrePage() {
   const navigate = useNavigate();
-  const user = useMemo(() => getStoredUser(), []);
-  const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
-  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const [searchParams] = useSearchParams();
+  const token = localStorage.getItem("token");
+  const queryMedia = getMediaType(searchParams.get("media"));
+  const [watchlist, setWatchlist] = useState([]);
   const [genres, setGenres] = useState(fallbackGenres.map(normalizeGenre));
   const [genreImages, setGenreImages] = useState({});
   const [selectedGenre, setSelectedGenre] = useState(null);
   const [selectedMedia, setSelectedMedia] = useState(queryMedia);
+  const [pendingWatchlistItem, setPendingWatchlistItem] = useState(null);
+  const [watchlistSaving, setWatchlistSaving] = useState(false);
+  const [watchlistError, setWatchlistError] = useState("");
   const [movies, setMovies] = useState([]);
   const [genreLoading, setGenreLoading] = useState(false);
   const [moviesLoading, setMoviesLoading] = useState(false);
@@ -294,28 +290,37 @@ function GenrePage() {
     [genres],
   );
 
-  const savedMovieIds = useMemo(
-    () => new Set(movieWatchlist.map((movie) => String(movie.id))),
-    [movieWatchlist],
-  );
-  const savedSeriesIds = useMemo(
-    () => new Set(seriesWatchlist.map((series) => String(series.id))),
-    [seriesWatchlist],
+  const savedMediaKeys = useMemo(
+    () =>
+      new Set(
+        watchlist.map((item) => `${item.media_type || item.mediaType}:${item.id}`),
+      ),
+    [watchlist],
   );
   const selectedMediaLabel = selectedMedia === "tv" ? "TV Series" : "Film";
   const selectedMediaCountLabel = selectedMedia === "tv" ? "series" : "film";
 
   useEffect(() => {
-    localStorage.setItem(movieWatchlistKey, JSON.stringify(movieWatchlist));
-  }, [movieWatchlist, movieWatchlistKey]);
+    setSelectedMedia(queryMedia);
+  }, [queryMedia]);
 
   useEffect(() => {
-    localStorage.setItem(seriesWatchlistKey, JSON.stringify(seriesWatchlist));
-  }, [seriesWatchlist, seriesWatchlistKey]);
+    const loadWatchlist = async () => {
+      if (!token) {
+        setWatchlist([]);
+        return;
+      }
 
-  useEffect(() => {
-    localStorage.setItem(watchlistKey, JSON.stringify(watchlist));
-  }, [watchlist, watchlistKey]);
+      try {
+        const data = await fetchWatchlist({ token });
+        setWatchlist(data.items);
+      } catch {
+        setWatchlist([]);
+      }
+    };
+
+    loadWatchlist();
+  }, [token]);
 
   useEffect(() => {
     const loadGenres = async () => {
@@ -459,21 +464,88 @@ function GenrePage() {
     }
   };
 
-  const toggleWatchlist = (movie) => {
+  const selectGenre = (genre) => {
+    setSelectedGenre(genre);
+    setMovies([]);
+    setErrorMessage("");
+  };
+
+  const getMediaKey = (item) => `${item.media_type || item.mediaType || selectedMedia}:${item.id}`;
+
+  const isMediaSaved = (item) => savedMediaKeys.has(getMediaKey(item));
+
+  const saveItemToWatchlist = async (item) => {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    const itemMediaType = item.media_type || item.mediaType || selectedMedia;
+    const savedItem = await addWatchlistItem({
+      token,
+      payload:
+        itemMediaType === "tv"
+          ? mapSeriesToWatchlistPayload(item)
+          : mapMovieToWatchlistPayload(item),
+    });
+
     setWatchlist((currentWatchlist) => {
-      const movieId = String(movie.id);
+      const savedKey = `${savedItem.media_type}:${savedItem.id}`;
+      const withoutDuplicate = currentWatchlist.filter(
+        (watchlistItem) =>
+          `${watchlistItem.media_type || watchlistItem.mediaType}:${watchlistItem.id}` !==
+          savedKey,
+      );
 
-      if (currentWatchlist.some((savedMovie) => String(savedMovie.id) === movieId)) {
-        return currentWatchlist.filter((savedMovie) => String(savedMovie.id) !== movieId);
-      }
-
-      return [movie, ...currentWatchlist].slice(0, 20);
+      return [savedItem, ...withoutDuplicate];
     });
   };
 
-  const confirmSaveToWatchlist = () => {
+  const toggleWatchlist = async (item) => {
+    const itemMediaType = item.media_type || item.mediaType || selectedMedia;
+    const mediaKey = `${itemMediaType}:${item.id}`;
+
+    if (savedMediaKeys.has(mediaKey)) {
+      const savedItem = watchlist.find(
+        (watchlistItem) =>
+          `${watchlistItem.media_type || watchlistItem.mediaType}:${watchlistItem.id}` ===
+          mediaKey,
+      );
+
+      if (savedItem?.id_watchlist && token) {
+        await deleteWatchlistItem({ token, idWatchlist: savedItem.id_watchlist });
+      }
+
+      setWatchlist((currentWatchlist) =>
+        currentWatchlist.filter(
+          (watchlistItem) =>
+            `${watchlistItem.media_type || watchlistItem.mediaType}:${watchlistItem.id}` !==
+            mediaKey,
+        ),
+      );
+      return;
+    }
+
+    setWatchlistError("");
+    setPendingWatchlistItem({
+      item,
+      mediaLabel: itemMediaType === "tv" ? "Series" : "Film",
+    });
+  };
+
+  const confirmSaveToWatchlist = async () => {
     if (pendingWatchlistItem?.item) {
-      saveItemToWatchlist(pendingWatchlistItem.item);
+      try {
+        setWatchlistSaving(true);
+        setWatchlistError("");
+        await saveItemToWatchlist(pendingWatchlistItem.item);
+        setPendingWatchlistItem(null);
+      } catch (error) {
+        setWatchlistError(error.message || "Gagal menyimpan watchlist");
+      } finally {
+        setWatchlistSaving(false);
+      }
+      return;
     }
 
     setPendingWatchlistItem(null);
@@ -604,6 +676,8 @@ function GenrePage() {
         mediaLabel={pendingWatchlistItem?.mediaLabel || "Film"}
         onCancel={() => setPendingWatchlistItem(null)}
         onConfirm={confirmSaveToWatchlist}
+        loading={watchlistSaving}
+        errorMessage={watchlistError}
       />
     </main>
   );

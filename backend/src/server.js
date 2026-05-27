@@ -23,12 +23,15 @@ import tvRoutes from "./routes/tvRoutes.js";
 import movieReviewRoutes from "./routes/movieReviewRoutes.js";
 import tvSeriesReviewRoutes from "./routes/tvSeriesReviewRoutes.js";
 import watchlistRoutes from "./routes/watchlistRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 import { initializePostViewsTable } from "./config/initPostViews.js";
 import { initializePasswordResetTable } from "./config/initPasswordReset.js";
 import { initializeMovieReviewsTable } from "./config/initMovieReviews.js";
 import { initializeTvSeriesReviewsTable } from "./config/initTvSeriesReviews.js";
 import { initializeDatabaseSchema } from "./config/initDatabase.js";
 import { initializeWatchlistTable } from "./config/initWatchlist.js";
+import { initializeChatNotificationsTables } from "./config/initChatNotifications.js";
 
 dotenv.config({ quiet: true });
 
@@ -63,6 +66,8 @@ app.use("/api/tv", tvRoutes);
 app.use("/api/movie-reviews", movieReviewRoutes);
 app.use("/api/tv-series-reviews", tvSeriesReviewRoutes);
 app.use("/api/watchlist", watchlistRoutes);
+app.use("/api/chats", chatRoutes);
+app.use("/api/notifications", notificationRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
@@ -103,6 +108,7 @@ initializeDatabaseSchema()
     initializeMovieReviewsTable(),
     initializeTvSeriesReviewsTable(),
     initializeWatchlistTable(),
+    initializeChatNotificationsTables(),
   ]))
   .then(() => {
     app.listen(PORT, () => {
