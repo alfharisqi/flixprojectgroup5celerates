@@ -12,45 +12,74 @@ import {
   FaTwitter,
   FaYoutube,
 } from "react-icons/fa";
-import SiteNavbar from "../components/SiteNavbar";
-import WatchlistConfirmModal from "../components/WatchlistConfirmModal";
+import SiteNavbar from "../../components/layout/SiteNavbar";
+import WatchlistConfirmModal from "../../components/watchlist/WatchlistConfirmModal";
 import {
   addWatchlistItem,
   deleteWatchlistItem,
   fetchWatchlist,
-  mapSeriesToWatchlistPayload,
-} from "../utils/watchlist";
-import amazonPrimeVideoIcon from "../assets/platformstream-logo/amazonprimevideo-icon.png";
-import appleTvIcon from "../assets/platformstream-logo/appletv-icon.png";
-import catchplayIcon from "../assets/platformstream-logo/catchplay-icon.png";
-import disneyHotstarIcon from "../assets/platformstream-logo/disneyhotstar-icon.png";
-import hboMaxIcon from "../assets/platformstream-logo/HBOmax-icon.png";
-import netflixIcon from "../assets/platformstream-logo/netflix-icon.png";
+  mapMovieToWatchlistPayload,
+} from "../../utils/watchlist";
+import amazonPrimeVideoIcon from "../../assets/platformstream-logo/amazonprimevideo-icon.png";
+import appleTvIcon from "../../assets/platformstream-logo/appletv-icon.png";
+import catchplayIcon from "../../assets/platformstream-logo/catchplay-icon.png";
+import disneyHotstarIcon from "../../assets/platformstream-logo/disneyhotstar-icon.png";
+import hboMaxIcon from "../../assets/platformstream-logo/HBOmax-icon.png";
+import netflixIcon from "../../assets/platformstream-logo/netflix-icon.png";
 import "./MovieDetail.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
 const providerIconMatchers = [
-  { icon: netflixIcon, matches: ["netflix"] },
-  { icon: disneyHotstarIcon, matches: ["disney", "hotstar"] },
-  { icon: hboMaxIcon, matches: ["hbo", "max"] },
-  { icon: catchplayIcon, matches: ["catchplay"] },
-  { icon: appleTvIcon, matches: ["apple tv"] },
-  { icon: amazonPrimeVideoIcon, matches: ["amazon", "prime video"] },
+  {
+    icon: netflixIcon,
+    matches: ["netflix"],
+  },
+  {
+    icon: disneyHotstarIcon,
+    matches: ["disney", "hotstar"],
+  },
+  {
+    icon: hboMaxIcon,
+    matches: ["hbo", "max"],
+  },
+  {
+    icon: catchplayIcon,
+    matches: ["catchplay"],
+  },
+  {
+    icon: appleTvIcon,
+    matches: ["apple tv"],
+  },
+  {
+    icon: amazonPrimeVideoIcon,
+    matches: ["amazon", "prime video"],
+  },
 ];
 
 const getLocalProviderIcon = (providerName = "") => {
   const normalizedName = providerName.toLowerCase();
   const match = providerIconMatchers.find(({ matches }) =>
-    matches.some((keyword) => normalizedName.includes(keyword)),
+    matches.some((keyword) => normalizedName.includes(keyword))
   );
 
   return match?.icon || null;
 };
 
+const formatRuntime = (minutes) => {
+  if (!minutes) {
+    return "-";
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  return `${hours}j ${remainingMinutes}m`;
+};
+
 const getYear = (date) => date?.slice(0, 4) || "-";
 
-const buildGenrePath = (genre, media = "tv") => {
+const buildGenrePath = (genre, media = "movie") => {
   const params = new URLSearchParams({
     media,
     genre: String(genre.id),
@@ -60,6 +89,19 @@ const buildGenrePath = (genre, media = "tv") => {
   return `/genre?${params.toString()}`;
 };
 
+const mapMovieToWatchlist = (movie) => ({
+  id: movie.id,
+  title: movie.title || movie.original_title || "Untitled",
+  year: getYear(movie.release_date),
+  rating: formatRating(movie.vote_average),
+  poster: movie.poster_url,
+  backdrop: movie.backdrop_url || movie.poster_url,
+  overview: movie.overview,
+  releaseLabel: movie.release_date || "-",
+  providers: [],
+  genre_ids: movie.genre_ids || (movie.genres || []).map((genre) => genre.id),
+});
+
 const formatRating = (rating) => {
   const numericRating = Number(rating);
 
@@ -68,35 +110,6 @@ const formatRating = (rating) => {
   }
 
   return (numericRating / 2).toFixed(1);
-};
-
-const formatEpisodeRuntime = (runtime = []) => {
-  const runtimeValue = Array.isArray(runtime) ? runtime.find(Boolean) : runtime;
-
-  if (!runtimeValue) {
-    return "-";
-  }
-
-  return `${runtimeValue}m/episode`;
-};
-
-const formatSeriesCount = (series) => {
-  const seasons = Number(series?.number_of_seasons || 0);
-  const episodes = Number(series?.number_of_episodes || 0);
-
-  if (seasons && episodes) {
-    return `${seasons} Season | ${episodes} Episode`;
-  }
-
-  if (seasons) {
-    return `${seasons} Season`;
-  }
-
-  if (episodes) {
-    return `${episodes} Episode`;
-  }
-
-  return "TV Series";
 };
 
 const formatReviewDate = (dateValue) =>
@@ -129,19 +142,6 @@ const buildReviewTree = (reviews) => {
   return roots;
 };
 
-const mapSeriesToWatchlist = (series) => ({
-  id: series.id,
-  title: series.name || series.title || series.original_name || "Untitled",
-  year: getYear(series.first_air_date),
-  rating: formatRating(series.vote_average),
-  poster: series.poster_url,
-  backdrop: series.backdrop_url || series.poster_url,
-  first_air_date: series.first_air_date,
-  releaseLabel: series.first_air_date || "-",
-  overview: series.overview,
-  vote_average: series.vote_average,
-  genre_ids: series.genre_ids || (series.genres || []).map((genre) => genre.id),
-});
 
 function RatingStars({ value, onChange, readonly = false }) {
   return (
@@ -169,7 +169,7 @@ function RatingStars({ value, onChange, readonly = false }) {
   );
 }
 
-function TVSeriesDetail() {
+function MovieDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
@@ -181,9 +181,9 @@ function TVSeriesDetail() {
     }
   }, []);
 
-  const [series, setSeries] = useState(null);
+  const [movie, setMovie] = useState(null);
   const [watchlist, setWatchlist] = useState([]);
-  const [pendingWatchlistSeries, setPendingWatchlistSeries] = useState(null);
+  const [pendingWatchlistMovie, setPendingWatchlistMovie] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [reviewSummary, setReviewSummary] = useState({
     average_rating: 0,
@@ -202,24 +202,23 @@ function TVSeriesDetail() {
 
   const reviewTree = useMemo(() => buildReviewTree(reviews), [reviews]);
   const audienceRating = Number(reviewSummary.average_rating || 0);
-  const detailRating = audienceRating || Number(formatRating(series?.vote_average));
+  const detailRating = audienceRating || Number(formatRating(movie?.vote_average));
   const ratingPercent = Math.min((detailRating / 5) * 100, 100);
-  const seriesTitle = series?.name || series?.title || series?.original_name || "TV Series";
-  const savedSeriesIds = useMemo(
-    () => new Set(watchlist.map((savedSeries) => String(savedSeries.id))),
+  const savedMovieIds = useMemo(
+    () => new Set(watchlist.map((savedMovie) => String(savedMovie.id))),
     [watchlist],
   );
-  const isSaved = savedSeriesIds.has(String(series?.id));
+  const isSaved = savedMovieIds.has(String(movie?.id));
 
-  const fetchSeries = async () => {
-    const res = await axios.get(`${apiUrl}/api/tv-series/${id}`, {
+  const fetchMovie = async () => {
+    const res = await axios.get(`${apiUrl}/api/movies/${id}`, {
       params: { language: "id-ID" },
     });
-    setSeries(res.data);
+    setMovie(res.data);
   };
 
   const fetchReviews = async () => {
-    const res = await axios.get(`${apiUrl}/api/tv-series-reviews/${id}`);
+    const res = await axios.get(`${apiUrl}/api/movie-reviews/${id}`);
     setReviews(res.data.reviews || []);
     setReviewSummary(res.data.summary || { average_rating: 0, review_count: 0 });
   };
@@ -232,7 +231,7 @@ function TVSeriesDetail() {
       }
 
       try {
-        const data = await fetchWatchlist({ token, mediaType: "tv" });
+        const data = await fetchWatchlist({ token, mediaType: "movie" });
         setWatchlist(data.items);
       } catch {
         setWatchlist([]);
@@ -247,11 +246,9 @@ function TVSeriesDetail() {
       try {
         setLoading(true);
         setErrorMessage("");
-        await Promise.all([fetchSeries(), fetchReviews()]);
+        await Promise.all([fetchMovie(), fetchReviews()]);
       } catch (error) {
-        setErrorMessage(
-          error.response?.data?.message || "Gagal memuat detail TV series",
-        );
+        setErrorMessage(error.response?.data?.message || "Gagal memuat detail film");
       } finally {
         setLoading(false);
       }
@@ -260,8 +257,12 @@ function TVSeriesDetail() {
     loadDetail();
   }, [id]);
 
+
+
+
+
   useEffect(() => {
-    if (activeTab !== "synopsis" || !series?.overview) {
+    if (activeTab !== "synopsis" || !movie?.overview) {
       setShowSynopsisToggle(false);
       setIsSynopsisExpanded(false);
       return undefined;
@@ -306,9 +307,9 @@ function TVSeriesDetail() {
       window.cancelAnimationFrame(frameId);
       window.removeEventListener("resize", measureSynopsis);
     };
-  }, [activeTab, series?.overview]);
+  }, [activeTab, movie?.overview]);
 
-  const saveSeriesToWatchlist = async (watchlistSeries) => {
+  const saveMovieToWatchlist = async (watchlistMovie) => {
     if (!token) {
       navigate("/login");
       return;
@@ -316,13 +317,13 @@ function TVSeriesDetail() {
 
     const savedItem = await addWatchlistItem({
       token,
-      payload: mapSeriesToWatchlistPayload(watchlistSeries),
+      payload: mapMovieToWatchlistPayload(watchlistMovie),
     });
 
     setWatchlist((currentWatchlist) => {
-      const seriesId = String(savedItem.id);
+      const movieId = String(savedItem.id);
       const withoutDuplicate = currentWatchlist.filter(
-        (savedSeries) => String(savedSeries.id) !== seriesId,
+        (savedMovie) => String(savedMovie.id) !== movieId,
       );
 
       return [savedItem, ...withoutDuplicate];
@@ -330,44 +331,34 @@ function TVSeriesDetail() {
   };
 
   const toggleWatchlist = async () => {
-    if (!series) {
+    if (!movie) {
       return;
     }
 
-    const watchlistSeries = mapSeriesToWatchlist(series);
-    const seriesId = String(watchlistSeries.id);
+    const watchlistMovie = mapMovieToWatchlist(movie);
+    const movieId = String(watchlistMovie.id);
 
-    if (savedSeriesIds.has(seriesId)) {
-      const savedItem = watchlist.find((savedSeries) => String(savedSeries.id) === seriesId);
+    if (savedMovieIds.has(movieId)) {
+      const savedItem = watchlist.find((savedMovie) => String(savedMovie.id) === movieId);
       if (savedItem?.id_watchlist && token) {
         await deleteWatchlistItem({ token, idWatchlist: savedItem.id_watchlist });
       }
 
       setWatchlist((currentWatchlist) =>
-        currentWatchlist.filter((savedSeries) => String(savedSeries.id) !== seriesId),
+        currentWatchlist.filter((savedMovie) => String(savedMovie.id) !== movieId),
       );
       return;
     }
 
-    setPendingWatchlistSeries(watchlistSeries);
+    setPendingWatchlistMovie(watchlistMovie);
   };
 
   const confirmSaveToWatchlist = async () => {
-    if (pendingWatchlistSeries) {
-      await saveSeriesToWatchlist(pendingWatchlistSeries);
+    if (pendingWatchlistMovie) {
+      await saveMovieToWatchlist(pendingWatchlistMovie);
     }
 
-    setPendingWatchlistSeries(null);
-  };
-
-  const handleShare = async () => {
-    const url = window.location.href;
-
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      window.prompt("Salin link TV series:", url);
-    }
+    setPendingWatchlistMovie(null);
   };
 
   const handleSubmitReview = async (event) => {
@@ -383,7 +374,7 @@ function TVSeriesDetail() {
     }
 
     await axios.post(
-      `${apiUrl}/api/tv-series-reviews/${id}`,
+      `${apiUrl}/api/movie-reviews/${id}`,
       {
         content: reviewContent,
         rating: reviewRating,
@@ -413,7 +404,7 @@ function TVSeriesDetail() {
     }
 
     await axios.post(
-      `${apiUrl}/api/tv-series-reviews/${id}`,
+      `${apiUrl}/api/movie-reviews/${id}`,
       {
         content: replyContent,
         parent_review_id: parentReviewId,
@@ -437,7 +428,7 @@ function TVSeriesDetail() {
     }
 
     await axios.post(
-      `${apiUrl}/api/tv-series-reviews/likes/${reviewId}`,
+      `${apiUrl}/api/movie-reviews/likes/${reviewId}`,
       {},
       {
         headers: {
@@ -450,30 +441,26 @@ function TVSeriesDetail() {
   };
 
   if (loading) {
+    return <main className="movie-detail-page movie-detail-state">Memuat detail film...</main>;
+  }
+
+  if (errorMessage || !movie) {
     return (
       <main className="movie-detail-page movie-detail-state">
-        Memuat detail TV series...
+        {errorMessage || "Film tidak ditemukan"}
       </main>
     );
   }
 
-  if (errorMessage || !series) {
-    return (
-      <main className="movie-detail-page movie-detail-state">
-        {errorMessage || "TV series tidak ditemukan"}
-      </main>
-    );
-  }
-
-  const backdrop = series.backdrop_url || series.poster_url;
-  const cast = series.cast || [];
-  const watchProviders = series.watch_providers?.all || [];
+  const backdrop = movie.backdrop_url || movie.poster_url;
+  const cast = movie.cast || [];
+  const watchProviders = movie.watch_providers?.all || [];
   const visibleWatchProviders = watchProviders.slice(0, 6);
   const hasWatchProviders = visibleWatchProviders.length > 0;
 
   return (
     <main className="movie-detail-page">
-      <SiteNavbar mode="absolute" activeKey="tv" />
+      <SiteNavbar mode="absolute" activeKey="movies" />
 
       <section
         className="movie-detail-hero"
@@ -481,11 +468,11 @@ function TVSeriesDetail() {
       >
         <div className="movie-detail-container movie-detail-hero-content">
           <div className="movie-detail-copy">
-            <h1>{seriesTitle}</h1>
+            <h1>{movie.title}</h1>
             <div className="movie-detail-meta">
-              <span>{getYear(series.first_air_date)}</span>
-              <span>{formatEpisodeRuntime(series.episode_run_time)}</span>
-              <span>Language: {series.original_language?.toUpperCase() || "-"}</span>
+              <span>{getYear(movie.release_date)}</span>
+              <span>{formatRuntime(movie.runtime)}</span>
+              <span>Language: {movie.original_language?.toUpperCase() || "-"}</span>
             </div>
 
             <div className="movie-detail-buttons">
@@ -493,22 +480,22 @@ function TVSeriesDetail() {
                 {isSaved ? <FaBookmark /> : <FaRegBookmark />}
                 {isSaved ? "Tersimpan di Watchlist" : "Simpan ke Watchlist"}
               </button>
-              <button type="button" onClick={handleShare} aria-label="Bagikan TV series">
+              <button type="button" aria-label="Bagikan film">
                 <FaShareAlt />
               </button>
             </div>
           </div>
 
           <article className="movie-detail-poster-card">
-            <img src={series.poster_url} alt={seriesTitle} />
+            <img src={movie.poster_url} alt={movie.title} />
             <div className="movie-detail-poster-meta">
               <span>
                 <FaStar />
-                {formatRating(series.vote_average)}
+                {formatRating(movie.vote_average)}
               </span>
-              <span>{getYear(series.first_air_date)}</span>
+              <span>{getYear(movie.release_date)}</span>
             </div>
-            <h2>{seriesTitle}</h2>
+            <h2>{movie.title}</h2>
           </article>
         </div>
       </section>
@@ -517,8 +504,8 @@ function TVSeriesDetail() {
         <div className="movie-detail-genre-block">
           <h3>Genre</h3>
           <div className="movie-detail-tags">
-            {(series.genres || []).slice(0, 4).map((genre) => (
-              <Link key={genre.id} to={buildGenrePath(genre, "tv")}>
+            {(movie.genres || []).slice(0, 4).map((genre) => (
+              <Link key={genre.id} to={buildGenrePath(genre, "movie")}>
                 {genre.name}
               </Link>
             ))}
@@ -536,12 +523,12 @@ function TVSeriesDetail() {
                 return (
                   <a
                     className="movie-detail-provider"
-                    href={series.watch_providers.link || "#"}
+                    href={movie.watch_providers.link || "#"}
                     key={provider.provider_id}
                     target="_blank"
                     rel="noreferrer"
                     title={provider.provider_name}
-                    aria-label={`Lihat ${seriesTitle} di ${provider.provider_name}`}
+                    aria-label={`Lihat ${movie.title} di ${provider.provider_name}`}
                   >
                     {providerIcon ? (
                       <img src={providerIcon} alt={provider.provider_name} />
@@ -554,7 +541,7 @@ function TVSeriesDetail() {
             </div>
           ) : (
             <p className="movie-detail-provider-empty">
-              Belum tersedia di region {series.watch_providers?.region || "US"}.
+              Belum tersedia di region {movie.watch_providers?.region || "ID"}.
             </p>
           )}
         </div>
@@ -588,7 +575,7 @@ function TVSeriesDetail() {
                   }`}
                   ref={synopsisRef}
                 >
-                  {series.overview || "Sinopsis belum tersedia."}
+                  {movie.overview || "Sinopsis belum tersedia."}
                 </p>
                 {showSynopsisToggle && (
                   <button
@@ -602,7 +589,7 @@ function TVSeriesDetail() {
               </>
             ) : (
               <p className="movie-detail-synopsis">
-                Review penonton membantu menentukan rekomendasi dan rating TV series ini.
+                Review penonton membantu menentukan rekomendasi dan rating film ini.
               </p>
             )}
 
@@ -634,7 +621,6 @@ function TVSeriesDetail() {
               </span>
             </div>
             <p>{reviewSummary.review_count} review penonton</p>
-            <p>{formatSeriesCount(series)}</p>
           </div>
         </div>
       </section>
@@ -646,7 +632,7 @@ function TVSeriesDetail() {
           <div className="movie-review-form-top">
             <textarea
               maxLength={500}
-              placeholder="Bagikan pendapatmu tentang TV series ini..."
+              placeholder="Bagikan pendapatmu tentang film ini..."
               value={reviewContent}
               onChange={(event) => setReviewContent(event.target.value)}
             />
@@ -738,7 +724,7 @@ function TVSeriesDetail() {
               </article>
             ))
           ) : (
-            <p className="movie-review-empty">Belum ada review untuk TV series ini.</p>
+            <p className="movie-review-empty">Belum ada review untuk film ini.</p>
           )}
         </div>
       </section>
@@ -760,14 +746,14 @@ function TVSeriesDetail() {
       </footer>
 
       <WatchlistConfirmModal
-        open={Boolean(pendingWatchlistSeries)}
-        item={pendingWatchlistSeries}
-        mediaLabel="Series"
-        onCancel={() => setPendingWatchlistSeries(null)}
+        open={Boolean(pendingWatchlistMovie)}
+        item={pendingWatchlistMovie}
+        mediaLabel="Film"
+        onCancel={() => setPendingWatchlistMovie(null)}
         onConfirm={confirmSaveToWatchlist}
       />
     </main>
   );
 }
 
-export default TVSeriesDetail;
+export default MovieDetail;

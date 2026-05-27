@@ -1,57 +1,77 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import SiteNavbar from "../components/SiteNavbar";
-import bookmarkIcon from "../assets/icon/bookmark-icon.svg";
-import checkIcon from "../assets/icon/check-icon.svg";
-import clockIcon from "../assets/icon/clock-icon.svg";
-import closeIcon from "../assets/icon/close-icon.svg";
-import facebookIcon from "../assets/icon/facebook-icon.svg";
-import filterIcon from "../assets/icon/sliders-horizontal-icon.svg";
-import searchIcon from "../assets/icon/search-line-icon.svg";
-import starIcon from "../assets/icon/star-icon.svg";
-import twitterIcon from "../assets/icon/twitter-icon.svg";
-import youtubeIcon from "../assets/icon/youtube-icon.svg";
+import SiteNavbar from "../../components/layout/SiteNavbar";
+import bookmarkIcon from "../../assets/icon/bookmark-icon.svg";
+import checkIcon from "../../assets/icon/check-icon.svg";
+import clockIcon from "../../assets/icon/clock-icon.svg";
+import closeIcon from "../../assets/icon/close-icon.svg";
+import facebookIcon from "../../assets/icon/facebook-icon.svg";
+import filterIcon from "../../assets/icon/sliders-horizontal-icon.svg";
+import searchIcon from "../../assets/icon/search-line-icon.svg";
+import starIcon from "../../assets/icon/star-icon.svg";
+import twitterIcon from "../../assets/icon/twitter-icon.svg";
+import youtubeIcon from "../../assets/icon/youtube-icon.svg";
+import {
+  deleteWatchlistItem,
+  fetchWatchlist,
+  addWatchlistItem,
+  mapMovieToWatchlistPayload,
+  mapSeriesToWatchlistPayload,
+  updateWatchlistItemStatus,
+} from "../../utils/watchlist";
 import "./WatchlistPage.css";
 
-const getStoredUser = () => {
-  try {
-    return JSON.parse(localStorage.getItem("user"));
-  } catch {
-    return null;
-  }
-};
-
-const readStorageArray = (key) => {
+const readStoredJson = (key, fallbackValue) => {
   try {
     const value = JSON.parse(localStorage.getItem(key));
-    return Array.isArray(value) ? value : [];
+    return value ?? fallbackValue;
   } catch {
-    return [];
+    return fallbackValue;
   }
 };
 
-const readStorageObject = (key) => {
-  try {
-    const value = JSON.parse(localStorage.getItem(key));
-    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
-  } catch {
-    return {};
-  }
+const getStoredUser = () => readStoredJson("user", null);
+
+const getLegacyWatchlistItems = () => {
+  const user = getStoredUser();
+  const userId = user?.id_user || "guest";
+  const movies = readStoredJson(`flix_movie_watchlist_${userId}`, []);
+  const series = readStoredJson(`flix_tv_watchlist_${userId}`, []);
+
+  return [
+    ...movies.map((item) => ({ mediaType: "movie", item })),
+    ...series.map((item) => ({ mediaType: "tv", item })),
+  ].filter(({ item }) => Number.isInteger(Number(item?.id)));
 };
 
-const getUserStorageId = (user) => user?.id_user || "guest";
-const getMovieWatchlistKey = (user) => `flix_movie_watchlist_${getUserStorageId(user)}`;
-const getSeriesWatchlistKey = (user) => `flix_tv_watchlist_${getUserStorageId(user)}`;
-const getWatchStatusKey = (user) => `flix_watchlist_status_${getUserStorageId(user)}`;
+const syncLegacyWatchlist = async (token) => {
+  const legacyItems = getLegacyWatchlistItems();
 
-const getItemKey = (item) => `${item.mediaType}:${item.id}`;
+  if (legacyItems.length === 0) {
+    return false;
+  }
+
+  const results = await Promise.allSettled(
+    legacyItems.map(({ mediaType, item }) =>
+      addWatchlistItem({
+        token,
+        payload:
+          mediaType === "tv"
+            ? mapSeriesToWatchlistPayload(item)
+            : mapMovieToWatchlistPayload(item),
+      }),
+    ),
+  );
+
+  return results.some((result) => result.status === "fulfilled");
+};
 
 const normalizeItem = (item, mediaType) => ({
   ...item,
-  mediaType,
+  mediaType: item.mediaType || item.media_type || mediaType,
   title: item.title || item.name || item.original_name || "Untitled",
-  poster: item.poster || item.poster_url,
-  year: item.year || item.releaseLabel?.slice?.(-4) || "-",
+  poster: item.poster || item.poster_url || "https://placehold.co/300x450/141414/ffffff?text=FLIX",
+  year: item.year || item.release_date?.slice?.(0, 4) || item.releaseLabel?.slice?.(0, 4) || "-",
   rating: item.rating || "-",
   overview: item.overview || "Deskripsi belum tersedia.",
 });
@@ -102,50 +122,47 @@ function WatchlistCard({ item, watched, onOpen, onToggleWatched, onRemove }) {
 
 function WatchlistPage() {
   const navigate = useNavigate();
-  const user = useMemo(() => getStoredUser(), []);
-  const movieWatchlistKey = useMemo(() => getMovieWatchlistKey(user), [user]);
-  const seriesWatchlistKey = useMemo(() => getSeriesWatchlistKey(user), [user]);
-  const watchStatusKey = useMemo(() => getWatchStatusKey(user), [user]);
-
-  const [movieWatchlist, setMovieWatchlist] = useState(() =>
-    readStorageArray(movieWatchlistKey),
-  );
-  const [seriesWatchlist, setSeriesWatchlist] = useState(() =>
-    readStorageArray(seriesWatchlistKey),
-  );
-  const [watchStatus, setWatchStatus] = useState(() =>
-    readStorageObject(watchStatusKey),
-  );
+  const token = localStorage.getItem("token");
+  const [watchlistItems, setWatchlistItems] = useState([]);
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [mediaFilter, setMediaFilter] = useState("all");
   const [showFilter, setShowFilter] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    localStorage.setItem(movieWatchlistKey, JSON.stringify(movieWatchlist));
-  }, [movieWatchlist, movieWatchlistKey]);
+    const loadWatchlist = async () => {
+      if (!token) {
+        setWatchlistItems([]);
+        setLoading(false);
+        return;
+      }
 
-  useEffect(() => {
-    localStorage.setItem(seriesWatchlistKey, JSON.stringify(seriesWatchlist));
-  }, [seriesWatchlist, seriesWatchlistKey]);
+      try {
+        setLoading(true);
+        setErrorMessage("");
+        const data = await fetchWatchlist({ token });
+        const didSyncLegacy = await syncLegacyWatchlist(token);
+        const latestData = didSyncLegacy ? await fetchWatchlist({ token }) : data;
 
-  useEffect(() => {
-    localStorage.setItem(watchStatusKey, JSON.stringify(watchStatus));
-  }, [watchStatus, watchStatusKey]);
+        setWatchlistItems(latestData.items.map((item) => normalizeItem(item)));
+      } catch (error) {
+        setErrorMessage(error.message || "Gagal memuat watchlist");
+        setWatchlistItems([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const watchlistItems = useMemo(
-    () => [
-      ...movieWatchlist.map((item) => normalizeItem(item, "movie")),
-      ...seriesWatchlist.map((item) => normalizeItem(item, "tv")),
-    ],
-    [movieWatchlist, seriesWatchlist],
-  );
+    loadWatchlist();
+  }, [token]);
 
-  const watchedCount = watchlistItems.filter((item) => watchStatus[getItemKey(item)]).length;
+  const watchedCount = watchlistItems.filter((item) => item.status === "watched").length;
   const unwatchedCount = watchlistItems.length - watchedCount;
 
   const visibleItems = watchlistItems.filter((item) => {
-    const itemWatched = Boolean(watchStatus[getItemKey(item)]);
+    const itemWatched = item.status === "watched";
     const matchesTab =
       activeTab === "all" ||
       (activeTab === "watched" && itemWatched) ||
@@ -158,29 +175,36 @@ function WatchlistPage() {
     return matchesTab && matchesMedia && matchesSearch;
   });
 
-  const removeItem = (item) => {
-    if (item.mediaType === "movie") {
-      setMovieWatchlist((current) =>
-        current.filter((movie) => String(movie.id) !== String(item.id)),
-      );
-    } else {
-      setSeriesWatchlist((current) =>
-        current.filter((series) => String(series.id) !== String(item.id)),
-      );
+  const removeItem = async (item) => {
+    if (!token || !item.id_watchlist) {
+      return;
     }
 
-    setWatchStatus((current) => {
-      const nextStatus = { ...current };
-      delete nextStatus[getItemKey(item)];
-      return nextStatus;
-    });
+    await deleteWatchlistItem({ token, idWatchlist: item.id_watchlist });
+    setWatchlistItems((current) =>
+      current.filter((watchlistItem) => watchlistItem.id_watchlist !== item.id_watchlist),
+    );
   };
 
-  const toggleWatched = (item) => {
-    setWatchStatus((current) => ({
-      ...current,
-      [getItemKey(item)]: !current[getItemKey(item)],
-    }));
+  const toggleWatched = async (item) => {
+    if (!token || !item.id_watchlist) {
+      return;
+    }
+
+    const nextStatus = item.status === "watched" ? "pending" : "watched";
+    const updatedItem = await updateWatchlistItemStatus({
+      token,
+      idWatchlist: item.id_watchlist,
+      status: nextStatus,
+    });
+
+    setWatchlistItems((current) =>
+      current.map((watchlistItem) =>
+        watchlistItem.id_watchlist === item.id_watchlist
+          ? normalizeItem(updatedItem)
+          : watchlistItem,
+      ),
+    );
   };
 
   const openDetail = (item) => {
@@ -281,13 +305,24 @@ function WatchlistPage() {
           ))}
         </div>
 
-        {visibleItems.length > 0 ? (
+        {loading ? (
+          <div className="watchlist-empty">
+            <h2>Memuat watchlist...</h2>
+          </div>
+        ) : errorMessage ? (
+          <div className="watchlist-empty">
+            <h2>{errorMessage}</h2>
+            <button type="button" onClick={() => window.location.reload()}>
+              Muat Ulang
+            </button>
+          </div>
+        ) : visibleItems.length > 0 ? (
           <div className="watchlist-grid">
             {visibleItems.map((item) => (
               <WatchlistCard
-                key={getItemKey(item)}
+                key={`${item.mediaType}:${item.id}`}
                 item={item}
-                watched={Boolean(watchStatus[getItemKey(item)])}
+                watched={item.status === "watched"}
                 onOpen={openDetail}
                 onToggleWatched={toggleWatched}
                 onRemove={removeItem}

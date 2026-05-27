@@ -1,1 +1,0 @@
-tolong kenfigutasikan frontend dan backend agar bisa berjalan dengan baik dan tolong betulkan env file karna saya membuat db baru bernama flix_db_1

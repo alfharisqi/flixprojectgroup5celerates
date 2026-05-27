@@ -11,7 +11,7 @@ import {
   FaStar,
   FaTimes,
 } from "react-icons/fa";
-import SiteNavbar from "../components/SiteNavbar";
+import SiteNavbar from "../../components/layout/SiteNavbar";
 import "./Watchlist.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;

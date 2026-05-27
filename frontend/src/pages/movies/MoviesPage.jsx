@@ -15,21 +15,21 @@ import {
   FaTwitter,
   FaYoutube,
 } from "react-icons/fa";
-import SiteNavbar from "../components/SiteNavbar";
-import FilterPopup from "../components/FilterPopup";
-import WatchlistConfirmModal from "../components/WatchlistConfirmModal";
+import SiteNavbar from "../../components/layout/SiteNavbar";
+import FilterPopup from "../../components/common/FilterPopup";
+import WatchlistConfirmModal from "../../components/watchlist/WatchlistConfirmModal";
 import {
   addWatchlistItem,
   deleteWatchlistItem,
   fetchWatchlist,
   mapMovieToWatchlistPayload,
-} from "../utils/watchlist";
-import amazonPrimeVideoIcon from "../assets/platformstream-logo/amazonprimevideo-icon.png";
-import appleTvIcon from "../assets/platformstream-logo/appletv-icon.png";
-import catchplayIcon from "../assets/platformstream-logo/catchplay-icon.png";
-import disneyHotstarIcon from "../assets/platformstream-logo/disneyhotstar-icon.png";
-import hboMaxIcon from "../assets/platformstream-logo/HBOmax-icon.png";
-import netflixIcon from "../assets/platformstream-logo/netflix-icon.png";
+} from "../../utils/watchlist";
+import amazonPrimeVideoIcon from "../../assets/platformstream-logo/amazonprimevideo-icon.png";
+import appleTvIcon from "../../assets/platformstream-logo/appletv-icon.png";
+import catchplayIcon from "../../assets/platformstream-logo/catchplay-icon.png";
+import disneyHotstarIcon from "../../assets/platformstream-logo/disneyhotstar-icon.png";
+import hboMaxIcon from "../../assets/platformstream-logo/HBOmax-icon.png";
+import netflixIcon from "../../assets/platformstream-logo/netflix-icon.png";
 import "./MoviesPage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;

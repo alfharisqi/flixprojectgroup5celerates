@@ -1,7 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import flixLogo from "../assets/flix-logo.png";
+import flixLogo from "../../assets/flix-logo.png";
 import "./Login.css";
 
 function ForgotPassword() {

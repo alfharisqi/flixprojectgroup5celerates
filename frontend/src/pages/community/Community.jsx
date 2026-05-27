@@ -13,10 +13,10 @@ import {
   FiUsers,
   FiX,
 } from "react-icons/fi";
-import SiteNavbar from "../components/SiteNavbar";
-import PostCard from "../components/PostCard";
-import PostInsightModal from "../components/PostInsightModal";
-import PostSearchModal from "../components/PostSearchModal";
+import SiteNavbar from "../../components/layout/SiteNavbar";
+import PostCard from "../../components/community/PostCard";
+import PostInsightModal from "../../components/community/PostInsightModal";
+import PostSearchModal from "../../components/community/PostSearchModal";
 import "./Community.css";
 
 function Community() {

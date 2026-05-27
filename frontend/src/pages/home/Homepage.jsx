@@ -12,14 +12,22 @@ import {
   FaTwitter,
   FaYoutube,
 } from "react-icons/fa";
-import SiteNavbar from "../components/SiteNavbar";
-import FilterPopup from "../components/FilterPopup";
-import menegangkanIcon from "../assets/emoticon/menegangkan-emoticon.png";
-import pikiranIcon from "../assets/emoticon/pikiran-emoticon.png";
-import romantisIcon from "../assets/emoticon/romantis-emoticon.png";
-import santaiIcon from "../assets/emoticon/santai-emoticon.png";
-import sedihIcon from "../assets/emoticon/sedih-emoticon.png";
-import seruIcon from "../assets/emoticon/seru-emoticon.png";
+import SiteNavbar from "../../components/layout/SiteNavbar";
+import FilterPopup from "../../components/common/FilterPopup";
+import Footer from "../../components/layout/Footer";
+import WatchlistConfirmModal from "../../components/watchlist/WatchlistConfirmModal";
+import {
+  addWatchlistItem,
+  deleteWatchlistItem,
+  fetchWatchlist,
+  mapMovieToWatchlistPayload,
+} from "../../utils/watchlist";
+import menegangkanIcon from "../../assets/emoticon/menegangkan-emoticon.png";
+import pikiranIcon from "../../assets/emoticon/pikiran-emoticon.png";
+import romantisIcon from "../../assets/emoticon/romantis-emoticon.png";
+import santaiIcon from "../../assets/emoticon/santai-emoticon.png";
+import sedihIcon from "../../assets/emoticon/sedih-emoticon.png";
+import seruIcon from "../../assets/emoticon/seru-emoticon.png";
 import "./Homepage.css";
 
 const fallbackHeroMovie = {
@@ -247,35 +255,17 @@ const uniqueById = (movies) => {
   });
 };
 
-const getStoredUser = () => {
-  try {
-    return JSON.parse(localStorage.getItem("user"));
-  } catch {
-    return null;
-  }
-};
-
-const getWatchlistKey = (user) => `flix_movie_watchlist_${user?.id_user || "guest"}`;
-
-const readWatchlist = (key) => {
-  try {
-    const savedWatchlist = JSON.parse(localStorage.getItem(key));
-    return Array.isArray(savedWatchlist) ? savedWatchlist : [];
-  } catch {
-    return [];
-  }
-};
-
 function Homepage() {
   const navigate = useNavigate();
   const moodScrollerRef = useRef(null);
+  const token = localStorage.getItem("token");
 
   const [selectedMood, setSelectedMood] = useState(moods[0]);
-  const [watchlist, setWatchlist] = useState([]);
+
   const [hitMovies, setHitMovies] = useState([fallbackHeroMovie, ...fallbackMovies]);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const [moodMovies, setMoodMovies] = useState(fallbackMovies);
-  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const [watchlist, setWatchlist] = useState([]);
   const [pendingWatchlistMovie, setPendingWatchlistMovie] = useState(null);
   const [providersByMovieId, setProvidersByMovieId] = useState({});
   const [filterValues, setFilterValues] = useState(defaultFilterValues);
@@ -289,6 +279,28 @@ function Homepage() {
     filterValues,
     providersByMovieId,
   );
+  const savedMovieIds = useMemo(
+    () => new Set(watchlist.map((movie) => String(movie.id))),
+    [watchlist],
+  );
+
+  useEffect(() => {
+    const loadWatchlist = async () => {
+      if (!token) {
+        setWatchlist([]);
+        return;
+      }
+
+      try {
+        const data = await fetchWatchlist({ token, mediaType: "movie" });
+        setWatchlist(data.items);
+      } catch {
+        setWatchlist([]);
+      }
+    };
+
+    loadWatchlist();
+  }, [token]);
 
   useEffect(() => {
     const fetchGenres = async () => {
@@ -464,6 +476,54 @@ function Homepage() {
     if (Number.isInteger(Number(movieId))) {
       navigate(`/movie/${movieId}`);
     }
+  };
+
+  const saveMovieToWatchlist = async (movie) => {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    const savedItem = await addWatchlistItem({
+      token,
+      payload: mapMovieToWatchlistPayload(movie),
+    });
+
+    setWatchlist((currentWatchlist) => {
+      const movieId = String(savedItem.id);
+      const withoutDuplicate = currentWatchlist.filter(
+        (savedMovie) => String(savedMovie.id) !== movieId,
+      );
+
+      return [savedItem, ...withoutDuplicate];
+    });
+  };
+
+  const toggleWatchlist = async (movie) => {
+    const movieId = String(movie.id);
+
+    if (savedMovieIds.has(movieId)) {
+      const savedItem = watchlist.find((savedMovie) => String(savedMovie.id) === movieId);
+
+      if (savedItem?.id_watchlist && token) {
+        await deleteWatchlistItem({ token, idWatchlist: savedItem.id_watchlist });
+      }
+
+      setWatchlist((currentWatchlist) =>
+        currentWatchlist.filter((savedMovie) => String(savedMovie.id) !== movieId),
+      );
+      return;
+    }
+
+    setPendingWatchlistMovie(movie);
+  };
+
+  const confirmSaveToWatchlist = async () => {
+    if (pendingWatchlistMovie) {
+      await saveMovieToWatchlist(pendingWatchlistMovie);
+    }
+
+    setPendingWatchlistMovie(null);
   };
 
   return (

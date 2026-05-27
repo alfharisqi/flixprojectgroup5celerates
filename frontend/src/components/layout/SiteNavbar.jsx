@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import flixLogo from "../assets/flix-logo.png";
-import searchIcon from "../assets/icon/search-icon.png";
-import chatIcon from "../assets/icon/chat-icon.png";
-import notificationIcon from "../assets/icon/notification-icon.png";
-import profileIcon from "../assets/icon/profile-icon.png";
-import myWatchlistIcon from "../assets/icon/mywatchlist-icon.png";
-import communityIcon from "../assets/icon/community-icon.png";
-import settingIcon from "../assets/icon/setting-icon.png";
-import logoutIcon from "../assets/icon/logout-icon.png";
-import blueDiamondIcon from "../assets/icon/bluediamond-icon.png";
-import SearchModal from "./SearchModal";
+import flixLogo from "../../assets/flix-logo.png";
+import searchIcon from "../../assets/icon/search-icon.png";
+import chatIcon from "../../assets/icon/chat-icon.png";
+import notificationIcon from "../../assets/icon/notification-icon.png";
+import profileIcon from "../../assets/icon/profile-icon.png";
+import myWatchlistIcon from "../../assets/icon/mywatchlist-icon.png";
+import communityIcon from "../../assets/icon/community-icon.png";
+import settingIcon from "../../assets/icon/setting-icon.png";
+import logoutIcon from "../../assets/icon/logout-icon.png";
+import blueDiamondIcon from "../../assets/icon/bluediamond-icon.png";
+import SearchModal from "../search/SearchModal";
 import "./SiteNavbar.css";
 
 const navItems = [

@@ -11,8 +11,15 @@ import {
   FaTwitter,
   FaYoutube,
 } from "react-icons/fa";
-import SiteNavbar from "../components/SiteNavbar";
-import FilterPopup from "../components/FilterPopup";
+import SiteNavbar from "../../components/layout/SiteNavbar";
+import FilterPopup from "../../components/common/FilterPopup";
+import WatchlistConfirmModal from "../../components/watchlist/WatchlistConfirmModal";
+import {
+  addWatchlistItem,
+  deleteWatchlistItem,
+  fetchWatchlist,
+  mapSeriesToWatchlistPayload,
+} from "../../utils/watchlist";
 import "./TVSeriesPage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -298,9 +305,9 @@ function SeriesCard({
 
 function TVSeriesPage() {
   const navigate = useNavigate();
-  const user = useMemo(() => getStoredUser(), []);
-  const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
-  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const token = localStorage.getItem("token");
+  const [watchlist, setWatchlist] = useState([]);
+  const [pendingWatchlistSeries, setPendingWatchlistSeries] = useState(null);
   const [trendingSeries, setTrendingSeries] = useState(fallbackSeries.slice(0, 4));
   const [popularSeries, setPopularSeries] = useState(fallbackSeries);
   const [allSeries, setAllSeries] = useState(fallbackSeries);
@@ -523,24 +530,36 @@ function TVSeriesPage() {
     }
   };
 
-  const toggleWatchlist = (series) => {
+  const saveSeriesToWatchlist = async (series) => {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    const savedItem = await addWatchlistItem({
+      token,
+      payload: mapSeriesToWatchlistPayload(series),
+    });
+
     setWatchlist((currentWatchlist) => {
-      const seriesId = String(series.id);
+      const seriesId = String(savedItem.id);
+      const withoutDuplicate = currentWatchlist.filter(
+        (savedSeries) => String(savedSeries.id) !== seriesId,
+      );
 
-      if (currentWatchlist.some((savedSeries) => String(savedSeries.id) === seriesId)) {
-        return currentWatchlist.filter(
-          (savedSeries) => String(savedSeries.id) !== seriesId,
-        );
-      }
-
-      return [series, ...currentWatchlist].slice(0, 20);
+      return [savedItem, ...withoutDuplicate];
     });
   };
 
-  const toggleWatchlist = (series) => {
+  const toggleWatchlist = async (series) => {
     const seriesId = String(series.id);
 
     if (savedSeriesIds.has(seriesId)) {
+      const savedItem = watchlist.find((savedSeries) => String(savedSeries.id) === seriesId);
+      if (savedItem?.id_watchlist && token) {
+        await deleteWatchlistItem({ token, idWatchlist: savedItem.id_watchlist });
+      }
+
       setWatchlist((currentWatchlist) =>
         currentWatchlist.filter((savedSeries) => String(savedSeries.id) !== seriesId),
       );
@@ -550,9 +569,9 @@ function TVSeriesPage() {
     setPendingWatchlistSeries(series);
   };
 
-  const confirmSaveToWatchlist = () => {
+  const confirmSaveToWatchlist = async () => {
     if (pendingWatchlistSeries) {
-      saveSeriesToWatchlist(pendingWatchlistSeries);
+      await saveSeriesToWatchlist(pendingWatchlistSeries);
     }
 
     setPendingWatchlistSeries(null);

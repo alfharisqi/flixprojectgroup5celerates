@@ -3,6 +3,19 @@ import pool from "../config/db.js";
 const validMediaTypes = new Set(["movie", "tv"]);
 const validStatuses = new Set(["pending", "watched"]);
 
+const getAuthenticatedUserId = (req) => req.user?.id_user || req.user?.id;
+
+const ensureUserId = (req, res) => {
+  const userId = getAuthenticatedUserId(req);
+
+  if (!userId) {
+    res.status(401).json({ message: "User belum login" });
+    return null;
+  }
+
+  return userId;
+};
+
 const mapWatchlistItem = (item) => ({
   id_watchlist: item.id_watchlist,
   media_type: item.media_type,
@@ -35,7 +48,13 @@ const getSummary = async (userId) => {
 export const getWatchlist = async (req, res) => {
   try {
     const { media_type, status, search = "" } = req.query;
-    const params = [req.user.id_user];
+    const userId = ensureUserId(req, res);
+
+    if (!userId) {
+      return null;
+    }
+
+    const params = [userId];
     const conditions = ["id_user = $1"];
 
     if (media_type && validMediaTypes.has(media_type)) {
@@ -62,7 +81,7 @@ export const getWatchlist = async (req, res) => {
     );
 
     return res.json({
-      summary: await getSummary(req.user.id_user),
+      summary: await getSummary(userId),
       items: result.rows.map(mapWatchlistItem),
     });
   } catch (error) {
@@ -76,6 +95,11 @@ export const getWatchlist = async (req, res) => {
 export const getWatchlistItemStatus = async (req, res) => {
   try {
     const { mediaType, tmdbId } = req.params;
+    const userId = ensureUserId(req, res);
+
+    if (!userId) {
+      return null;
+    }
 
     if (!validMediaTypes.has(mediaType)) {
       return res.status(400).json({ message: "Tipe media tidak valid" });
@@ -85,7 +109,7 @@ export const getWatchlistItemStatus = async (req, res) => {
       `SELECT *
        FROM flix.watchlist
        WHERE id_user = $1 AND media_type = $2 AND tmdb_id = $3`,
-      [req.user.id_user, mediaType, Number(tmdbId)],
+      [userId, mediaType, Number(tmdbId)],
     );
 
     return res.json({
@@ -102,6 +126,12 @@ export const getWatchlistItemStatus = async (req, res) => {
 
 export const addToWatchlist = async (req, res) => {
   try {
+    const userId = ensureUserId(req, res);
+
+    if (!userId) {
+      return null;
+    }
+
     const {
       media_type,
       tmdb_id,
@@ -131,9 +161,9 @@ export const addToWatchlist = async (req, res) => {
              overview = EXCLUDED.overview,
              vote_average = EXCLUDED.vote_average,
              updated_at = CURRENT_TIMESTAMP
-       RETURNING *`,
+      RETURNING *`,
       [
-        req.user.id_user,
+        userId,
         media_type,
         Number(tmdb_id),
         title,
@@ -159,6 +189,12 @@ export const addToWatchlist = async (req, res) => {
 
 export const updateWatchlistStatus = async (req, res) => {
   try {
+    const userId = ensureUserId(req, res);
+
+    if (!userId) {
+      return null;
+    }
+
     const { status } = req.body;
 
     if (!validStatuses.has(status)) {
@@ -170,7 +206,7 @@ export const updateWatchlistStatus = async (req, res) => {
        SET status = $1, updated_at = CURRENT_TIMESTAMP
        WHERE id_watchlist = $2 AND id_user = $3
        RETURNING *`,
-      [status, req.params.id, req.user.id_user],
+      [status, req.params.id, userId],
     );
 
     if (result.rows.length === 0) {
@@ -191,11 +227,17 @@ export const updateWatchlistStatus = async (req, res) => {
 
 export const removeFromWatchlist = async (req, res) => {
   try {
+    const userId = ensureUserId(req, res);
+
+    if (!userId) {
+      return null;
+    }
+
     const result = await pool.query(
       `DELETE FROM flix.watchlist
        WHERE id_watchlist = $1 AND id_user = $2
        RETURNING id_watchlist`,
-      [req.params.id, req.user.id_user],
+      [req.params.id, userId],
     );
 
     if (result.rows.length === 0) {

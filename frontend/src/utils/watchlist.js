@@ -1,4 +1,4 @@
-const apiUrl = import.meta.env.VITE_API_URL;
+const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const getYear = (date) => date?.slice(0, 4) || "-";
 
@@ -45,13 +45,18 @@ export const mapApiWatchlistItem = (item) => ({
   id: item.tmdb_id,
   tmdb_id: item.tmdb_id,
   media_type: item.media_type,
+  mediaType: item.media_type,
   title: item.title,
   year: getYear(item.release_date),
   rating: formatRatingFromVoteAverage(item.vote_average),
-  poster: item.poster_url,
+  poster: item.poster_url || "https://placehold.co/300x450/141414/ffffff?text=FLIX",
+  poster_url: item.poster_url,
   backdrop: item.backdrop_url || item.poster_url,
+  backdrop_url: item.backdrop_url,
   overview: item.overview,
   releaseLabel: item.release_date || "-",
+  release_date: item.release_date,
+  vote_average: item.vote_average,
   status: item.status,
   genre_ids: [],
 });
@@ -125,6 +130,18 @@ export const deleteWatchlistItem = async ({ token, idWatchlist }) => {
       Authorization: `Bearer ${token}`,
     },
   });
+};
+
+export const updateWatchlistItemStatus = async ({ token, idWatchlist, status }) => {
+  const data = await requestJson(`/api/watchlist/${idWatchlist}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  return mapApiWatchlistItem(data.item);
 };
 
 export const findSavedWatchlistItem = (watchlist, mediaType, tmdbId) =>
