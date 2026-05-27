@@ -36,6 +36,7 @@ const getActiveKey = (pathname, activeKey) => {
   if (pathname.startsWith("/tv-series")) return "tv";
   if (pathname.startsWith("/movie") || pathname.startsWith("/movies")) return "movies";
   if (pathname.startsWith("/community") || pathname.startsWith("/post")) return "community";
+  if (pathname.startsWith("/watchlist")) return "";
   return "";
 };
 

@@ -14,14 +14,6 @@ import {
 } from "react-icons/fa";
 import SiteNavbar from "../components/SiteNavbar";
 import FilterPopup from "../components/FilterPopup";
-import Footer from "../components/Footer";
-import {
-  addWatchlistItem,
-  deleteWatchlistItem,
-  fetchWatchlist,
-  findSavedWatchlistItem,
-  mapMovieToWatchlistPayload,
-} from "../utils/watchlist";
 import menegangkanIcon from "../assets/emoticon/menegangkan-emoticon.png";
 import pikiranIcon from "../assets/emoticon/pikiran-emoticon.png";
 import romantisIcon from "../assets/emoticon/romantis-emoticon.png";
@@ -255,16 +247,36 @@ const uniqueById = (movies) => {
   });
 };
 
+const getStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user"));
+  } catch {
+    return null;
+  }
+};
+
+const getWatchlistKey = (user) => `flix_movie_watchlist_${user?.id_user || "guest"}`;
+
+const readWatchlist = (key) => {
+  try {
+    const savedWatchlist = JSON.parse(localStorage.getItem(key));
+    return Array.isArray(savedWatchlist) ? savedWatchlist : [];
+  } catch {
+    return [];
+  }
+};
+
 function Homepage() {
   const navigate = useNavigate();
   const moodScrollerRef = useRef(null);
-  const token = localStorage.getItem("token");
 
   const [selectedMood, setSelectedMood] = useState(moods[0]);
   const [watchlist, setWatchlist] = useState([]);
   const [hitMovies, setHitMovies] = useState([fallbackHeroMovie, ...fallbackMovies]);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const [moodMovies, setMoodMovies] = useState(fallbackMovies);
+  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const [pendingWatchlistMovie, setPendingWatchlistMovie] = useState(null);
   const [providersByMovieId, setProvidersByMovieId] = useState({});
   const [filterValues, setFilterValues] = useState(defaultFilterValues);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -277,28 +289,6 @@ function Homepage() {
     filterValues,
     providersByMovieId,
   );
-  const savedMovieIds = useMemo(
-    () => new Set(watchlist.map((movie) => String(movie.id))),
-    [watchlist],
-  );
-
-  useEffect(() => {
-    const loadWatchlist = async () => {
-      if (!token) {
-        setWatchlist([]);
-        return;
-      }
-
-      try {
-        const data = await fetchWatchlist({ token, mediaType: "movie" });
-        setWatchlist(data.items);
-      } catch {
-        setWatchlist([]);
-      }
-    };
-
-    loadWatchlist();
-  }, [token]);
 
   useEffect(() => {
     const fetchGenres = async () => {
@@ -473,41 +463,6 @@ function Homepage() {
   const openMovieDetail = (movieId) => {
     if (Number.isInteger(Number(movieId))) {
       navigate(`/movie/${movieId}`);
-    }
-  };
-
-  const toggleWatchlist = async (movie) => {
-    if (!token) {
-      alert("Silakan login untuk menyimpan watchlist");
-      navigate("/login");
-      return;
-    }
-
-    if (!Number.isInteger(Number(movie.id))) {
-      alert("Film contoh tidak bisa disimpan ke watchlist");
-      return;
-    }
-
-    try {
-      const savedItem = findSavedWatchlistItem(watchlist, "movie", movie.id);
-
-      if (savedItem) {
-        await deleteWatchlistItem({ token, idWatchlist: savedItem.id_watchlist });
-        setWatchlist((currentWatchlist) =>
-          currentWatchlist.filter(
-            (item) => item.id_watchlist !== savedItem.id_watchlist,
-          ),
-        );
-        return;
-      }
-
-      const item = await addWatchlistItem({
-        token,
-        payload: mapMovieToWatchlistPayload(movie),
-      });
-      setWatchlist((currentWatchlist) => [item, ...currentWatchlist]);
-    } catch (error) {
-      alert(error.message || "Gagal menyimpan watchlist");
     }
   };
 
@@ -743,6 +698,14 @@ function Homepage() {
         sortOptions={movieSortOptions}
         onChange={setFilterValues}
         onClose={() => setIsFilterOpen(false)}
+      />
+
+      <WatchlistConfirmModal
+        open={Boolean(pendingWatchlistMovie)}
+        item={pendingWatchlistMovie}
+        mediaLabel="Film"
+        onCancel={() => setPendingWatchlistMovie(null)}
+        onConfirm={confirmSaveToWatchlist}
       />
     </main>
   );

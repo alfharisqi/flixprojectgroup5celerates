@@ -13,13 +13,6 @@ import {
 } from "react-icons/fa";
 import SiteNavbar from "../components/SiteNavbar";
 import FilterPopup from "../components/FilterPopup";
-import {
-  addWatchlistItem,
-  deleteWatchlistItem,
-  fetchWatchlist,
-  findSavedWatchlistItem,
-  mapSeriesToWatchlistPayload,
-} from "../utils/watchlist";
 import "./TVSeriesPage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -305,8 +298,9 @@ function SeriesCard({
 
 function TVSeriesPage() {
   const navigate = useNavigate();
-  const token = localStorage.getItem("token");
-  const [watchlist, setWatchlist] = useState([]);
+  const user = useMemo(() => getStoredUser(), []);
+  const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
+  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
   const [trendingSeries, setTrendingSeries] = useState(fallbackSeries.slice(0, 4));
   const [popularSeries, setPopularSeries] = useState(fallbackSeries);
   const [allSeries, setAllSeries] = useState(fallbackSeries);
@@ -529,39 +523,39 @@ function TVSeriesPage() {
     }
   };
 
-  const toggleWatchlist = async (series) => {
-    if (!token) {
-      alert("Silakan login untuk menyimpan watchlist");
-      navigate("/login");
-      return;
-    }
+  const toggleWatchlist = (series) => {
+    setWatchlist((currentWatchlist) => {
+      const seriesId = String(series.id);
 
-    if (!Number.isInteger(Number(series.id))) {
-      alert("Series contoh tidak bisa disimpan ke watchlist");
-      return;
-    }
-
-    try {
-      const savedItem = findSavedWatchlistItem(watchlist, "tv", series.id);
-
-      if (savedItem) {
-        await deleteWatchlistItem({ token, idWatchlist: savedItem.id_watchlist });
-        setWatchlist((currentWatchlist) =>
-          currentWatchlist.filter(
-            (item) => item.id_watchlist !== savedItem.id_watchlist,
-          ),
+      if (currentWatchlist.some((savedSeries) => String(savedSeries.id) === seriesId)) {
+        return currentWatchlist.filter(
+          (savedSeries) => String(savedSeries.id) !== seriesId,
         );
-        return;
       }
 
-      const item = await addWatchlistItem({
-        token,
-        payload: mapSeriesToWatchlistPayload(series),
-      });
-      setWatchlist((currentWatchlist) => [item, ...currentWatchlist]);
-    } catch (error) {
-      alert(error.message || "Gagal menyimpan watchlist");
+      return [series, ...currentWatchlist].slice(0, 20);
+    });
+  };
+
+  const toggleWatchlist = (series) => {
+    const seriesId = String(series.id);
+
+    if (savedSeriesIds.has(seriesId)) {
+      setWatchlist((currentWatchlist) =>
+        currentWatchlist.filter((savedSeries) => String(savedSeries.id) !== seriesId),
+      );
+      return;
     }
+
+    setPendingWatchlistSeries(series);
+  };
+
+  const confirmSaveToWatchlist = () => {
+    if (pendingWatchlistSeries) {
+      saveSeriesToWatchlist(pendingWatchlistSeries);
+    }
+
+    setPendingWatchlistSeries(null);
   };
 
   return (
@@ -708,6 +702,14 @@ function TVSeriesPage() {
         sortOptions={seriesSortOptions}
         onChange={setFilterValues}
         onClose={() => setIsFilterOpen(false)}
+      />
+
+      <WatchlistConfirmModal
+        open={Boolean(pendingWatchlistSeries)}
+        item={pendingWatchlistSeries}
+        mediaLabel="Series"
+        onCancel={() => setPendingWatchlistSeries(null)}
+        onConfirm={confirmSaveToWatchlist}
       />
     </main>
   );

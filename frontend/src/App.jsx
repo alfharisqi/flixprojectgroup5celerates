@@ -17,7 +17,7 @@ import ModeratorPage from "./pages/ModeratorPage";
 import ProfilePage from "./pages/ProfilePage";
 import PostDetail from "./pages/PostDetail";
 import CreatePostPage from "./pages/CreatePostPage";
-import Watchlist from "./pages/Watchlist";
+import WatchlistPage from "./pages/WatchlistPage";
 
 function App() {
   const location = useLocation();
@@ -57,12 +57,11 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-
         <Route
           path="/watchlist"
           element={
             <ProtectedRoute allowedRoles={["registered_user", "moderator", "admin"]}>
-              <Watchlist />
+              <WatchlistPage />
             </ProtectedRoute>
           }
         />

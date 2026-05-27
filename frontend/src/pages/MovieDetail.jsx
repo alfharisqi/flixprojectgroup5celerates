@@ -13,6 +13,13 @@ import {
   FaYoutube,
 } from "react-icons/fa";
 import SiteNavbar from "../components/SiteNavbar";
+import WatchlistConfirmModal from "../components/WatchlistConfirmModal";
+import {
+  addWatchlistItem,
+  deleteWatchlistItem,
+  fetchWatchlist,
+  mapMovieToWatchlistPayload,
+} from "../utils/watchlist";
 import amazonPrimeVideoIcon from "../assets/platformstream-logo/amazonprimevideo-icon.png";
 import appleTvIcon from "../assets/platformstream-logo/appletv-icon.png";
 import catchplayIcon from "../assets/platformstream-logo/catchplay-icon.png";
@@ -72,6 +79,29 @@ const formatRuntime = (minutes) => {
 
 const getYear = (date) => date?.slice(0, 4) || "-";
 
+const buildGenrePath = (genre, media = "movie") => {
+  const params = new URLSearchParams({
+    media,
+    genre: String(genre.id),
+    name: genre.name,
+  });
+
+  return `/genre?${params.toString()}`;
+};
+
+const mapMovieToWatchlist = (movie) => ({
+  id: movie.id,
+  title: movie.title || movie.original_title || "Untitled",
+  year: getYear(movie.release_date),
+  rating: formatRating(movie.vote_average),
+  poster: movie.poster_url,
+  backdrop: movie.backdrop_url || movie.poster_url,
+  overview: movie.overview,
+  releaseLabel: movie.release_date || "-",
+  providers: [],
+  genre_ids: movie.genre_ids || (movie.genres || []).map((genre) => genre.id),
+});
+
 const formatRating = (rating) => {
   const numericRating = Number(rating);
 
@@ -112,16 +142,6 @@ const buildReviewTree = (reviews) => {
   return roots;
 };
 
-const mapMovieToWatchlist = (movie) => ({
-  media_type: "movie",
-  tmdb_id: movie.id,
-  title: movie.title || movie.original_title || "Untitled",
-  poster_url: movie.poster_url,
-  backdrop_url: movie.backdrop_url || movie.poster_url,
-  release_date: movie.release_date,
-  overview: movie.overview,
-  vote_average: movie.vote_average,
-});
 
 function RatingStars({ value, onChange, readonly = false }) {
   return (
@@ -162,8 +182,8 @@ function MovieDetail() {
   }, []);
 
   const [movie, setMovie] = useState(null);
-  const [watchlistItem, setWatchlistItem] = useState(null);
-  const [watchlistLoading, setWatchlistLoading] = useState(false);
+  const [watchlist, setWatchlist] = useState([]);
+  const [pendingWatchlistMovie, setPendingWatchlistMovie] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [reviewSummary, setReviewSummary] = useState({
     average_rating: 0,
@@ -184,7 +204,11 @@ function MovieDetail() {
   const audienceRating = Number(reviewSummary.average_rating || 0);
   const detailRating = audienceRating || Number(formatRating(movie?.vote_average));
   const ratingPercent = Math.min((detailRating / 5) * 100, 100);
-  const isSavedToWatchlist = Boolean(watchlistItem);
+  const savedMovieIds = useMemo(
+    () => new Set(watchlist.map((savedMovie) => String(savedMovie.id))),
+    [watchlist],
+  );
+  const isSaved = savedMovieIds.has(String(movie?.id));
 
   const fetchMovie = async () => {
     const res = await axios.get(`${apiUrl}/api/movies/${id}`, {
@@ -199,20 +223,23 @@ function MovieDetail() {
     setReviewSummary(res.data.summary || { average_rating: 0, review_count: 0 });
   };
 
-  const fetchWatchlistStatus = async (movieId) => {
-    if (!token || !movieId) {
-      setWatchlistItem(null);
-      return;
-    }
+  useEffect(() => {
+    const loadWatchlist = async () => {
+      if (!token) {
+        setWatchlist([]);
+        return;
+      }
 
-    const res = await axios.get(`${apiUrl}/api/watchlist/status/movie/${movieId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+      try {
+        const data = await fetchWatchlist({ token, mediaType: "movie" });
+        setWatchlist(data.items);
+      } catch {
+        setWatchlist([]);
+      }
+    };
 
-    setWatchlistItem(res.data.item || null);
-  };
+    loadWatchlist();
+  }, [token]);
 
   useEffect(() => {
     const loadDetail = async () => {
@@ -230,51 +257,9 @@ function MovieDetail() {
     loadDetail();
   }, [id]);
 
-  useEffect(() => {
-    fetchWatchlistStatus(movie?.id);
-  }, [movie?.id, token]);
 
-  const toggleWatchlist = async () => {
-    if (!token) {
-      alert("Silakan login untuk menyimpan watchlist");
-      navigate("/login");
-      return;
-    }
 
-    if (!movie || watchlistLoading) {
-      return;
-    }
 
-    try {
-      setWatchlistLoading(true);
-
-      if (watchlistItem) {
-        await axios.delete(`${apiUrl}/api/watchlist/${watchlistItem.id_watchlist}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        setWatchlistItem(null);
-        return;
-      }
-
-      const res = await axios.post(
-        `${apiUrl}/api/watchlist`,
-        mapMovieToWatchlist(movie),
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      setWatchlistItem(res.data.item || null);
-    } catch (error) {
-      alert(error.response?.data?.message || "Gagal menyimpan watchlist");
-    } finally {
-      setWatchlistLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (activeTab !== "synopsis" || !movie?.overview) {
@@ -323,6 +308,58 @@ function MovieDetail() {
       window.removeEventListener("resize", measureSynopsis);
     };
   }, [activeTab, movie?.overview]);
+
+  const saveMovieToWatchlist = async (watchlistMovie) => {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    const savedItem = await addWatchlistItem({
+      token,
+      payload: mapMovieToWatchlistPayload(watchlistMovie),
+    });
+
+    setWatchlist((currentWatchlist) => {
+      const movieId = String(savedItem.id);
+      const withoutDuplicate = currentWatchlist.filter(
+        (savedMovie) => String(savedMovie.id) !== movieId,
+      );
+
+      return [savedItem, ...withoutDuplicate];
+    });
+  };
+
+  const toggleWatchlist = async () => {
+    if (!movie) {
+      return;
+    }
+
+    const watchlistMovie = mapMovieToWatchlist(movie);
+    const movieId = String(watchlistMovie.id);
+
+    if (savedMovieIds.has(movieId)) {
+      const savedItem = watchlist.find((savedMovie) => String(savedMovie.id) === movieId);
+      if (savedItem?.id_watchlist && token) {
+        await deleteWatchlistItem({ token, idWatchlist: savedItem.id_watchlist });
+      }
+
+      setWatchlist((currentWatchlist) =>
+        currentWatchlist.filter((savedMovie) => String(savedMovie.id) !== movieId),
+      );
+      return;
+    }
+
+    setPendingWatchlistMovie(watchlistMovie);
+  };
+
+  const confirmSaveToWatchlist = async () => {
+    if (pendingWatchlistMovie) {
+      await saveMovieToWatchlist(pendingWatchlistMovie);
+    }
+
+    setPendingWatchlistMovie(null);
+  };
 
   const handleSubmitReview = async (event) => {
     event.preventDefault();
@@ -416,7 +453,7 @@ function MovieDetail() {
   }
 
   const backdrop = movie.backdrop_url || movie.poster_url;
-  const cast = (movie.cast || []).slice(0, 4);
+  const cast = movie.cast || [];
   const watchProviders = movie.watch_providers?.all || [];
   const visibleWatchProviders = watchProviders.slice(0, 6);
   const hasWatchProviders = visibleWatchProviders.length > 0;
@@ -439,9 +476,9 @@ function MovieDetail() {
             </div>
 
             <div className="movie-detail-buttons">
-              <button type="button" onClick={toggleWatchlist} disabled={watchlistLoading}>
-                {isSavedToWatchlist ? <FaBookmark /> : <FaRegBookmark />}
-                {isSavedToWatchlist ? "Tersimpan di Watchlist" : "Simpan ke Watchlist"}
+              <button type="button" onClick={toggleWatchlist}>
+                {isSaved ? <FaBookmark /> : <FaRegBookmark />}
+                {isSaved ? "Tersimpan di Watchlist" : "Simpan ke Watchlist"}
               </button>
               <button type="button" aria-label="Bagikan film">
                 <FaShareAlt />
@@ -468,7 +505,9 @@ function MovieDetail() {
           <h3>Genre</h3>
           <div className="movie-detail-tags">
             {(movie.genres || []).slice(0, 4).map((genre) => (
-              <span key={genre.id}>{genre.name}</span>
+              <Link key={genre.id} to={buildGenrePath(genre, "movie")}>
+                {genre.name}
+              </Link>
             ))}
           </div>
         </div>
@@ -705,6 +744,14 @@ function MovieDetail() {
         </div>
         <p>Copyright 2026 - Kelompok 5</p>
       </footer>
+
+      <WatchlistConfirmModal
+        open={Boolean(pendingWatchlistMovie)}
+        item={pendingWatchlistMovie}
+        mediaLabel="Film"
+        onCancel={() => setPendingWatchlistMovie(null)}
+        onConfirm={confirmSaveToWatchlist}
+      />
     </main>
   );
 }

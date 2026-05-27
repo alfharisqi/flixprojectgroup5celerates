@@ -126,6 +126,43 @@ function Community() {
   const primaryActivityStats = activityStats.slice(0, 3);
   const detailActivityStats = activityStats.slice(3);
 
+  const cleanActivityText = (text = "") =>
+    String(text)
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const getActivityPreview = (text, fallback = "Aktivitas") => {
+    const cleanText = cleanActivityText(text);
+
+    if (!cleanText) {
+      return fallback;
+    }
+
+    const words = cleanText.split(" ");
+
+    if (words.length <= 2) {
+      return cleanText;
+    }
+
+    return `${words.slice(0, 2).join(" ")}...`;
+  };
+
+  const formatActivityDate = (dateValue) => {
+    const activityDate = new Date(dateValue);
+
+    if (Number.isNaN(activityDate.getTime())) {
+      return "-";
+    }
+
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(activityDate);
+  };
+
   const displayedPosts = [...posts]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -138,8 +175,8 @@ function Community() {
               id: `post-${post.id_post}`,
               postId: post.id_post,
               type: "Post",
-              title: post.title || "Untitled Post",
-              actor: "Kamu",
+              preview: getActivityPreview(post.content || post.title, "Post baru"),
+              date: formatActivityDate(post.created_at),
               time: post.created_at,
             },
           ]
@@ -151,8 +188,8 @@ function Community() {
           id: `reply-${comment.id_comment}`,
           postId: post.id_post,
           type: "Reply",
-          title: post.title || "Untitled Post",
-          actor: "Kamu",
+          preview: getActivityPreview(comment.content, "Reply baru"),
+          date: formatActivityDate(comment.created_at),
           time: comment.created_at,
         }));
 
@@ -477,8 +514,10 @@ function Community() {
                       onClick={() => navigate(`/post/${activity.postId}`)}
                     >
                       <small>{activity.type}</small>
-                      <span>{activity.actor}</span>
-                      <em>{activity.title}</em>
+                      <span title={cleanActivityText(activity.preview)}>
+                        {activity.preview}
+                      </span>
+                      <em>{activity.date}</em>
                     </button>
                   ))}
 

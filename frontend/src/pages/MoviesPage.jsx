@@ -17,11 +17,11 @@ import {
 } from "react-icons/fa";
 import SiteNavbar from "../components/SiteNavbar";
 import FilterPopup from "../components/FilterPopup";
+import WatchlistConfirmModal from "../components/WatchlistConfirmModal";
 import {
   addWatchlistItem,
   deleteWatchlistItem,
   fetchWatchlist,
-  findSavedWatchlistItem,
   mapMovieToWatchlistPayload,
 } from "../utils/watchlist";
 import amazonPrimeVideoIcon from "../assets/platformstream-logo/amazonprimevideo-icon.png";
@@ -392,6 +392,7 @@ function MoviesPage() {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const [watchlist, setWatchlist] = useState([]);
+  const [pendingWatchlistMovie, setPendingWatchlistMovie] = useState(null);
   const [trendingMovies, setTrendingMovies] = useState(fallbackMovies.slice(0, 3));
   const [allMovies, setAllMovies] = useState(fallbackMovies);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
@@ -617,39 +618,51 @@ function MoviesPage() {
     }
   };
 
-  const toggleWatchlist = async (movie) => {
+  const saveMovieToWatchlist = async (movie) => {
     if (!token) {
-      alert("Silakan login untuk menyimpan watchlist");
       navigate("/login");
       return;
     }
 
-    if (!Number.isInteger(Number(movie.id))) {
-      alert("Film contoh tidak bisa disimpan ke watchlist");
+    const savedItem = await addWatchlistItem({
+      token,
+      payload: mapMovieToWatchlistPayload(movie),
+    });
+
+    setWatchlist((currentWatchlist) => {
+      const movieId = String(savedItem.id);
+      const withoutDuplicate = currentWatchlist.filter(
+        (savedMovie) => String(savedMovie.id) !== movieId,
+      );
+
+      return [savedItem, ...withoutDuplicate];
+    });
+  };
+
+  const toggleWatchlist = async (movie) => {
+    const movieId = String(movie.id);
+
+    if (savedMovieIds.has(movieId)) {
+      const savedItem = watchlist.find((savedMovie) => String(savedMovie.id) === movieId);
+      if (savedItem?.id_watchlist && token) {
+        await deleteWatchlistItem({ token, idWatchlist: savedItem.id_watchlist });
+      }
+
+      setWatchlist((currentWatchlist) =>
+        currentWatchlist.filter((savedMovie) => String(savedMovie.id) !== movieId),
+      );
       return;
     }
 
-    try {
-      const savedItem = findSavedWatchlistItem(watchlist, "movie", movie.id);
+    setPendingWatchlistMovie(movie);
+  };
 
-      if (savedItem) {
-        await deleteWatchlistItem({ token, idWatchlist: savedItem.id_watchlist });
-        setWatchlist((currentWatchlist) =>
-          currentWatchlist.filter(
-            (item) => item.id_watchlist !== savedItem.id_watchlist,
-          ),
-        );
-        return;
-      }
-
-      const item = await addWatchlistItem({
-        token,
-        payload: mapMovieToWatchlistPayload(movie),
-      });
-      setWatchlist((currentWatchlist) => [item, ...currentWatchlist]);
-    } catch (error) {
-      alert(error.message || "Gagal menyimpan watchlist");
+  const confirmSaveToWatchlist = async () => {
+    if (pendingWatchlistMovie) {
+      await saveMovieToWatchlist(pendingWatchlistMovie);
     }
+
+    setPendingWatchlistMovie(null);
   };
 
   const moveHero = (direction) => {
@@ -925,6 +938,14 @@ function MoviesPage() {
         sortOptions={movieSortOptions}
         onChange={setFilterValues}
         onClose={() => setIsFilterOpen(false)}
+      />
+
+      <WatchlistConfirmModal
+        open={Boolean(pendingWatchlistMovie)}
+        item={pendingWatchlistMovie}
+        mediaLabel="Film"
+        onCancel={() => setPendingWatchlistMovie(null)}
+        onConfirm={confirmSaveToWatchlist}
       />
     </main>
   );

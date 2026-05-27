@@ -2,13 +2,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiBarChart2,
-  FiFlag,
   FiSend,
-  FiShare2,
   FiThumbsUp,
   FiTrash2,
 } from "react-icons/fi";
 import RichContent from "./RichContent";
+import reportIcon from "../assets/icon/report-icon.svg";
+import shareIcon from "../assets/icon/share-icon.svg";
 import "./PostCard.css";
 
 const reactionOptions = [
@@ -110,7 +110,7 @@ function PostCard({
             aria-label="Report post"
             title="Report post"
           >
-            <FiFlag />
+            <img src={reportIcon} alt="" aria-hidden="true" />
           </button>
 
           {canDelete && (
@@ -267,7 +267,7 @@ function PostCard({
             handleCardAction(event, () => handleShare(post.id_post))
           }
         >
-          <FiShare2 />
+          <img src={shareIcon} alt="" aria-hidden="true" />
           <span>Share</span>
         </button>
 
