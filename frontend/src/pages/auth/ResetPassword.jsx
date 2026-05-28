@@ -130,8 +130,7 @@ function ResetPassword() {
           {errorMessage && <p className="login-error">{errorMessage}</p>}{" "}
           //tampilkan pesan error dari backend
           <button className="login-submit" type="submit" disabled={loading}>
-            {loading ? "Loading..." : "Reset Password"} //tampil loading saat
-            submit
+            {loading ? "Loading..." : "Reset Password"} //tampil loading saat submit
           </button>
           <p className="login-signup">
             Back to <Link to="/login">Login</Link>
