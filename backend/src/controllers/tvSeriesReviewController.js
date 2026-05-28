@@ -10,6 +10,8 @@ const parseRating = (value) => {
   return Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : null;
 };
 
+const getAuthenticatedUserId = (req) => req.user?.id_user || req.user?.id;
+
 export const getTvSeriesReviews = async (req, res) => {
   try {
     const seriesId = parseSeriesId(req.params.seriesId);
@@ -118,7 +120,7 @@ export const createTvSeriesReview = async (req, res) => {
         (tmdb_series_id, id_user, parent_review_id, content, rating)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [seriesId, req.user.id_user, parentId, content.trim(), reviewRating],
+      [seriesId, getAuthenticatedUserId(req), parentId, content.trim(), reviewRating],
     );
 
     return res.status(201).json({
@@ -158,7 +160,7 @@ export const toggleLikeTvSeriesReview = async (req, res) => {
       `SELECT id_like
        FROM flix.tv_series_review_likes
        WHERE id_review = $1 AND id_user = $2`,
-      [reviewId, req.user.id_user],
+      [reviewId, getAuthenticatedUserId(req)],
     );
 
     if (existingLike.rows.length > 0) {
@@ -175,7 +177,7 @@ export const toggleLikeTvSeriesReview = async (req, res) => {
     await pool.query(
       `INSERT INTO flix.tv_series_review_likes (id_review, id_user)
        VALUES ($1, $2)`,
-      [reviewId, req.user.id_user],
+      [reviewId, getAuthenticatedUserId(req)],
     );
 
     return res.json({

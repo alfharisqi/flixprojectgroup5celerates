@@ -11,6 +11,28 @@ import {
 const hashResetToken = (token) =>
   crypto.createHash("sha256").update(token).digest("hex");
 
+const getRegisteredUserRoleId = async () => {
+  const roleResult = await pool.query(
+    "SELECT id_role FROM flix.roles WHERE role_name = $1",
+    ["registered_user"]
+  );
+
+  if (roleResult.rows.length > 0) {
+    return roleResult.rows[0].id_role;
+  }
+
+  const insertedRole = await pool.query(
+    `INSERT INTO flix.roles (role_name, description)
+     VALUES ($1, $2)
+     ON CONFLICT (role_name) DO UPDATE
+       SET description = EXCLUDED.description
+     RETURNING id_role`,
+    ["registered_user", "User biasa yang sudah terdaftar"]
+  );
+
+  return insertedRole.rows[0].id_role;
+};
+
 export const register = async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -32,13 +54,8 @@ export const register = async (req, res) => {
       });
     }
 
-    const roleResult = await pool.query(
-      "SELECT id_role FROM flix.roles WHERE role_name = $1",
-      ["registered_user"]
-    );
-
     const hashedPassword = await bcrypt.hash(password, 10);
-    const roleId = roleResult.rows[0].id_role;
+    const roleId = await getRegisteredUserRoleId();
 
     const result = await pool.query(
       `INSERT INTO flix.users (id_role, username, email, password)

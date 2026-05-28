@@ -1,23 +1,23 @@
 import { Routes, Route, useLocation } from "react-router-dom";
-import Navbar from "./components/Navbar";
-import ProtectedRoute from "./components/ProtectedRoute";
-import Login from "./pages/Login";
-import ForgotPassword from "./pages/ForgotPassword";
-import Register from "./pages/Register";
-import ResetPassword from "./pages/ResetPassword";
-import Homepage from "./pages/Homepage";
-import MovieDetail from "./pages/MovieDetail";
-import MoviesPage from "./pages/MoviesPage";
-import GenrePage from "./pages/GenrePage";
-import TVSeriesPage from "./pages/TVSeriesPage";
-import TVSeriesDetail from "./pages/TVSeriesDetail";
-import Community from "./pages/Community";
-import AdminPage from "./pages/AdminPage";
-import ModeratorPage from "./pages/ModeratorPage";
-import ProfilePage from "./pages/ProfilePage";
-import PostDetail from "./pages/PostDetail";
-import CreatePostPage from "./pages/CreatePostPage";
-import WatchlistPage from "./pages/WatchlistPage";
+import Navbar from "./components/layout/Navbar";
+import ProtectedRoute from "./components/common/ProtectedRoute";
+import Login from "./pages/auth/Login";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import Register from "./pages/auth/Register";
+import ResetPassword from "./pages/auth/ResetPassword";
+import Homepage from "./pages/home/Homepage";
+import MovieDetail from "./pages/movies/MovieDetail";
+import MoviesPage from "./pages/movies/MoviesPage";
+import GenrePage from "./pages/genre/GenrePage";
+import TVSeriesPage from "./pages/tv/TVSeriesPage";
+import TVSeriesDetail from "./pages/tv/TVSeriesDetail";
+import Community from "./pages/community/Community";
+import AdminPage from "./pages/admin/AdminPage";
+import ModeratorPage from "./pages/moderator/ModeratorPage";
+import ProfilePage from "./pages/profile/ProfilePage";
+import PostDetail from "./pages/community/PostDetail";
+import CreatePostPage from "./pages/community/CreatePostPage";
+import WatchlistPage from "./pages/watchlist/WatchlistPage";
 
 function App() {
   const location = useLocation();
@@ -32,6 +32,7 @@ function App() {
     "/community",
     "/create-post",
     "/watchlist",
+    "/profile",
     "/",
   ];
   const hideNavbar =
@@ -53,11 +54,18 @@ function App() {
         <Route path="/community" element={<Community />} />
         <Route path="/post/:id" element={<PostDetail />} />
         <Route path="/create-post" element={<CreatePostPage />} />
-        <Route path="/watchlist" element={<WatchlistPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route
+          path="/watchlist"
+          element={
+            <ProtectedRoute allowedRoles={["registered_user", "moderator", "admin"]}>
+              <WatchlistPage />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/profile"
