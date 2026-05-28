@@ -1,19 +1,21 @@
-import { useState } from "react";
-import axios from "axios";
-import { Link, useNavigate } from "react-router-dom";
-import { FaApple, FaFacebookF } from "react-icons/fa";
+import { useState } from "react"; //buat menyimpan data yang berubah
+import axios from "axios"; //buat komunikasi ke backend
+import { Link, useNavigate } from "react-router-dom"; //buat pindah halaman tanpa reload
+import { FaApple, FaFacebookF } from "react-icons/fa"; //
 import { FcGoogle } from "react-icons/fc";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import flixLogo from "../../assets/flix-logo.png";
 import "./Login.css";
 
+//komponen halaman login
 function Login() {
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); //default password disembunyikan
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  //tempat menyimpan email dan password yang diinput user
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -26,8 +28,9 @@ function Login() {
     });
   };
 
+  //jalan saat form di submit
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); //biar ga reload pas submit
     setErrorMessage("");
 
     try {
@@ -37,12 +40,15 @@ function Login() {
         form,
       );
 
+      // Simpan token dan info user ke localStorage
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
+      //pindah ke halaman home setelah login sukses
       navigate("/");
 
       window.location.reload();
+      //kalau login gagal
     } catch (error) {
       setErrorMessage(error.response?.data?.message || "Login gagal");
     } finally {
@@ -63,7 +69,7 @@ function Login() {
         <form className="login-form" onSubmit={handleSubmit}>
           <label className="login-field">
             <span className="login-field-label">Email</span>
-            <input
+            <input //input untuk email
               className="login-input"
               type="email"
               name="email"
@@ -77,7 +83,7 @@ function Login() {
 
           <label className="login-field">
             <span className="login-field-label">Password</span>
-            <input
+            <input //input untuk password
               className="login-input login-password-input"
               type={showPassword ? "text" : "password"}
               name="password"
@@ -123,7 +129,7 @@ function Login() {
           </button>
 
           <p className="login-signup">
-            Belum punya akun? <Link to="/register">Daftar disini</Link>
+            Belum punya akun? <Link to="/register">Sign Up</Link>
           </p>
         </form>
 
