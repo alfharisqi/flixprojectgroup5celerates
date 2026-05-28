@@ -67,7 +67,7 @@ function Login() {
               className="login-input"
               type="email"
               name="email"
-              placeholder="john.doe@gmail.com"
+              placeholder="Masukkan email Anda"
               value={form.email}
               onChange={handleChange}
               autoComplete={rememberMe ? "email" : "off"}
@@ -81,7 +81,7 @@ function Login() {
               className="login-input login-password-input"
               type={showPassword ? "text" : "password"}
               name="password"
-              placeholder="••••••••••••••••••••"
+              placeholder="Masukkan password Anda"
               value={form.password}
               onChange={handleChange}
               autoComplete={rememberMe ? "current-password" : "off"}
@@ -104,7 +104,7 @@ function Login() {
                 checked={rememberMe}
                 onChange={(event) => setRememberMe(event.target.checked)}
               />
-              <span>Remember me</span>
+              <span>Ingat Saya</span>
             </label>
 
             <button
@@ -112,7 +112,7 @@ function Login() {
               type="button"
               onClick={() => navigate("/forgot-password")}
             >
-              Forgot Password
+              Lupa Password?
             </button>
           </div>
 
@@ -123,11 +123,11 @@ function Login() {
           </button>
 
           <p className="login-signup">
-            Don&apos;t have an account? <Link to="/register">Sign up</Link>
+            Belum punya akun? <Link to="/register">Daftar disini</Link>
           </p>
         </form>
 
-        <div className="login-divider">Or login with</div>
+        <div className="login-divider">Atau login dengan</div>
 
         <div className="login-socials" aria-label="Social login options">
           <button className="login-social login-social-facebook" type="button">
