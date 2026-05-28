@@ -4,7 +4,7 @@ export const initializeWatchlistTable = async () => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS flix.watchlist (
       id_watchlist SERIAL PRIMARY KEY,
-      id_user INTEGER NOT NULL REFERENCES flix.users(id_user) ON DELETE CASCADE,
+      id_user BIGINT NOT NULL REFERENCES flix.users(id_user) ON DELETE CASCADE,
       media_type VARCHAR(20) NOT NULL CHECK (media_type IN ('movie', 'tv')),
       tmdb_id INTEGER NOT NULL,
       title VARCHAR(255) NOT NULL,
@@ -27,7 +27,7 @@ export const initializeWatchlistTable = async () => {
   await pool.query(`
     ALTER TABLE flix.watchlist
       ADD COLUMN IF NOT EXISTS id_watchlist INTEGER,
-      ADD COLUMN IF NOT EXISTS id_user INTEGER,
+      ADD COLUMN IF NOT EXISTS id_user BIGINT,
       ADD COLUMN IF NOT EXISTS media_type VARCHAR(20),
       ADD COLUMN IF NOT EXISTS tmdb_id INTEGER,
       ADD COLUMN IF NOT EXISTS title VARCHAR(255),
@@ -43,6 +43,7 @@ export const initializeWatchlistTable = async () => {
 
   await pool.query(`
     ALTER TABLE flix.watchlist
+      ALTER COLUMN id_user TYPE BIGINT USING id_user::BIGINT,
       ALTER COLUMN id_watchlist SET DEFAULT nextval('flix.watchlist_id_watchlist_seq'),
       ALTER COLUMN status SET DEFAULT 'pending',
       ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP,

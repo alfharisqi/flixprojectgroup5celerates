@@ -1,0 +1,112 @@
+.cropper-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  padding: 20px;
+}
+
+.cropper-modal-container {
+  width: 100%;
+  max-width: 600px;
+  background: #141414;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.cropper-modal-header {
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.cropper-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.cropper-modal-close {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+}
+.cropper-modal-close:hover {
+  color: #fff;
+}
+
+.cropper-container {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  background: #000;
+}
+
+.cropper-controls {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #1a1a1a;
+}
+
+.cropper-controls label {
+  color: #ccc;
+  font-size: 14px;
+}
+
+.cropper-controls input[type="range"] {
+  flex: 1;
+  accent-color: #e50914;
+}
+
+.cropper-actions {
+  padding: 16px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.cropper-btn-cancel,
+.cropper-btn-save {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+}
+
+.cropper-btn-cancel {
+  background: #333;
+  color: #fff;
+}
+.cropper-btn-cancel:hover {
+  background: #444;
+}
+
+.cropper-btn-save {
+  background: #e50914;
+  color: #fff;
+}
+.cropper-btn-save:hover {
+  background: #f40612;
+}

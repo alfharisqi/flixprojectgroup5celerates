@@ -2,6 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import flixLogo from "../../assets/flix-logo.png";
+import { buildApiUrl } from "../../utils/api";
 import "./Login.css";
 
 function ForgotPassword() {
@@ -18,7 +19,7 @@ function ForgotPassword() {
     try {
       setLoading(true);
       const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/auth/forgot-password`,
+        buildApiUrl("/api/auth/forgot-password"),
         { email }
       );
 

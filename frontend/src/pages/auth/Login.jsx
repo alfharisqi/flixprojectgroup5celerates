@@ -5,6 +5,7 @@ import { FaApple, FaFacebookF } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import flixLogo from "../../assets/flix-logo.png";
+import { buildApiUrl } from "../../utils/api";
 import "./Login.css";
 
 function Login() {
@@ -33,7 +34,7 @@ function Login() {
     try {
       setLoading(true);
       const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/auth/login`,
+        buildApiUrl("/api/auth/login"),
         form,
       );
 

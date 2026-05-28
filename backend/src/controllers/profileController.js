@@ -12,6 +12,10 @@ export const getMyProfile = async (req, res) => {
           u.id_user,
           u.username,
           u.email,
+          u.profile_photo_url,
+          u.banner_url,
+          u.profile_photo_position,
+          u.banner_position,
           r.role_name,
           u.created_at
        FROM flix.users u
@@ -38,7 +42,15 @@ export const getMyProfile = async (req, res) => {
 export const updateMyProfile = async (req, res) => {
   try {
     const userId = getAuthenticatedUserId(req);
-    const { username, email, password } = req.body;
+    const {
+      username,
+      email,
+      password,
+      profile_photo_url,
+      banner_url,
+      profile_photo_position = "50% 50%",
+      banner_position = "50% 50%",
+    } = req.body;
 
     if (!username || !email) {
       return res.status(400).json({
@@ -70,20 +82,45 @@ export const updateMyProfile = async (req, res) => {
          SET username = $1,
              email = $2,
              password = $3,
+             profile_photo_url = $4,
+             banner_url = $5,
+             profile_photo_position = $6,
+             banner_position = $7,
              updated_at = CURRENT_TIMESTAMP
-         WHERE id_user = $4
-         RETURNING id_user, username, email`,
-        [username, email, hashedPassword, userId]
+         WHERE id_user = $8
+         RETURNING id_user, username, email, profile_photo_url, banner_url, profile_photo_position, banner_position`,
+        [
+          username,
+          email,
+          hashedPassword,
+          profile_photo_url || null,
+          banner_url || null,
+          profile_photo_position,
+          banner_position,
+          userId,
+        ]
       );
     } else {
       result = await pool.query(
         `UPDATE flix.users
          SET username = $1,
              email = $2,
+             profile_photo_url = $3,
+             banner_url = $4,
+             profile_photo_position = $5,
+             banner_position = $6,
              updated_at = CURRENT_TIMESTAMP
-         WHERE id_user = $3
-         RETURNING id_user, username, email`,
-        [username, email, userId]
+         WHERE id_user = $7
+         RETURNING id_user, username, email, profile_photo_url, banner_url, profile_photo_position, banner_position`,
+        [
+          username,
+          email,
+          profile_photo_url || null,
+          banner_url || null,
+          profile_photo_position,
+          banner_position,
+          userId,
+        ]
       );
     }
 

@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS flix.movie_review_likes
 (
     id_like serial NOT NULL,
     id_review integer NOT NULL,
-    id_user integer NOT NULL,
+    id_user bigint NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT movie_review_likes_pkey PRIMARY KEY (id_like),
     CONSTRAINT uq_movie_review_likes UNIQUE (id_review, id_user)
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS flix.movie_reviews
 (
     id_review serial NOT NULL,
     tmdb_movie_id integer NOT NULL,
-    id_user integer NOT NULL,
+    id_user bigint NOT NULL,
     parent_review_id integer,
     content text COLLATE pg_catalog."default" NOT NULL,
     rating smallint,
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS flix.movie_reviews
 CREATE TABLE IF NOT EXISTS flix.password_reset_tokens
 (
     id_reset serial NOT NULL,
-    id_user integer NOT NULL,
+    id_user bigint NOT NULL,
     token_hash text COLLATE pg_catalog."default" NOT NULL,
     expires_at timestamp without time zone NOT NULL,
     used_at timestamp without time zone,
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS flix.tv_series_review_likes
 (
     id_like serial NOT NULL,
     id_review integer NOT NULL,
-    id_user integer NOT NULL,
+    id_user bigint NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT tv_series_review_likes_pkey PRIMARY KEY (id_like),
     CONSTRAINT uq_tv_series_review_likes UNIQUE (id_review, id_user)
@@ -165,7 +165,7 @@ CREATE TABLE IF NOT EXISTS flix.tv_series_reviews
 (
     id_review serial NOT NULL,
     tmdb_series_id integer NOT NULL,
-    id_user integer NOT NULL,
+    id_user bigint NOT NULL,
     parent_review_id integer,
     content text COLLATE pg_catalog."default" NOT NULL,
     rating smallint,
@@ -181,6 +181,10 @@ CREATE TABLE IF NOT EXISTS flix.users
     username character varying(100) COLLATE pg_catalog."default" NOT NULL,
     email character varying(100) COLLATE pg_catalog."default" NOT NULL,
     password character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    profile_photo_url text COLLATE pg_catalog."default",
+    banner_url text COLLATE pg_catalog."default",
+    profile_photo_position character varying(30) COLLATE pg_catalog."default" DEFAULT '50% 50%'::character varying,
+    banner_position character varying(30) COLLATE pg_catalog."default" DEFAULT '50% 50%'::character varying,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT users_pkey PRIMARY KEY (id_user),
@@ -395,7 +399,7 @@ ALTER TABLE IF EXISTS flix.users
 CREATE TABLE IF NOT EXISTS flix.watchlist
 (
     id_watchlist serial NOT NULL,
-    id_user integer NOT NULL,
+    id_user bigint NOT NULL,
     media_type character varying(20) COLLATE pg_catalog."default" NOT NULL,
     tmdb_id integer NOT NULL,
     title character varying(255) COLLATE pg_catalog."default" NOT NULL,

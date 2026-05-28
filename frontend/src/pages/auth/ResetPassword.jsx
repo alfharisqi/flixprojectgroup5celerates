@@ -3,6 +3,7 @@ import axios from "axios";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import flixLogo from "../../assets/flix-logo.png";
+import { buildApiUrl } from "../../utils/api";
 import "./Login.css";
 
 function ResetPassword() {
@@ -45,7 +46,7 @@ function ResetPassword() {
     try {
       setLoading(true);
       const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/auth/reset-password`,
+        buildApiUrl("/api/auth/reset-password"),
         {
           token,
           password: form.password,
