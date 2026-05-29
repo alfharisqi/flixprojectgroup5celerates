@@ -20,9 +20,8 @@ function ForgotPassword() {
     try {
       setLoading(true);
       const res = await axios.post(
-        //api untuk forgot password
-        buildApiUrl("/api/auth/forgot-password"),
-        { email },
+        buildApiUrl("/api/auth/forgot-password"), //api untuk forgot password
+        { email }
       );
 
       setMessage(res.data.message);

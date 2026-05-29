@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS flix.password_reset_tokens (
   id_reset SERIAL PRIMARY KEY,
-  id_user INTEGER NOT NULL REFERENCES flix.users(id_user) ON DELETE CASCADE,
+  id_user BIGINT NOT NULL REFERENCES flix.users(id_user) ON DELETE CASCADE,
   token_hash TEXT NOT NULL,
   expires_at TIMESTAMP NOT NULL,
   used_at TIMESTAMP,

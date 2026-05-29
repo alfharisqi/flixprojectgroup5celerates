@@ -14,6 +14,7 @@ import {
 } from "react-icons/fa";
 import SiteNavbar from "../../components/layout/SiteNavbar";
 import WatchlistConfirmModal from "../../components/watchlist/WatchlistConfirmModal";
+import { buildApiUrl } from "../../utils/api";
 import {
   addWatchlistItem,
   deleteWatchlistItem,
@@ -27,8 +28,6 @@ import disneyHotstarIcon from "../../assets/platformstream-logo/disneyhotstar-ic
 import hboMaxIcon from "../../assets/platformstream-logo/HBOmax-icon.png";
 import netflixIcon from "../../assets/platformstream-logo/netflix-icon.png";
 import "./MovieDetail.css";
-
-const apiUrl = import.meta.env.VITE_API_URL;
 
 const providerIconMatchers = [
   {
@@ -211,14 +210,14 @@ function MovieDetail() {
   const isSaved = savedMovieIds.has(String(movie?.id));
 
   const fetchMovie = async () => {
-    const res = await axios.get(`${apiUrl}/api/movies/${id}`, {
+    const res = await axios.get(buildApiUrl(`/api/movies/${id}`), {
       params: { language: "id-ID" },
     });
     setMovie(res.data);
   };
 
   const fetchReviews = async () => {
-    const res = await axios.get(`${apiUrl}/api/movie-reviews/${id}`);
+    const res = await axios.get(buildApiUrl(`/api/movie-reviews/${id}`));
     setReviews(res.data.reviews || []);
     setReviewSummary(res.data.summary || { average_rating: 0, review_count: 0 });
   };
@@ -374,7 +373,7 @@ function MovieDetail() {
     }
 
     await axios.post(
-      `${apiUrl}/api/movie-reviews/${id}`,
+      buildApiUrl(`/api/movie-reviews/${id}`),
       {
         content: reviewContent,
         rating: reviewRating,
@@ -404,7 +403,7 @@ function MovieDetail() {
     }
 
     await axios.post(
-      `${apiUrl}/api/movie-reviews/${id}`,
+      buildApiUrl(`/api/movie-reviews/${id}`),
       {
         content: replyContent,
         parent_review_id: parentReviewId,
@@ -428,7 +427,7 @@ function MovieDetail() {
     }
 
     await axios.post(
-      `${apiUrl}/api/movie-reviews/likes/${reviewId}`,
+      buildApiUrl(`/api/movie-reviews/likes/${reviewId}`),
       {},
       {
         headers: {

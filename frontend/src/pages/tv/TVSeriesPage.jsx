@@ -14,6 +14,7 @@ import {
 import SiteNavbar from "../../components/layout/SiteNavbar";
 import FilterPopup from "../../components/common/FilterPopup";
 import WatchlistConfirmModal from "../../components/watchlist/WatchlistConfirmModal";
+import { buildApiUrl } from "../../utils/api";
 import {
   addWatchlistItem,
   deleteWatchlistItem,
@@ -21,8 +22,6 @@ import {
   mapSeriesToWatchlistPayload,
 } from "../../utils/watchlist";
 import "./TVSeriesPage.css";
-
-const apiUrl = import.meta.env.VITE_API_URL;
 
 const fallbackPosterUrl =
   "https://image.tmdb.org/t/p/w500/7QMsOTMUswlwxJP0rTTZfmz2tX2.jpg";
@@ -308,6 +307,8 @@ function TVSeriesPage() {
   const token = localStorage.getItem("token");
   const [watchlist, setWatchlist] = useState([]);
   const [pendingWatchlistSeries, setPendingWatchlistSeries] = useState(null);
+  const [watchlistSaving, setWatchlistSaving] = useState(false);
+  const [watchlistError, setWatchlistError] = useState("");
   const [trendingSeries, setTrendingSeries] = useState(fallbackSeries.slice(0, 4));
   const [popularSeries, setPopularSeries] = useState(fallbackSeries);
   const [allSeries, setAllSeries] = useState(fallbackSeries);
@@ -370,7 +371,7 @@ function TVSeriesPage() {
   useEffect(() => {
     const loadGenres = async () => {
       try {
-        const response = await fetch(`${apiUrl}/api/tv-series/genres?language=id-ID`);
+        const response = await fetch(buildApiUrl("/api/tv-series/genres?language=id-ID"));
 
         if (!response.ok) {
           return;
@@ -399,10 +400,10 @@ function TVSeriesPage() {
         setLoading(true);
         const [trendingResponse, popularResponse, latestResponse] =
           await Promise.all([
-            fetch(`${apiUrl}/api/tv-series/trending?time_window=week&language=id-ID`),
-            fetch(`${apiUrl}/api/tv-series/popular?language=id-ID&page=1`),
+            fetch(buildApiUrl("/api/tv-series/trending?time_window=week&language=id-ID")),
+            fetch(buildApiUrl("/api/tv-series/popular?language=id-ID&page=1")),
             fetch(
-              `${apiUrl}/api/tv-series/discover?sort_by=first_air_date.desc&language=id-ID&page=1`,
+              buildApiUrl("/api/tv-series/discover?sort_by=first_air_date.desc&language=id-ID&page=1"),
             ),
           ]);
 
@@ -494,7 +495,7 @@ function TVSeriesPage() {
         missingSeriesIds.map(async (seriesId) => {
           try {
             const response = await fetch(
-              `${apiUrl}/api/tv-series/${seriesId}/watch-providers`,
+              buildApiUrl(`/api/tv-series/${seriesId}/watch-providers`),
             );
 
             if (!response.ok) {
@@ -570,11 +571,20 @@ function TVSeriesPage() {
   };
 
   const confirmSaveToWatchlist = async () => {
-    if (pendingWatchlistSeries) {
-      await saveSeriesToWatchlist(pendingWatchlistSeries);
+    if (!pendingWatchlistSeries || watchlistSaving) {
+      return;
     }
 
-    setPendingWatchlistSeries(null);
+    try {
+      setWatchlistSaving(true);
+      setWatchlistError("");
+      await saveSeriesToWatchlist(pendingWatchlistSeries);
+      setPendingWatchlistSeries(null);
+    } catch (error) {
+      setWatchlistError(error.message || "Gagal menyimpan watchlist");
+    } finally {
+      setWatchlistSaving(false);
+    }
   };
 
   return (
@@ -727,8 +737,13 @@ function TVSeriesPage() {
         open={Boolean(pendingWatchlistSeries)}
         item={pendingWatchlistSeries}
         mediaLabel="Series"
-        onCancel={() => setPendingWatchlistSeries(null)}
+        onCancel={() => {
+          setPendingWatchlistSeries(null);
+          setWatchlistError("");
+        }}
         onConfirm={confirmSaveToWatchlist}
+        loading={watchlistSaving}
+        errorMessage={watchlistError}
       />
     </main>
   );

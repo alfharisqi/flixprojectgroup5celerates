@@ -50,8 +50,7 @@ function ResetPassword() {
     try {
       setLoading(true);
       const res = await axios.post(
-        //api untuk reset password
-        buildApiUrl("/api/auth/reset-password"),
+        buildApiUrl("/api/auth/reset-password"), //api untuk reset password
         {
           token,
           password: form.password,

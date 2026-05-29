@@ -53,4 +53,24 @@ router.post("/editor-image", verifyToken, upload.single("image"), (req, res) => 
   }
 });
 
+router.post("/profile-image", verifyToken, upload.single("image"), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        message: "Gambar tidak ditemukan"
+      });
+    }
+
+    return res.json({
+      message: "Upload profile berhasil",
+      imageUrl: `/uploads/${req.file.filename}`
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal upload gambar profile",
+      error: error.message
+    });
+  }
+});
+
 export default router;

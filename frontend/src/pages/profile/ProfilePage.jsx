@@ -16,10 +16,10 @@ import {
 } from "react-icons/fa";
 import SiteNavbar from "../../components/layout/SiteNavbar";
 import Footer from "../../components/layout/Footer";
+import { buildApiUrl } from "../../utils/api";
 import { fetchWatchlist } from "../../utils/watchlist";
+import ImageCropperModal from "../../components/profile/ImageCropperModal";
 import "./ProfilePage.css";
-
-const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const moodHistory = [
   { label: "Santai", value: 78 },
@@ -50,6 +50,38 @@ const formatJoinDate = (dateValue) => {
 
 const getInitial = (name = "") => (name.trim().slice(0, 1) || "M").toUpperCase();
 
+const defaultImagePosition = {
+  x: 50,
+  y: 50,
+};
+
+const parseImagePosition = (value = "50% 50%") => {
+  const [x = "50%", y = "50%"] = String(value).split(" ");
+  const toNumber = (part) => {
+    const number = Number.parseInt(part, 10);
+    return Number.isFinite(number) ? Math.min(Math.max(number, 0), 100) : 50;
+  };
+
+  return {
+    x: toNumber(x),
+    y: toNumber(y),
+  };
+};
+
+const formatImagePosition = ({ x, y }) => `${x}% ${y}%`;
+
+const resolveMediaUrl = (url) => {
+  if (!url) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(url)) {
+    return url;
+  }
+
+  return buildApiUrl(url);
+};
+
 function ProfilePage() {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
@@ -58,6 +90,24 @@ function ProfilePage() {
     username: "",
     email: "",
     password: "",
+    profile_photo_url: "",
+    banner_url: "",
+    profile_photo_position: "50% 50%",
+    profile_photo_position: "50% 50%",
+    banner_position: "50% 50%",
+  });
+  const [cropperState, setCropperState] = useState({
+    isOpen: false,
+    imageSrc: null,
+    cropType: null,
+  });
+  const [selectedImages, setSelectedImages] = useState({
+    profilePhoto: null,
+    banner: null,
+  });
+  const [imagePreviews, setImagePreviews] = useState({
+    profilePhoto: "",
+    banner: "",
   });
   const [watchlistItems, setWatchlistItems] = useState([]);
   const [myReviews, setMyReviews] = useState([]);
@@ -92,6 +142,12 @@ function ProfilePage() {
       })),
     [myReviews],
   );
+  const profilePhotoUrl = resolveMediaUrl(profile?.profile_photo_url);
+  const bannerUrl = resolveMediaUrl(profile?.banner_url);
+  const editPhotoPreview = imagePreviews.profilePhoto || resolveMediaUrl(form.profile_photo_url);
+  const editBannerPreview = imagePreviews.banner || resolveMediaUrl(form.banner_url);
+  const profilePhotoPosition = profile?.profile_photo_position || "50% 50%";
+  const bannerPosition = profile?.banner_position || "50% 50%";
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -105,12 +161,12 @@ function ProfilePage() {
         setErrorMessage("");
 
         const [profileResponse, watchlistResponse, reviewsResponse] = await Promise.all([
-          axios.get(`${apiUrl}/api/profile/me`, {
+          axios.get(buildApiUrl("/api/profile/me"), {
             headers: { Authorization: `Bearer ${token}` },
           }),
           fetchWatchlist({ token }).catch(() => ({ items: [] })),
           axios
-            .get(`${apiUrl}/api/profile/me/reviews`, {
+            .get(buildApiUrl("/api/profile/me/reviews"), {
               headers: { Authorization: `Bearer ${token}` },
             })
             .catch(() => ({ data: { summary: {}, reviews: [] } })),
@@ -121,6 +177,10 @@ function ProfilePage() {
           username: profileResponse.data.username || "",
           email: profileResponse.data.email || "",
           password: "",
+          profile_photo_url: profileResponse.data.profile_photo_url || "",
+          banner_url: profileResponse.data.banner_url || "",
+          profile_photo_position: profileResponse.data.profile_photo_position || "50% 50%",
+          banner_position: profileResponse.data.banner_position || "50% 50%",
         });
         setWatchlistItems(watchlistResponse.items || []);
         setMyReviews(reviewsResponse.data.reviews || []);
@@ -145,15 +205,76 @@ function ProfilePage() {
     }));
   };
 
+  const openEditModal = () => {
+    setForm({
+      username: profile?.username || "",
+      email: profile?.email || "",
+      password: "",
+      profile_photo_url: profile?.profile_photo_url || "",
+      banner_url: profile?.banner_url || "",
+      profile_photo_position: profile?.profile_photo_position || "50% 50%",
+      banner_position: profile?.banner_position || "50% 50%",
+    });
+    setSelectedImages({ profilePhoto: null, banner: null });
+    setImagePreviews({ profilePhoto: "", banner: "" });
+    setErrorMessage("");
+    setMessage("");
+    setIsEditing(true);
+  };
+
   const cancelEdit = () => {
     setForm({
       username: profile?.username || "",
       email: profile?.email || "",
       password: "",
+      profile_photo_url: profile?.profile_photo_url || "",
+      banner_url: profile?.banner_url || "",
+      profile_photo_position: profile?.profile_photo_position || "50% 50%",
+      banner_position: profile?.banner_position || "50% 50%",
     });
+    setSelectedImages({ profilePhoto: null, banner: null });
+    setImagePreviews({ profilePhoto: "", banner: "" });
     setIsEditing(false);
     setErrorMessage("");
     setMessage("");
+  };
+
+  const handleImageChange = (event, key) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropperState({ isOpen: true, imageSrc: reader.result, cropType: key });
+    };
+    reader.readAsDataURL(file);
+    event.target.value = "";
+  };
+
+  const handleCropComplete = (croppedBlob) => {
+    const { cropType } = cropperState;
+    setSelectedImages((currentImages) => ({
+      ...currentImages,
+      [cropType]: croppedBlob,
+    }));
+    setImagePreviews((currentPreviews) => ({
+      ...currentPreviews,
+      [cropType]: URL.createObjectURL(croppedBlob),
+    }));
+    setCropperState({ isOpen: false, imageSrc: null, cropType: null });
+  };
+
+  const uploadProfileImage = async (file) => {
+    const data = new FormData();
+    data.append("image", file);
+
+    const response = await axios.post(buildApiUrl("/api/uploads/profile-image"), data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data.imageUrl;
   };
 
   const handleSubmit = async (event) => {
@@ -164,7 +285,17 @@ function ProfilePage() {
       setErrorMessage("");
       setMessage("");
 
-      const response = await axios.put(`${apiUrl}/api/profile/me`, form, {
+      const nextForm = { ...form };
+
+      if (selectedImages.profilePhoto) {
+        nextForm.profile_photo_url = await uploadProfileImage(selectedImages.profilePhoto);
+      }
+
+      if (selectedImages.banner) {
+        nextForm.banner_url = await uploadProfileImage(selectedImages.banner);
+      }
+
+      const response = await axios.put(buildApiUrl("/api/profile/me"), nextForm, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -173,6 +304,10 @@ function ProfilePage() {
         ...oldUser,
         username: response.data.user.username,
         email: response.data.user.email,
+        profile_photo_url: response.data.user.profile_photo_url,
+        banner_url: response.data.user.banner_url,
+        profile_photo_position: response.data.user.profile_photo_position,
+        banner_position: response.data.user.banner_position,
       };
 
       localStorage.setItem("user", JSON.stringify(updatedUser));
@@ -180,8 +315,21 @@ function ProfilePage() {
         ...currentProfile,
         username: response.data.user.username,
         email: response.data.user.email,
+        profile_photo_url: response.data.user.profile_photo_url,
+        banner_url: response.data.user.banner_url,
+        profile_photo_position: response.data.user.profile_photo_position,
+        banner_position: response.data.user.banner_position,
       }));
-      setForm((currentForm) => ({ ...currentForm, password: "" }));
+      setForm((currentForm) => ({
+        ...currentForm,
+        password: "",
+        profile_photo_url: response.data.user.profile_photo_url || "",
+        banner_url: response.data.user.banner_url || "",
+        profile_photo_position: response.data.user.profile_photo_position || "50% 50%",
+        banner_position: response.data.user.banner_position || "50% 50%",
+      }));
+      setSelectedImages({ profilePhoto: null, banner: null });
+      setImagePreviews({ profilePhoto: "", banner: "" });
       setIsEditing(false);
       setMessage(response.data.message || "Profile berhasil diperbarui");
     } catch (error) {
@@ -213,8 +361,22 @@ function ProfilePage() {
     <main className="profile-page">
       <SiteNavbar mode="fixed" />
 
-      <section className="profile-banner">
-        <button className="profile-banner__edit" type="button">
+      <section
+        className="profile-banner"
+        style={
+          bannerUrl
+            ? {
+                "--profile-banner-image": `url(${bannerUrl})`,
+                "--profile-banner-position": bannerPosition,
+              }
+            : undefined
+        }
+      >
+        <button
+          className="profile-banner__edit"
+          type="button"
+          onClick={openEditModal}
+        >
           <FaEdit />
           Edit Banner
         </button>
@@ -223,11 +385,21 @@ function ProfilePage() {
       <section className="profile-shell">
         <div className="profile-summary">
           <div className="profile-avatar-wrap">
-            <div className="profile-avatar">{getInitial(profile?.username)}</div>
+            <div className={`profile-avatar ${profilePhotoUrl ? "has-image" : ""}`}>
+              {profilePhotoUrl ? (
+                <img
+                  src={profilePhotoUrl}
+                  alt={profile?.username || "Profile"}
+                  style={{ objectPosition: profilePhotoPosition }}
+                />
+              ) : (
+                getInitial(profile?.username)
+              )}
+            </div>
             <button
               className="profile-avatar__edit"
               type="button"
-              onClick={() => setIsEditing(true)}
+              onClick={openEditModal}
               aria-label="Edit profil"
             >
               <FaEdit />
@@ -243,8 +415,8 @@ function ProfilePage() {
             </span>
           </div>
 
-          <div className="profile-actions">
-            <button type="button" onClick={() => setIsEditing(true)}>
+        <div className="profile-actions">
+            <button type="button" onClick={openEditModal}>
               <FaEdit />
               Edit Profil
             </button>
@@ -257,51 +429,6 @@ function ProfilePage() {
 
         {message && <p className="profile-alert profile-alert--success">{message}</p>}
         {errorMessage && <p className="profile-alert">{errorMessage}</p>}
-
-        {isEditing && (
-          <form className="profile-edit-form" onSubmit={handleSubmit}>
-            <label>
-              Username
-              <input
-                type="text"
-                name="username"
-                value={form.username}
-                onChange={handleChange}
-                required
-              />
-            </label>
-            <label>
-              Email
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                required
-              />
-            </label>
-            <label>
-              Password Baru
-              <input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                placeholder="Kosongkan jika tidak ingin ganti password"
-              />
-            </label>
-            <div>
-              <button type="button" onClick={cancelEdit} disabled={saving}>
-                <FaTimes />
-                Batal
-              </button>
-              <button type="submit" disabled={saving}>
-                <FaSave />
-                {saving ? "Menyimpan..." : "Simpan Perubahan"}
-              </button>
-            </div>
-          </form>
-        )}
 
         <div className="profile-stat-grid">
           <article>
@@ -399,6 +526,130 @@ function ProfilePage() {
           </aside>
         </div>
       </section>
+
+      {isEditing && (
+        <div
+          className="profile-edit-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="profile-edit-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !saving) {
+              cancelEdit();
+            }
+          }}
+        >
+          <form className="profile-edit-dialog" onSubmit={handleSubmit}>
+            <div className="profile-edit-dialog__header">
+              <div>
+                <span>Edit Profile</span>
+                <h2 id="profile-edit-title">Perbarui informasi akun</h2>
+              </div>
+              <button type="button" onClick={cancelEdit} disabled={saving} aria-label="Tutup">
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="profile-edit-dialog__preview">
+              <div
+                className="profile-edit-dialog__banner"
+                style={
+                  editBannerPreview
+                    ? {
+                        "--profile-edit-banner-image": `url(${editBannerPreview})`,
+                        "--profile-edit-banner-position": "center",
+                      }
+                    : undefined
+                }
+              >
+                <label htmlFor="upload-banner">
+                  <FaEdit />
+                  Edit Banner
+                  <input
+                    id="upload-banner"
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    onChange={(event) => handleImageChange(event, "banner")}
+                  />
+                </label>
+              </div>
+              <div className={`profile-edit-dialog__avatar ${editPhotoPreview ? "has-image" : ""}`}>
+                {editPhotoPreview ? (
+                  <img
+                    src={editPhotoPreview}
+                    alt="Preview profile"
+                    style={{ objectPosition: "center" }}
+                  />
+                ) : (
+                  getInitial(form.username)
+                )}
+              </div>
+              <label htmlFor="upload-photo" className="profile-edit-dialog__photo-button">
+                <FaEdit />
+                Edit Foto Profile
+                <input
+                  id="upload-photo"
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  onChange={(event) => handleImageChange(event, "profilePhoto")}
+                />
+              </label>
+            </div>
+
+
+
+            <label>
+              Username
+              <input
+                type="text"
+                name="username"
+                value={form.username}
+                onChange={handleChange}
+                required
+              />
+            </label>
+            <label>
+              Email
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                required
+              />
+            </label>
+            <label>
+              Password Baru
+              <input
+                type="password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                placeholder="Kosongkan jika tidak ingin ganti password"
+              />
+            </label>
+
+            <div className="profile-edit-dialog__actions">
+              <button type="button" onClick={cancelEdit} disabled={saving}>
+                Batal
+              </button>
+              <button type="submit" disabled={saving}>
+                <FaSave />
+                {saving ? "Menyimpan..." : "Simpan"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {cropperState.isOpen && (
+        <ImageCropperModal
+          imageSrc={cropperState.imageSrc}
+          aspectRatio={cropperState.cropType === "banner" ? 3 : 1}
+          onCropComplete={handleCropComplete}
+          onCancel={() => setCropperState({ isOpen: false, imageSrc: null, cropType: null })}
+        />
+      )}
 
       <Footer />
     </main>

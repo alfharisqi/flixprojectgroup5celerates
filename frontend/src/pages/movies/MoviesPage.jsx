@@ -18,6 +18,7 @@ import {
 import SiteNavbar from "../../components/layout/SiteNavbar";
 import FilterPopup from "../../components/common/FilterPopup";
 import WatchlistConfirmModal from "../../components/watchlist/WatchlistConfirmModal";
+import { buildApiUrl } from "../../utils/api";
 import {
   addWatchlistItem,
   deleteWatchlistItem,
@@ -31,8 +32,6 @@ import disneyHotstarIcon from "../../assets/platformstream-logo/disneyhotstar-ic
 import hboMaxIcon from "../../assets/platformstream-logo/HBOmax-icon.png";
 import netflixIcon from "../../assets/platformstream-logo/netflix-icon.png";
 import "./MoviesPage.css";
-
-const apiUrl = import.meta.env.VITE_API_URL;
 
 const fallbackPosterUrl =
   "https://image.tmdb.org/t/p/w500/cdPSUck4tBRvRu6DFk6XciDrssn.jpg";
@@ -393,6 +392,8 @@ function MoviesPage() {
   const token = localStorage.getItem("token");
   const [watchlist, setWatchlist] = useState([]);
   const [pendingWatchlistMovie, setPendingWatchlistMovie] = useState(null);
+  const [watchlistSaving, setWatchlistSaving] = useState(false);
+  const [watchlistError, setWatchlistError] = useState("");
   const [trendingMovies, setTrendingMovies] = useState(fallbackMovies.slice(0, 3));
   const [allMovies, setAllMovies] = useState(fallbackMovies);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
@@ -448,7 +449,7 @@ function MoviesPage() {
   useEffect(() => {
     const loadGenres = async () => {
       try {
-        const response = await fetch(`${apiUrl}/api/movies/genres?language=id-ID`);
+        const response = await fetch(buildApiUrl("/api/movies/genres?language=id-ID"));
 
         if (!response.ok) {
           return;
@@ -476,9 +477,9 @@ function MoviesPage() {
       try {
         setLoading(true);
         const [trendingResponse, latestResponse] = await Promise.all([
-          fetch(`${apiUrl}/api/movies/trending?time_window=week&language=id-ID`),
+          fetch(buildApiUrl("/api/movies/trending?time_window=week&language=id-ID")),
           fetch(
-            `${apiUrl}/api/movies/discover?sort_by=primary_release_date.desc&language=id-ID&page=1`,
+            buildApiUrl("/api/movies/discover?sort_by=primary_release_date.desc&language=id-ID&page=1"),
           ),
         ]);
 
@@ -540,7 +541,7 @@ function MoviesPage() {
       const providerEntries = await Promise.all(
         missingMovieIds.map(async (movieId) => {
           try {
-            const response = await fetch(`${apiUrl}/api/movies/${movieId}/watch-providers`);
+            const response = await fetch(buildApiUrl(`/api/movies/${movieId}/watch-providers`));
 
             if (!response.ok) {
               throw new Error("Gagal mengambil provider film");
@@ -580,7 +581,7 @@ function MoviesPage() {
 
     const loadHeroProvider = async () => {
       try {
-        const response = await fetch(`${apiUrl}/api/movies/${movieId}/watch-providers`);
+        const response = await fetch(buildApiUrl(`/api/movies/${movieId}/watch-providers`));
 
         if (!response.ok) {
           throw new Error("Gagal mengambil provider film");
@@ -658,11 +659,20 @@ function MoviesPage() {
   };
 
   const confirmSaveToWatchlist = async () => {
-    if (pendingWatchlistMovie) {
-      await saveMovieToWatchlist(pendingWatchlistMovie);
+    if (!pendingWatchlistMovie || watchlistSaving) {
+      return;
     }
 
-    setPendingWatchlistMovie(null);
+    try {
+      setWatchlistSaving(true);
+      setWatchlistError("");
+      await saveMovieToWatchlist(pendingWatchlistMovie);
+      setPendingWatchlistMovie(null);
+    } catch (error) {
+      setWatchlistError(error.message || "Gagal menyimpan watchlist");
+    } finally {
+      setWatchlistSaving(false);
+    }
   };
 
   const moveHero = (direction) => {
@@ -697,7 +707,7 @@ function MoviesPage() {
     try {
       const fetchVideos = async (language) => {
         const response = await fetch(
-          `${apiUrl}/api/movies/${movieId}/videos?language=${language}`,
+          buildApiUrl(`/api/movies/${movieId}/videos?language=${language}`),
         );
 
         if (!response.ok) {
@@ -944,8 +954,13 @@ function MoviesPage() {
         open={Boolean(pendingWatchlistMovie)}
         item={pendingWatchlistMovie}
         mediaLabel="Film"
-        onCancel={() => setPendingWatchlistMovie(null)}
+        onCancel={() => {
+          setPendingWatchlistMovie(null);
+          setWatchlistError("");
+        }}
         onConfirm={confirmSaveToWatchlist}
+        loading={watchlistSaving}
+        errorMessage={watchlistError}
       />
     </main>
   );

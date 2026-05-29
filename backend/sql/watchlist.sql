@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS flix.watchlist (
   id_watchlist SERIAL PRIMARY KEY,
-  id_user INTEGER NOT NULL REFERENCES flix.users(id_user) ON DELETE CASCADE,
+  id_user BIGINT NOT NULL REFERENCES flix.users(id_user) ON DELETE CASCADE,
   media_type VARCHAR(20) NOT NULL CHECK (media_type IN ('movie', 'tv')),
   tmdb_id INTEGER NOT NULL,
   title VARCHAR(255) NOT NULL,

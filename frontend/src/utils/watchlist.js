@@ -1,4 +1,4 @@
-const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+import { buildApiUrl } from "./api";
 
 const getYear = (date) => date?.slice(0, 4) || "-";
 
@@ -23,7 +23,7 @@ const toVoteAverage = (rating) => {
 };
 
 const requestJson = async (path, options = {}) => {
-  const response = await fetch(`${apiUrl}${path}`, {
+  const response = await fetch(buildApiUrl(path), {
     ...options,
     headers: {
       "Content-Type": "application/json",

@@ -18,9 +18,27 @@ export const initializeDatabaseSchema = async () => {
       username VARCHAR(100) NOT NULL UNIQUE,
       email VARCHAR(100) NOT NULL UNIQUE,
       password VARCHAR(255) NOT NULL,
+      profile_photo_url TEXT,
+      banner_url TEXT,
+      profile_photo_position VARCHAR(30) DEFAULT '50% 50%',
+      banner_position VARCHAR(30) DEFAULT '50% 50%',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
+  `);
+
+  await pool.query(`
+    ALTER TABLE flix.users
+      ADD COLUMN IF NOT EXISTS profile_photo_url TEXT,
+      ADD COLUMN IF NOT EXISTS banner_url TEXT,
+      ADD COLUMN IF NOT EXISTS profile_photo_position VARCHAR(30) DEFAULT '50% 50%',
+      ADD COLUMN IF NOT EXISTS banner_position VARCHAR(30) DEFAULT '50% 50%'
+  `);
+
+  await pool.query(`
+    UPDATE flix.users
+    SET profile_photo_position = COALESCE(profile_photo_position, '50% 50%'),
+        banner_position = COALESCE(banner_position, '50% 50%')
   `);
 
   await pool.query(`

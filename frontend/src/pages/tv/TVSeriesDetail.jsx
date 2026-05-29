@@ -14,6 +14,7 @@ import {
 } from "react-icons/fa";
 import SiteNavbar from "../../components/layout/SiteNavbar";
 import WatchlistConfirmModal from "../../components/watchlist/WatchlistConfirmModal";
+import { buildApiUrl } from "../../utils/api";
 import {
   addWatchlistItem,
   deleteWatchlistItem,
@@ -27,8 +28,6 @@ import disneyHotstarIcon from "../../assets/platformstream-logo/disneyhotstar-ic
 import hboMaxIcon from "../../assets/platformstream-logo/HBOmax-icon.png";
 import netflixIcon from "../../assets/platformstream-logo/netflix-icon.png";
 import "../movies/MovieDetail.css";
-
-const apiUrl = import.meta.env.VITE_API_URL;
 
 const providerIconMatchers = [
   { icon: netflixIcon, matches: ["netflix"] },
@@ -212,14 +211,14 @@ function TVSeriesDetail() {
   const isSaved = savedSeriesIds.has(String(series?.id));
 
   const fetchSeries = async () => {
-    const res = await axios.get(`${apiUrl}/api/tv-series/${id}`, {
+    const res = await axios.get(buildApiUrl(`/api/tv-series/${id}`), {
       params: { language: "id-ID" },
     });
     setSeries(res.data);
   };
 
   const fetchReviews = async () => {
-    const res = await axios.get(`${apiUrl}/api/tv-series-reviews/${id}`);
+    const res = await axios.get(buildApiUrl(`/api/tv-series-reviews/${id}`));
     setReviews(res.data.reviews || []);
     setReviewSummary(res.data.summary || { average_rating: 0, review_count: 0 });
   };
@@ -383,7 +382,7 @@ function TVSeriesDetail() {
     }
 
     await axios.post(
-      `${apiUrl}/api/tv-series-reviews/${id}`,
+      buildApiUrl(`/api/tv-series-reviews/${id}`),
       {
         content: reviewContent,
         rating: reviewRating,
@@ -413,7 +412,7 @@ function TVSeriesDetail() {
     }
 
     await axios.post(
-      `${apiUrl}/api/tv-series-reviews/${id}`,
+      buildApiUrl(`/api/tv-series-reviews/${id}`),
       {
         content: replyContent,
         parent_review_id: parentReviewId,
@@ -437,7 +436,7 @@ function TVSeriesDetail() {
     }
 
     await axios.post(
-      `${apiUrl}/api/tv-series-reviews/likes/${reviewId}`,
+      buildApiUrl(`/api/tv-series-reviews/likes/${reviewId}`),
       {},
       {
         headers: {

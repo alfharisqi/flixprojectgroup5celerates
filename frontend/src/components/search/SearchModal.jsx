@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { FiSearch, FiX } from "react-icons/fi";
+import { buildApiUrl } from "../../utils/api";
 import "../search/SearchModal.css";
 
 const defaultMovieGenres = {
@@ -67,8 +68,6 @@ function SearchModal({ open, onClose }) {
   const [movieGenres, setMovieGenres] = useState(defaultMovieGenres);
   const [tvGenres, setTvGenres] = useState(defaultTvGenres);
 
-  const apiUrl = import.meta.env.VITE_API_URL;
-
   const searchLabel = useMemo(
     () => (query.trim() ? "Hasil pencarian" : "Populer sekarang"),
     [query],
@@ -98,8 +97,8 @@ function SearchModal({ open, onClose }) {
     const loadGenres = async () => {
       try {
         const [movieRes, tvRes] = await Promise.all([
-          fetch(`${apiUrl}/api/movies/genres?language=id-ID`),
-          fetch(`${apiUrl}/api/tv-series/genres?language=id-ID`),
+          fetch(buildApiUrl("/api/movies/genres?language=id-ID")),
+          fetch(buildApiUrl("/api/tv-series/genres?language=id-ID")),
         ]);
         const [movieData, tvData] = await Promise.all([
           movieRes.json(),
@@ -125,7 +124,7 @@ function SearchModal({ open, onClose }) {
     };
 
     loadGenres();
-  }, [apiUrl, open]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -138,11 +137,11 @@ function SearchModal({ open, onClose }) {
 
       try {
         const movieUrl = keyword
-          ? `${apiUrl}/api/movies/search?query=${encodeURIComponent(keyword)}&language=id-ID`
-          : `${apiUrl}/api/movies/popular?language=id-ID&page=1`;
+          ? buildApiUrl(`/api/movies/search?query=${encodeURIComponent(keyword)}&language=id-ID`)
+          : buildApiUrl("/api/movies/popular?language=id-ID&page=1");
         const tvUrl = keyword
-          ? `${apiUrl}/api/tv-series/search?query=${encodeURIComponent(keyword)}&language=id-ID`
-          : `${apiUrl}/api/tv-series/popular?language=id-ID&page=1`;
+          ? buildApiUrl(`/api/tv-series/search?query=${encodeURIComponent(keyword)}&language=id-ID`)
+          : buildApiUrl("/api/tv-series/popular?language=id-ID&page=1");
 
         const [movieRes, tvRes] = await Promise.all([
           fetch(movieUrl, { signal: controller.signal }),
@@ -185,7 +184,7 @@ function SearchModal({ open, onClose }) {
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [apiUrl, movieGenres, open, query, tvGenres]);
+  }, [movieGenres, open, query, tvGenres]);
 
   if (!open) return null;
 

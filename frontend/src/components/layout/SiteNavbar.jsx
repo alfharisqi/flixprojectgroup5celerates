@@ -11,6 +11,7 @@ import settingIcon from "../../assets/icon/setting-icon.png";
 import logoutIcon from "../../assets/icon/logout-icon.png";
 import blueDiamondIcon from "../../assets/icon/bluediamond-icon.png";
 import SearchModal from "../search/SearchModal";
+import { buildApiUrl } from "../../utils/api";
 import "./SiteNavbar.css";
 
 const navItems = [
@@ -20,8 +21,6 @@ const navItems = [
   { key: "genre", label: "Genre", to: "/genre" },
   { key: "community", label: "Community", to: "/community" },
 ];
-
-const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const formatRelativeTime = (dateValue) => {
   if (!dateValue) {
@@ -117,10 +116,10 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
 
       try {
         const [conversationResponse, notificationResponse] = await Promise.all([
-          fetch(`${apiUrl}/api/chats/conversations`, {
+          fetch(buildApiUrl("/api/chats/conversations"), {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch(`${apiUrl}/api/notifications`, {
+          fetch(buildApiUrl("/api/notifications"), {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -146,6 +145,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
 
     loadNavbarData();
 
+  
     return () => {
       shouldIgnore = true;
     };
@@ -162,7 +162,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
       setChatLoading(true);
       setChatError("");
 
-      const response = await fetch(`${apiUrl}/api/chats/${conversation.user_id}/messages`, {
+      const response = await fetch(buildApiUrl(`/api/chats/${conversation.user_id}/messages`), {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -197,7 +197,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
 
     try {
       setChatError("");
-      const response = await fetch(`${apiUrl}/api/chats/${activeChat.user_id}/messages`, {
+      const response = await fetch(buildApiUrl(`/api/chats/${activeChat.user_id}/messages`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -233,7 +233,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
 
   const openNotification = async (notification) => {
     if (token && !notification.read_at) {
-      fetch(`${apiUrl}/api/notifications/${notification.id_notification}/read`, {
+      fetch(buildApiUrl(`/api/notifications/${notification.id_notification}/read`), {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => {});

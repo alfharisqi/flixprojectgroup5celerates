@@ -5,7 +5,7 @@ export const initializeTvSeriesReviewsTable = async () => {
     CREATE TABLE IF NOT EXISTS flix.tv_series_reviews (
       id_review SERIAL PRIMARY KEY,
       tmdb_series_id INTEGER NOT NULL,
-      id_user INTEGER NOT NULL REFERENCES flix.users(id_user) ON DELETE CASCADE,
+      id_user BIGINT NOT NULL REFERENCES flix.users(id_user) ON DELETE CASCADE,
       parent_review_id INTEGER REFERENCES flix.tv_series_reviews(id_review) ON DELETE CASCADE,
       content TEXT NOT NULL,
       rating SMALLINT,
@@ -14,6 +14,11 @@ export const initializeTvSeriesReviewsTable = async () => {
       CONSTRAINT chk_tv_series_review_rating
         CHECK (rating IS NULL OR rating BETWEEN 1 AND 5)
     )
+  `);
+
+  await pool.query(`
+    ALTER TABLE flix.tv_series_reviews
+      ALTER COLUMN id_user TYPE BIGINT USING id_user::BIGINT
   `);
 
   await pool.query(`
@@ -30,10 +35,15 @@ export const initializeTvSeriesReviewsTable = async () => {
     CREATE TABLE IF NOT EXISTS flix.tv_series_review_likes (
       id_like SERIAL PRIMARY KEY,
       id_review INTEGER NOT NULL REFERENCES flix.tv_series_reviews(id_review) ON DELETE CASCADE,
-      id_user INTEGER NOT NULL REFERENCES flix.users(id_user) ON DELETE CASCADE,
+      id_user BIGINT NOT NULL REFERENCES flix.users(id_user) ON DELETE CASCADE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT uq_tv_series_review_likes UNIQUE (id_review, id_user)
     )
+  `);
+
+  await pool.query(`
+    ALTER TABLE flix.tv_series_review_likes
+      ALTER COLUMN id_user TYPE BIGINT USING id_user::BIGINT
   `);
 
   await pool.query(`
