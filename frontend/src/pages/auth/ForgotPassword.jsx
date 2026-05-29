@@ -6,27 +6,28 @@ import { buildApiUrl } from "../../utils/api";
 import "./Login.css";
 
 function ForgotPassword() {
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [email, setEmail] = useState(""); //state untuk menyimpan input email
+  const [loading, setLoading] = useState(false); //state untuk menandakan sedang loading atau tidak
+  const [message, setMessage] = useState(""); //state untuk menyimpan pesan sukses dari backend
+  const [errorMessage, setErrorMessage] = useState(""); //state untuk menyimpan pesan error dari backend
 
+  //fungsi yang dijalankan saat form di submit
   const handleSubmit = async (event) => {
-    event.preventDefault();
+    event.preventDefault(); //biar ga reload pas submit
     setMessage("");
     setErrorMessage("");
 
     try {
       setLoading(true);
       const res = await axios.post(
-        buildApiUrl("/api/auth/forgot-password"),
+        buildApiUrl("/api/auth/forgot-password"), //api untuk forgot password
         { email }
       );
 
       setMessage(res.data.message);
     } catch (error) {
       setErrorMessage(
-        error.response?.data?.message || "Gagal mengirim link reset password"
+        error.response?.data?.message || "Gagal mengirim link reset password",
       );
     } finally {
       setLoading(false);
@@ -50,23 +51,23 @@ function ForgotPassword() {
               className="login-input"
               type="email"
               name="email"
-              placeholder="john.doe@gmail.com"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              placeholder="Masukkan email Anda"
+              value={email} //value diambil dari state email
+              onChange={(event) => setEmail(event.target.value)} //setiap user mengetik, state email ikut berubah
               autoComplete="email"
               required
             />
           </label>
-
+          //tampilkan pesan sukses atau error dari backend
           {message && <p className="login-success">{message}</p>}
           {errorMessage && <p className="login-error">{errorMessage}</p>}
-
+          //tampil loading
           <button className="login-submit" type="submit" disabled={loading}>
-            {loading ? "Loading..." : "Send Reset Link"}
+            {loading ? "Loading..." : "Kirim Link Reset"}
           </button>
-
           <p className="login-signup">
-            Remember your password? <Link to="/login">Login</Link>
+            Ingat password Anda? <Link to="/login">Login</Link> //link untuk
+            kembali ke halaman login
           </p>
         </form>
       </section>

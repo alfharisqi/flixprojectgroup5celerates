@@ -11,17 +11,19 @@ import "./Login.css";
 function Register() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false); //state tambahan
+  const [acceptedTerms, setAcceptedTerms] = useState(false); //state untuk checkbox terms
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  //form state untuk menyimpan input email, password, dan confirm password
   const [form, setForm] = useState({
     email: "",
     password: "",
     confirmPassword: "",
   });
 
+  //fungsi untuk update form state saat input berubah
   const handleChange = (e) => {
     setForm({
       ...form,
@@ -29,6 +31,7 @@ function Register() {
     });
   };
 
+  //membuat username otomatis dari email
   const buildUsername = (email) => {
     const fallback = `user${Date.now().toString().slice(-5)}`;
     const localPart = email.split("@")[0]?.trim().toLowerCase();
@@ -41,11 +44,13 @@ function Register() {
     e.preventDefault();
     setErrorMessage("");
 
+    //validasi password dan confirm password harus sama
     if (form.password !== form.confirmPassword) {
       setErrorMessage("Password dan confirm password tidak sama");
       return;
     }
 
+    //validasi harus menyetujui terms
     if (!acceptedTerms) {
       setErrorMessage("Kamu harus menyetujui Terms dan Privacy Policies");
       return;
@@ -54,14 +59,17 @@ function Register() {
     try {
       setLoading(true);
 
+      //payload yang dikirim ke backend untuk register
       const payload = {
         username: buildUsername(form.email),
         email: form.email,
         password: form.password,
       };
 
+      //register api
       await axios.post(buildApiUrl("/api/auth/register"), payload);
 
+      //pindah ke halaman login setelah register sukses
       navigate("/login");
     } catch (error) {
       setErrorMessage(error.response?.data?.message || "Register gagal");
@@ -87,7 +95,7 @@ function Register() {
               className="login-input"
               type="email"
               name="email"
-              placeholder="john.doe@gmail.com"
+              placeholder="Masukkan email Anda"
               value={form.email}
               onChange={handleChange}
               autoComplete="email"
@@ -101,7 +109,7 @@ function Register() {
               className="login-input login-password-input"
               type={showPassword ? "text" : "password"}
               name="password"
-              placeholder="••••••••••••••••••••"
+              placeholder="Masukkan password Anda"
               value={form.password}
               onChange={handleChange}
               autoComplete="new-password"
@@ -111,7 +119,9 @@ function Register() {
               className="login-password-toggle"
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+              aria-label={
+                showPassword ? "Sembunyikan password" : "Tampilkan password"
+              }
             >
               {showPassword ? <FiEye /> : <FiEyeOff />}
             </button>
@@ -123,7 +133,7 @@ function Register() {
               className="login-input login-password-input"
               type={showConfirmPassword ? "text" : "password"}
               name="confirmPassword"
-              placeholder="••••••••••••••••••••"
+              placeholder="Masukkan confirm password Anda"
               value={form.confirmPassword}
               onChange={handleChange}
               autoComplete="new-password"
@@ -149,21 +159,21 @@ function Register() {
               checked={acceptedTerms}
               onChange={(event) => setAcceptedTerms(event.target.checked)}
             />
-            <span>I agree to all the Terms and Privacy Policies</span>
+            <span>Saya setuju dengan Syarat dan Kebijakan Privasi</span>
           </label>
 
           {errorMessage && <p className="login-error">{errorMessage}</p>}
 
           <button className="login-submit" type="submit" disabled={loading}>
-            {loading ? "Loading..." : "Create Account"}
+            {loading ? "Loading..." : "Buat Akun"}
           </button>
 
           <p className="login-signup">
-            Already have an account? <Link to="/login">Login</Link>
+            Sudah punya akun? <Link to="/login">Login</Link>
           </p>
         </form>
 
-        <div className="login-divider">Or Sign Up with</div>
+        <div className="login-divider">Atau daftar dengan</div>
 
         <div className="login-socials" aria-label="Social sign up options">
           <button className="login-social login-social-facebook" type="button">

@@ -1,20 +1,22 @@
-import { useState } from "react";
-import axios from "axios";
-import { Link, useNavigate } from "react-router-dom";
-import { FaApple, FaFacebookF } from "react-icons/fa";
+import { useState } from "react"; //buat menyimpan data yang berubah
+import axios from "axios"; //buat komunikasi ke backend
+import { Link, useNavigate } from "react-router-dom"; //buat pindah halaman tanpa reload
+import { FaApple, FaFacebookF } from "react-icons/fa"; //
 import { FcGoogle } from "react-icons/fc";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import flixLogo from "../../assets/flix-logo.png";
 import { buildApiUrl } from "../../utils/api";
 import "./Login.css";
 
+//komponen halaman login
 function Login() {
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); //default password disembunyikan
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  //tempat menyimpan email dan password yang diinput user
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -27,8 +29,9 @@ function Login() {
     });
   };
 
+  //jalan saat form di submit
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); //biar ga reload pas submit
     setErrorMessage("");
 
     try {
@@ -38,12 +41,15 @@ function Login() {
         form,
       );
 
+      // Simpan token dan info user ke localStorage
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
+      //pindah ke halaman home setelah login sukses
       navigate("/");
 
       window.location.reload();
+      //kalau login gagal
     } catch (error) {
       setErrorMessage(error.response?.data?.message || "Login gagal");
     } finally {
@@ -64,11 +70,11 @@ function Login() {
         <form className="login-form" onSubmit={handleSubmit}>
           <label className="login-field">
             <span className="login-field-label">Email</span>
-            <input
+            <input //input untuk email
               className="login-input"
               type="email"
               name="email"
-              placeholder="john.doe@gmail.com"
+              placeholder="Masukkan email Anda"
               value={form.email}
               onChange={handleChange}
               autoComplete={rememberMe ? "email" : "off"}
@@ -78,11 +84,11 @@ function Login() {
 
           <label className="login-field">
             <span className="login-field-label">Password</span>
-            <input
+            <input //input untuk password
               className="login-input login-password-input"
               type={showPassword ? "text" : "password"}
               name="password"
-              placeholder="••••••••••••••••••••"
+              placeholder="Masukkan password Anda"
               value={form.password}
               onChange={handleChange}
               autoComplete={rememberMe ? "current-password" : "off"}
@@ -92,7 +98,9 @@ function Login() {
               className="login-password-toggle"
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+              aria-label={
+                showPassword ? "Sembunyikan password" : "Tampilkan password"
+              }
             >
               {showPassword ? <FiEye /> : <FiEyeOff />}
             </button>
@@ -105,7 +113,7 @@ function Login() {
                 checked={rememberMe}
                 onChange={(event) => setRememberMe(event.target.checked)}
               />
-              <span>Remember me</span>
+              <span>Ingat Saya</span>
             </label>
 
             <button
@@ -113,7 +121,7 @@ function Login() {
               type="button"
               onClick={() => navigate("/forgot-password")}
             >
-              Forgot Password
+              Lupa Password?
             </button>
           </div>
 
@@ -124,11 +132,11 @@ function Login() {
           </button>
 
           <p className="login-signup">
-            Don&apos;t have an account? <Link to="/register">Sign up</Link>
+            Belum punya akun? <Link to="/register">Sign Up</Link>
           </p>
         </form>
 
-        <div className="login-divider">Or login with</div>
+        <div className="login-divider">Atau login dengan</div>
 
         <div className="login-socials" aria-label="Social login options">
           <button className="login-social login-social-facebook" type="button">

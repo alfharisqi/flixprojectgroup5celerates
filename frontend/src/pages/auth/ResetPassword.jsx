@@ -8,19 +8,21 @@ import "./Login.css";
 
 function ResetPassword() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token") || "";
+  const [searchParams] = useSearchParams(); //hook untuk ambil query params dari URL
+  const token = searchParams.get("token") || ""; //ambil token dari query params, kalau ga ada kasih string kosong
 
+  //state untuk menyimpan input password, confirm password, dan kontrol tampilan password
   const [form, setForm] = useState({
     password: "",
     confirmPassword: "",
   });
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); //state untuk toggle mata
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
+  //fungsi untuk update form state saat input berubah
   const handleChange = (event) => {
     setForm({
       ...form,
@@ -33,11 +35,13 @@ function ResetPassword() {
     setMessage("");
     setErrorMessage("");
 
+    //validasi token harus ada
     if (!token) {
       setErrorMessage("Token reset password tidak ditemukan");
       return;
     }
 
+    //validasi password dan confirm password harus sama
     if (form.password !== form.confirmPassword) {
       setErrorMessage("Password dan confirm password tidak sama");
       return;
@@ -46,15 +50,15 @@ function ResetPassword() {
     try {
       setLoading(true);
       const res = await axios.post(
-        buildApiUrl("/api/auth/reset-password"),
+        buildApiUrl("/api/auth/reset-password"), //api untuk reset password
         {
           token,
           password: form.password,
-        }
+        },
       );
 
-      setMessage(res.data.message);
-      setTimeout(() => navigate("/login"), 1200);
+      setMessage(res.data.message); //tampilkan pesan sukses dari backend
+      setTimeout(() => navigate("/login"), 1200); //pindah ke halaman login setelah 1.2 detik
     } catch (error) {
       setErrorMessage(error.response?.data?.message || "Gagal reset password");
     } finally {
@@ -77,7 +81,7 @@ function ResetPassword() {
             <span className="login-field-label">New Password</span>
             <input
               className="login-input login-password-input"
-              type={showPassword ? "text" : "password"}
+              type={showPassword ? "text" : "password"} //kalau true, password terlihat
               name="password"
               placeholder="Password baru"
               value={form.password}
@@ -89,12 +93,13 @@ function ResetPassword() {
               className="login-password-toggle"
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+              aria-label={
+                showPassword ? "Sembunyikan password" : "Tampilkan password"
+              }
             >
               {showPassword ? <FiEye /> : <FiEyeOff />}
             </button>
           </label>
-
           <label className="login-field">
             <span className="login-field-label">Confirm Password</span>
             <input
@@ -120,14 +125,14 @@ function ResetPassword() {
               {showConfirmPassword ? <FiEye /> : <FiEyeOff />}
             </button>
           </label>
-
-          {message && <p className="login-success">{message}</p>}
-          {errorMessage && <p className="login-error">{errorMessage}</p>}
-
+          {message && <p className="login-success">{message}</p>} //tampilkan
+          pesan sukses dari backend
+          {errorMessage && <p className="login-error">{errorMessage}</p>}{" "}
+          //tampilkan pesan error dari backend
           <button className="login-submit" type="submit" disabled={loading}>
-            {loading ? "Loading..." : "Reset Password"}
+            {loading ? "Loading..." : "Reset Password"} //tampil loading saat
+            submit
           </button>
-
           <p className="login-signup">
             Back to <Link to="/login">Login</Link>
           </p>
