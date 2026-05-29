@@ -106,8 +106,8 @@ function UpgradePage() {
           <span className="badge-dot"></span> UPGRADE AKUN
         </div>
         <h1 className="upgrade-hero__title">
-          Nonton Lebih Cerdas dengan{" "}
-          <span className="text-highlight">FLIX Premium</span>
+          Nonton Lebih Cerdas <br /> dengan
+          <span className="text-highlight"> FLIX Premium</span>
         </h1>
         <p className="upgrade-hero__subtitle">
           Akses rekomendasi tak terbatas, filter canggih, dan pengalaman

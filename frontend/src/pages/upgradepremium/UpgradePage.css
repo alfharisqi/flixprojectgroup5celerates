@@ -1,11 +1,11 @@
 .upgrade-page {
-  --flix-red: #E50914;
+  --flix-red: #f20712;
   --flix-red-hover: #B80710;
   --bg-dark: #121212;
   --card-bg: #161618;
   --card-bg-popular: #111112;
   --text-primary: #FFFFFF;
-  --text-secondary: #8E8E93;
+  --text-secondary: #d0d0d0;
   --text-muted: #636366;
   --green-check: #00E082;
   --red-cross: #FF4A4A;
@@ -78,54 +78,56 @@
 
 /* Pill Badge "UPGRADE AKUN" */
 .upgrade-hero__badge {
-  border: 1px solid var(--flix-red);
-  color: var(--text-primary);
-  padding: 8px 20px;
-  border-radius: 30px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  display: flex;
+  box-sizing: border-box;
+  width: 345px;
+  height: 54px;
+  border: 1px solid #f20712;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  display: inline-flex;
+  justify-content: center;
   align-items: center;
-  gap: 8px;
-  background-color: rgba(229, 9, 20, 0.05);
-  margin-bottom: 24px;
-  box-shadow: 0 0 15px rgba(229, 9, 20, 0.1);
+  gap: 22px;
+  padding: 12px 46px 12px 47px;
+  color: #ffffff;
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 500;
+  text-transform: uppercase;
+  margin-bottom: 16px;
 }
 
 .badge-dot {
-  width: 14px;
+  width: 29px;
   height: 2px;
-  background-color: var(--flix-red);
-  display: inline-block;
+  background: #ffffff;
 }
 
 .upgrade-hero__title {
-  font-size: 48px;
-  font-weight: 800;
-  line-height: 1.15;
+  width: min(883px, 100%);
   margin: 0 0 16px 0;
+  font-size: 80px;
+  font-weight: 500;
+  line-height: 95px;
   letter-spacing: -1px;
 }
 
 .text-highlight {
-  color: var(--flix-red);
-  background: linear-gradient(90deg, #FF1F1F, #E50914);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 30px rgba(229, 9, 20, 0.2);
+  color: #f20712;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .upgrade-hero__subtitle {
-  font-size: 16px;
+  font-size: 21px;
   color: var(--text-secondary);
   line-height: 1.5;
-  max-width: 550px;
+  max-width: 700px;
   margin: 0 0 12px 0;
 }
 
 .upgrade-hero__stats {
-  font-size: 14px;
+  font-size: 21px;
   color: var(--text-secondary);
 }
 

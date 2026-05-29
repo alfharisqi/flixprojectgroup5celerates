@@ -91,7 +91,7 @@
   align-items: center;
   gap: 22px;
   padding: 12px 46px 12px 47px;
-  color: #ffffff;
+  color: #ffffff; 
   font-size: 24px;
   line-height: 30px;
   font-weight: 500;
@@ -509,7 +509,7 @@
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  line-clamp: 2;
   font-size: 12px;
   line-height: 1.35;
   font-weight: 400;
@@ -524,7 +524,7 @@
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .tv-series-card p {
