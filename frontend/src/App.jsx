@@ -18,6 +18,7 @@ import ProfilePage from "./pages/profile/ProfilePage";
 import PostDetail from "./pages/community/PostDetail";
 import CreatePostPage from "./pages/community/CreatePostPage";
 import WatchlistPage from "./pages/watchlist/WatchlistPage";
+import Upgradepage from "./pages/upgradepremium/UpgradePage";
 
 function App() {
   const location = useLocation();
@@ -33,6 +34,7 @@ function App() {
     "/create-post",
     "/watchlist",
     "/profile",
+    "/upgrade",
     "/",
   ];
   const hideNavbar =
@@ -58,6 +60,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/upgrade" element={<Upgradepage />} />
         <Route
           path="/watchlist"
           element={

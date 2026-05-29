@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { Link } from "react-router-dom";
 import {
   FaBookmark,
   FaCalendarAlt,
@@ -48,7 +49,8 @@ const formatJoinDate = (dateValue) => {
   }).format(new Date(dateValue))}`;
 };
 
-const getInitial = (name = "") => (name.trim().slice(0, 1) || "M").toUpperCase();
+const getInitial = (name = "") =>
+  (name.trim().slice(0, 1) || "M").toUpperCase();
 
 const defaultImagePosition = {
   x: 50,
@@ -123,8 +125,12 @@ function ProfilePage() {
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const watchedCount = watchlistItems.filter((item) => item.status === "watched").length;
-  const movieCount = watchlistItems.filter((item) => item.media_type === "movie").length;
+  const watchedCount = watchlistItems.filter(
+    (item) => item.status === "watched",
+  ).length;
+  const movieCount = watchlistItems.filter(
+    (item) => item.media_type === "movie",
+  ).length;
   const reviewHighlights = useMemo(
     () =>
       myReviews.slice(0, 5).map((review) => ({
@@ -144,8 +150,10 @@ function ProfilePage() {
   );
   const profilePhotoUrl = resolveMediaUrl(profile?.profile_photo_url);
   const bannerUrl = resolveMediaUrl(profile?.banner_url);
-  const editPhotoPreview = imagePreviews.profilePhoto || resolveMediaUrl(form.profile_photo_url);
-  const editBannerPreview = imagePreviews.banner || resolveMediaUrl(form.banner_url);
+  const editPhotoPreview =
+    imagePreviews.profilePhoto || resolveMediaUrl(form.profile_photo_url);
+  const editBannerPreview =
+    imagePreviews.banner || resolveMediaUrl(form.banner_url);
   const profilePhotoPosition = profile?.profile_photo_position || "50% 50%";
   const bannerPosition = profile?.banner_position || "50% 50%";
 
@@ -160,17 +168,18 @@ function ProfilePage() {
         setLoading(true);
         setErrorMessage("");
 
-        const [profileResponse, watchlistResponse, reviewsResponse] = await Promise.all([
-          axios.get(buildApiUrl("/api/profile/me"), {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetchWatchlist({ token }).catch(() => ({ items: [] })),
-          axios
-            .get(buildApiUrl("/api/profile/me/reviews"), {
+        const [profileResponse, watchlistResponse, reviewsResponse] =
+          await Promise.all([
+            axios.get(buildApiUrl("/api/profile/me"), {
               headers: { Authorization: `Bearer ${token}` },
-            })
-            .catch(() => ({ data: { summary: {}, reviews: [] } })),
-        ]);
+            }),
+            fetchWatchlist({ token }).catch(() => ({ items: [] })),
+            axios
+              .get(buildApiUrl("/api/profile/me/reviews"), {
+                headers: { Authorization: `Bearer ${token}` },
+              })
+              .catch(() => ({ data: { summary: {}, reviews: [] } })),
+          ]);
 
         setProfile(profileResponse.data);
         setForm({
@@ -179,7 +188,8 @@ function ProfilePage() {
           password: "",
           profile_photo_url: profileResponse.data.profile_photo_url || "",
           banner_url: profileResponse.data.banner_url || "",
-          profile_photo_position: profileResponse.data.profile_photo_position || "50% 50%",
+          profile_photo_position:
+            profileResponse.data.profile_photo_position || "50% 50%",
           banner_position: profileResponse.data.banner_position || "50% 50%",
         });
         setWatchlistItems(watchlistResponse.items || []);
@@ -189,7 +199,9 @@ function ProfilePage() {
           ...(reviewsResponse.data.summary || {}),
         }));
       } catch (error) {
-        setErrorMessage(error.response?.data?.message || "Gagal mengambil profile");
+        setErrorMessage(
+          error.response?.data?.message || "Gagal mengambil profile",
+        );
       } finally {
         setLoading(false);
       }
@@ -242,7 +254,7 @@ function ProfilePage() {
   const handleImageChange = (event, key) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = () => {
       setCropperState({ isOpen: true, imageSrc: reader.result, cropType: key });
@@ -268,11 +280,15 @@ function ProfilePage() {
     const data = new FormData();
     data.append("image", file);
 
-    const response = await axios.post(buildApiUrl("/api/uploads/profile-image"), data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
+    const response = await axios.post(
+      buildApiUrl("/api/uploads/profile-image"),
+      data,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       },
-    });
+    );
 
     return response.data.imageUrl;
   };
@@ -288,16 +304,22 @@ function ProfilePage() {
       const nextForm = { ...form };
 
       if (selectedImages.profilePhoto) {
-        nextForm.profile_photo_url = await uploadProfileImage(selectedImages.profilePhoto);
+        nextForm.profile_photo_url = await uploadProfileImage(
+          selectedImages.profilePhoto,
+        );
       }
 
       if (selectedImages.banner) {
         nextForm.banner_url = await uploadProfileImage(selectedImages.banner);
       }
 
-      const response = await axios.put(buildApiUrl("/api/profile/me"), nextForm, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await axios.put(
+        buildApiUrl("/api/profile/me"),
+        nextForm,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
       const oldUser = JSON.parse(localStorage.getItem("user") || "{}");
       const updatedUser = {
@@ -325,7 +347,8 @@ function ProfilePage() {
         password: "",
         profile_photo_url: response.data.user.profile_photo_url || "",
         banner_url: response.data.user.banner_url || "",
-        profile_photo_position: response.data.user.profile_photo_position || "50% 50%",
+        profile_photo_position:
+          response.data.user.profile_photo_position || "50% 50%",
         banner_position: response.data.user.banner_position || "50% 50%",
       }));
       setSelectedImages({ profilePhoto: null, banner: null });
@@ -385,7 +408,9 @@ function ProfilePage() {
       <section className="profile-shell">
         <div className="profile-summary">
           <div className="profile-avatar-wrap">
-            <div className={`profile-avatar ${profilePhotoUrl ? "has-image" : ""}`}>
+            <div
+              className={`profile-avatar ${profilePhotoUrl ? "has-image" : ""}`}
+            >
               {profilePhotoUrl ? (
                 <img
                   src={profilePhotoUrl}
@@ -415,7 +440,7 @@ function ProfilePage() {
             </span>
           </div>
 
-        <div className="profile-actions">
+          <div className="profile-actions">
             <button type="button" onClick={openEditModal}>
               <FaEdit />
               Edit Profil
@@ -427,7 +452,9 @@ function ProfilePage() {
           </div>
         </div>
 
-        {message && <p className="profile-alert profile-alert--success">{message}</p>}
+        {message && (
+          <p className="profile-alert profile-alert--success">{message}</p>
+        )}
         {errorMessage && <p className="profile-alert">{errorMessage}</p>}
 
         <div className="profile-stat-grid">
@@ -497,9 +524,18 @@ function ProfilePage() {
               <h2>Ringkasan Review</h2>
               <div className="profile-meter-list">
                 {[
-                  { label: "Rata-rata Rating", value: reviewSummary.average_rating * 20 },
-                  { label: "Review", value: Math.min(reviewSummary.review_count * 12, 100) },
-                  { label: "Reply", value: Math.min(reviewSummary.reply_count * 12, 100) },
+                  {
+                    label: "Rata-rata Rating",
+                    value: reviewSummary.average_rating * 20,
+                  },
+                  {
+                    label: "Review",
+                    value: Math.min(reviewSummary.review_count * 12, 100),
+                  },
+                  {
+                    label: "Reply",
+                    value: Math.min(reviewSummary.reply_count * 12, 100),
+                  },
                   ...moodHistory.slice(0, 3),
                 ].map((mood) => (
                   <div className="profile-meter" key={mood.label}>
@@ -545,7 +581,12 @@ function ProfilePage() {
                 <span>Edit Profile</span>
                 <h2 id="profile-edit-title">Perbarui informasi akun</h2>
               </div>
-              <button type="button" onClick={cancelEdit} disabled={saving} aria-label="Tutup">
+              <button
+                type="button"
+                onClick={cancelEdit}
+                disabled={saving}
+                aria-label="Tutup"
+              >
                 <FaTimes />
               </button>
             </div>
@@ -573,7 +614,9 @@ function ProfilePage() {
                   />
                 </label>
               </div>
-              <div className={`profile-edit-dialog__avatar ${editPhotoPreview ? "has-image" : ""}`}>
+              <div
+                className={`profile-edit-dialog__avatar ${editPhotoPreview ? "has-image" : ""}`}
+              >
                 {editPhotoPreview ? (
                   <img
                     src={editPhotoPreview}
@@ -584,7 +627,10 @@ function ProfilePage() {
                   getInitial(form.username)
                 )}
               </div>
-              <label htmlFor="upload-photo" className="profile-edit-dialog__photo-button">
+              <label
+                htmlFor="upload-photo"
+                className="profile-edit-dialog__photo-button"
+              >
                 <FaEdit />
                 Edit Foto Profile
                 <input
@@ -595,8 +641,6 @@ function ProfilePage() {
                 />
               </label>
             </div>
-
-
 
             <label>
               Username
@@ -647,7 +691,9 @@ function ProfilePage() {
           imageSrc={cropperState.imageSrc}
           aspectRatio={cropperState.cropType === "banner" ? 3 : 1}
           onCropComplete={handleCropComplete}
-          onCancel={() => setCropperState({ isOpen: false, imageSrc: null, cropType: null })}
+          onCancel={() =>
+            setCropperState({ isOpen: false, imageSrc: null, cropType: null })
+          }
         />
       )}
 

@@ -1,0 +1,379 @@
+.upgrade-page {
+  --flix-red: #E50914;
+  --flix-red-hover: #B80710;
+  --bg-dark: #121212;
+  --card-bg: #161618;
+  --card-bg-popular: #111112;
+  --text-primary: #FFFFFF;
+  --text-secondary: #8E8E93;
+  --text-muted: #636366;
+  --green-check: #00E082;
+  --red-cross: #FF4A4A;
+  --border-light: rgba(255, 255, 255, 0.1);
+  --border-popular: #FFFFFF;
+  --font-sans: 'Netflix Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  padding: 40px 24px 80px 24px;
+  box-sizing: border-box;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.upgrade-page * {
+  box-sizing: border-box;
+}
+
+/* style header */
+.upgrade-header {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 48px;
+}
+
+.upgrade-header__logo img {
+  height: 32px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.upgrade-header__logo img:hover {
+  transform: scale(1.05);
+}
+
+.upgrade-header__close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.upgrade-header__close:hover {
+  color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: rotate(90deg);
+}
+
+/* style hero section */
+.upgrade-hero {
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto 56px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Pill Badge "UPGRADE AKUN" */
+.upgrade-hero__badge {
+  border: 1px solid var(--flix-red);
+  color: var(--text-primary);
+  padding: 8px 20px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(229, 9, 20, 0.05);
+  margin-bottom: 24px;
+  box-shadow: 0 0 15px rgba(229, 9, 20, 0.1);
+}
+
+.badge-dot {
+  width: 14px;
+  height: 2px;
+  background-color: var(--flix-red);
+  display: inline-block;
+}
+
+.upgrade-hero__title {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1.15;
+  margin: 0 0 16px 0;
+  letter-spacing: -1px;
+}
+
+.text-highlight {
+  color: var(--flix-red);
+  background: linear-gradient(90deg, #FF1F1F, #E50914);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 30px rgba(229, 9, 20, 0.2);
+}
+
+.upgrade-hero__subtitle {
+  font-size: 16px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  max-width: 550px;
+  margin: 0 0 12px 0;
+}
+
+.upgrade-hero__stats {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.text-white {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+/* style cards container */
+.upgrade-cards-container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.upgrade-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  align-items: stretch;
+}
+
+/* Base Card Style */
+.upgrade-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.upgrade-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Highlighted Card Premium (Paling Populer) */
+.upgrade-card--popular {
+  border: 1.5px solid var(--border-popular);
+  background-color: var(--card-bg-popular);
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.05);
+}
+
+.upgrade-card--popular:hover {
+  box-shadow: 0 12px 35px rgba(255, 255, 255, 0.1);
+  transform: translateY(-8px) scale(1.01);
+}
+
+/* Badging "Paling Populer" */
+.popular-badge {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: var(--text-primary);
+  color: #000000;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* detail konten kartu */
+.card-header {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 24px;
+}
+
+.card-header__name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+
+.card-header__price-wrapper {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.card-header__price {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.card-header__period {
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
+
+.card-header__note {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.card-header__desc {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  margin: 0;
+  min-height: 40px; /* Menjaga tinggi agar teks sejajar */
+}
+
+.card-divider {
+  height: 1px;
+  background-color: var(--border-light);
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+/* list fitur */
+.card-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 32px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex-grow: 1; /* Membuat daftar fitur mengisi ruang agar tombol sejajar di bawah */
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+.feature-item--inactive {
+  color: var(--text-muted);
+}
+
+.icon-check {
+  color: var(--green-check);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.icon-cross {
+  color: var(--red-cross);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* button */
+.card-button {
+  width: 100%;
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+/* Tombol untuk Paket FREE (Disabled/Aktif) */
+.btn-disabled {
+  background-color: transparent;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}
+
+/* Tombol Premium (Mulai Premium) - Merah Menyala */
+.btn-primary {
+  background-color: var(--flix-red);
+  color: var(--text-primary);
+  box-shadow: 0 4px 15px rgba(229, 9, 20, 0.3);
+}
+
+.btn-primary:hover {
+  background-color: var(--flix-red-hover);
+  box-shadow: 0 6px 20px rgba(229, 9, 20, 0.4);
+}
+
+/* Tombol Paket Tahunan (Samping Premium) - Dark Red */
+.btn-secondary {
+  background-color: #2D1419;
+  border: 1px solid rgba(229, 9, 20, 0.2);
+  color: #FFA5B2;
+}
+
+.btn-secondary:hover {
+  background-color: #3D1B22;
+  border-color: rgba(229, 9, 20, 0.4);
+}
+
+.icon-arrow {
+  transition: transform 0.2s ease;
+}
+
+.btn-primary:hover .icon-arrow {
+  transform: translateX(4px);
+}
+
+/* responsive design */
+@media (max-width: 992px) {
+  .upgrade-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px 24px;
+  }
+  
+  .upgrade-card--popular {
+    grid-column: span 2; /* Menempatkan kartu popular melebar di tablet jika diperlukan */
+    max-width: 500px;
+    margin: 0 auto;
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .upgrade-page {
+    padding: 24px 16px 60px 16px;
+  }
+
+  .upgrade-header {
+    margin-bottom: 32px;
+  }
+
+  .upgrade-hero__title {
+    font-size: 32px;
+  }
+
+  .upgrade-cards {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .upgrade-card--popular {
+    grid-column: span 1;
+    max-width: 100%;
+  }
+}
