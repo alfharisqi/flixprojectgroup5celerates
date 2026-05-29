@@ -3,6 +3,7 @@ import axios from "axios";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import flixLogo from "../../assets/flix-logo.png";
+import { buildApiUrl } from "../../utils/api";
 import "./Login.css";
 
 function ResetPassword() {
@@ -50,7 +51,7 @@ function ResetPassword() {
       setLoading(true);
       const res = await axios.post(
         //api untuk reset password
-        `${import.meta.env.VITE_API_URL}/api/auth/reset-password`,
+        buildApiUrl("/api/auth/reset-password"),
         {
           token,
           password: form.password,
@@ -130,7 +131,8 @@ function ResetPassword() {
           {errorMessage && <p className="login-error">{errorMessage}</p>}{" "}
           //tampilkan pesan error dari backend
           <button className="login-submit" type="submit" disabled={loading}>
-            {loading ? "Loading..." : "Reset Password"} //tampil loading saat submit
+            {loading ? "Loading..." : "Reset Password"} //tampil loading saat
+            submit
           </button>
           <p className="login-signup">
             Back to <Link to="/login">Login</Link>

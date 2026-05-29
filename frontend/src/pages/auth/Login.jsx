@@ -5,6 +5,7 @@ import { FaApple, FaFacebookF } from "react-icons/fa"; //
 import { FcGoogle } from "react-icons/fc";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import flixLogo from "../../assets/flix-logo.png";
+import { buildApiUrl } from "../../utils/api";
 import "./Login.css";
 
 //komponen halaman login
@@ -97,7 +98,9 @@ function Login() {
               className="login-password-toggle"
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+              aria-label={
+                showPassword ? "Sembunyikan password" : "Tampilkan password"
+              }
             >
               {showPassword ? <FiEye /> : <FiEyeOff />}
             </button>

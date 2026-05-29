@@ -5,6 +5,7 @@ import { FaApple, FaFacebookF } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import flixLogo from "../../assets/flix-logo.png";
+import { buildApiUrl } from "../../utils/api";
 import "./Login.css";
 
 function Register() {
@@ -30,7 +31,7 @@ function Register() {
     });
   };
 
-  //membuat username otomatis dari email 
+  //membuat username otomatis dari email
   const buildUsername = (email) => {
     const fallback = `user${Date.now().toString().slice(-5)}`;
     const localPart = email.split("@")[0]?.trim().toLowerCase();
@@ -66,7 +67,7 @@ function Register() {
       };
 
       //register api
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/register`, payload);
+      await axios.post(buildApiUrl("/api/auth/register"), payload);
 
       //pindah ke halaman login setelah register sukses
       navigate("/login");
@@ -118,7 +119,9 @@ function Register() {
               className="login-password-toggle"
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+              aria-label={
+                showPassword ? "Sembunyikan password" : "Tampilkan password"
+              }
             >
               {showPassword ? <FiEye /> : <FiEyeOff />}
             </button>

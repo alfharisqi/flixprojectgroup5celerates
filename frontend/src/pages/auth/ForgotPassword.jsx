@@ -2,6 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import flixLogo from "../../assets/flix-logo.png";
+import { buildApiUrl } from "../../utils/api";
 import "./Login.css";
 
 function ForgotPassword() {
@@ -18,15 +19,16 @@ function ForgotPassword() {
 
     try {
       setLoading(true);
-      const res = await axios.post( //api untuk forgot password
-        `${import.meta.env.VITE_API_URL}/api/auth/forgot-password`,
-        { email }
+      const res = await axios.post(
+        //api untuk forgot password
+        buildApiUrl("/api/auth/forgot-password"),
+        { email },
       );
 
       setMessage(res.data.message);
     } catch (error) {
       setErrorMessage(
-        error.response?.data?.message || "Gagal mengirim link reset password"
+        error.response?.data?.message || "Gagal mengirim link reset password",
       );
     } finally {
       setLoading(false);
@@ -57,18 +59,16 @@ function ForgotPassword() {
               required
             />
           </label>
-
           //tampilkan pesan sukses atau error dari backend
           {message && <p className="login-success">{message}</p>}
           {errorMessage && <p className="login-error">{errorMessage}</p>}
-
           //tampil loading
           <button className="login-submit" type="submit" disabled={loading}>
             {loading ? "Loading..." : "Kirim Link Reset"}
           </button>
-
           <p className="login-signup">
-            Ingat password Anda? <Link to="/login">Login</Link> //link untuk kembali ke halaman login
+            Ingat password Anda? <Link to="/login">Login</Link> //link untuk
+            kembali ke halaman login
           </p>
         </form>
       </section>
