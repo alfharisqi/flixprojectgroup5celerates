@@ -43,7 +43,7 @@ export const register = async (req, res) => {
     const result = await pool.query(
       `INSERT INTO flix.users (id_role, username, email, password)
        VALUES ($1, $2, $3, $4)
-       RETURNING id_user, username, email`,
+       RETURNING id_user, username, email, profile_image_url, banner_image_url`,
       [roleId, username, email, hashedPassword]
     );
 
@@ -76,6 +76,8 @@ export const login = async (req, res) => {
           u.username,
           u.email,
           u.password,
+          u.profile_image_url,
+          u.banner_image_url,
           r.role_name
        FROM flix.users u
        JOIN flix.roles r ON u.id_role = r.id_role
@@ -124,7 +126,9 @@ export const login = async (req, res) => {
         id_user: user.id_user,
         username: user.username,
         email: user.email,
-        role: user.role_name
+        role: user.role_name,
+        profile_image_url: user.profile_image_url,
+        banner_image_url: user.banner_image_url
       }
     });
   } catch (error) {

@@ -17,6 +17,7 @@ import SiteNavbar from "../components/SiteNavbar";
 import PostCard from "../components/PostCard";
 import PostInsightModal from "../components/PostInsightModal";
 import PostSearchModal from "../components/PostSearchModal";
+import { resolveMediaUrl } from "../utils/media";
 import "./Community.css";
 
 function Community() {
@@ -33,6 +34,7 @@ function Community() {
   const activeTag = searchParams.get("tag") || "";
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user"));
+  const userProfileImageUrl = resolveMediaUrl(user?.profile_image_url);
   const totalReplies = Object.values(comments).reduce(
     (total, item) => total + (Array.isArray(item) ? item.length : 0),
     0
@@ -438,8 +440,18 @@ function Community() {
       <section className="community-shell">
         <aside className="community-sidebar" aria-label="Community sidebar">
           <div className="community-profile-panel">
-            <span className="community-avatar">
-              {(user?.username || user?.email || "F").slice(0, 1).toUpperCase()}
+            <span
+              className={
+                userProfileImageUrl
+                  ? "community-avatar has-image"
+                  : "community-avatar"
+              }
+            >
+              {userProfileImageUrl ? (
+                <img src={userProfileImageUrl} alt={user?.username || "Profile"} />
+              ) : (
+                (user?.username || user?.email || "F").slice(0, 1).toUpperCase()
+              )}
             </span>
             <div>
               <h2>{user?.username || "Guest FLIX"}</h2>

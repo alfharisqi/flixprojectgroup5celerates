@@ -26,6 +26,7 @@ import { initializePostViewsTable } from "./config/initPostViews.js";
 import { initializePasswordResetTable } from "./config/initPasswordReset.js";
 import { initializeMovieReviewsTable } from "./config/initMovieReviews.js";
 import { initializeTvSeriesReviewsTable } from "./config/initTvSeriesReviews.js";
+import { initializeUserProfileMediaColumns } from "./config/initUserProfileMedia.js";
 
 dotenv.config();
 
@@ -77,6 +78,7 @@ Promise.all([
   initializePasswordResetTable(),
   initializeMovieReviewsTable(),
   initializeTvSeriesReviewsTable(),
+  initializeUserProfileMediaColumns(),
 ])
   .then(() => {
     app.listen(PORT, () => {

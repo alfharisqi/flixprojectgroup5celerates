@@ -27,6 +27,7 @@ export const getPosts = async (req, res) => {
           p.created_at,
           u.id_user,
           u.username,
+          u.profile_image_url,
 
           COALESCE(v.view_count, 0) AS view_count,
           COALESCE(c.reply_count, 0) AS reply_count,
@@ -156,6 +157,7 @@ export const getPostById = async (req, res) => {
           p.created_at,
           u.id_user,
           u.username,
+          u.profile_image_url,
 
           COALESCE(v.view_count, 0) AS view_count,
           COALESCE(c.reply_count, 0) AS reply_count,

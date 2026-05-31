@@ -11,6 +11,7 @@ import settingIcon from "../assets/icon/setting-icon.png";
 import logoutIcon from "../assets/icon/logout-icon.png";
 import blueDiamondIcon from "../assets/icon/bluediamond-icon.png";
 import SearchModal from "./SearchModal";
+import { resolveMediaUrl } from "../utils/media";
 import "./SiteNavbar.css";
 
 const navItems = [
@@ -49,6 +50,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const currentActiveKey = getActiveKey(location.pathname, activeKey);
   const userInitial = (user?.username || user?.email || "M").slice(0, 1).toUpperCase();
+  const userProfileImageUrl = resolveMediaUrl(user?.profile_image_url);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -110,7 +112,19 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
 
               <details className="site-navbar__user-menu">
                 <summary aria-label="User menu">
-                  <span className="site-navbar__avatar">{userInitial}</span>
+                  <span
+                    className={
+                      userProfileImageUrl
+                        ? "site-navbar__avatar has-image"
+                        : "site-navbar__avatar"
+                    }
+                  >
+                    {userProfileImageUrl ? (
+                      <img src={userProfileImageUrl} alt={user?.username || "Profile"} />
+                    ) : (
+                      userInitial
+                    )}
+                  </span>
                 </summary>
                 <div className="site-navbar__user-popover">
                   <Link className="site-navbar__profile-item" to="/profile">

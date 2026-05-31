@@ -197,6 +197,18 @@
   flex: 0 0 auto;
 }
 
+.community-avatar.has-image {
+  overflow: hidden;
+  background: #141414;
+}
+
+.community-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
 .community-profile-panel h2,
 .community-info-panel h3,
 .community-tags-panel h3 {

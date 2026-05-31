@@ -12,7 +12,8 @@ export const getCommentsByPost = async (req, res) => {
           c.parent_comment_id,
           c.content,
           c.created_at,
-          u.username
+          u.username,
+          u.profile_image_url
        FROM flix.comments c
        JOIN flix.users u ON c.id_user = u.id_user
        WHERE c.id_post = $1

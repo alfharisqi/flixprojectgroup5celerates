@@ -9,6 +9,7 @@ import {
 import RichContent from "./RichContent";
 import reportIcon from "../assets/icon/report-icon.svg";
 import shareIcon from "../assets/icon/share-icon.svg";
+import { resolveMediaUrl } from "../utils/media";
 import "./PostCard.css";
 
 const reactionOptions = [
@@ -62,6 +63,7 @@ function PostCard({
     totalPollVotes;
   const totalInsight = Number(post.total_insight ?? fallbackTotalInsight);
   const authorInitial = (post.username || "F").slice(0, 1).toUpperCase();
+  const authorAvatarUrl = resolveMediaUrl(post.profile_image_url);
 
   const handleCardAction = (event, action) => {
     event.stopPropagation();
@@ -90,7 +92,19 @@ function PostCard({
     >
       <div className="community-post-card__header">
         <div className="community-post-card__author">
-          <span className="community-post-card__avatar">{authorInitial}</span>
+          <span
+            className={
+              authorAvatarUrl
+                ? "community-post-card__avatar has-image"
+                : "community-post-card__avatar"
+            }
+          >
+            {authorAvatarUrl ? (
+              <img src={authorAvatarUrl} alt={post.username || "Profile"} />
+            ) : (
+              authorInitial
+            )}
+          </span>
           <div>
             <h3>{post.title || "Untitled Post"}</h3>
             <p>

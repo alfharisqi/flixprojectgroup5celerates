@@ -198,6 +198,18 @@
   line-height: 1;
 }
 
+.site-navbar__avatar.has-image {
+  overflow: hidden;
+  background: #141414;
+}
+
+.site-navbar__avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
 .site-navbar__user-menu summary:hover,
 .site-navbar__user-menu summary:focus-visible {
   transform: translateY(-1px);

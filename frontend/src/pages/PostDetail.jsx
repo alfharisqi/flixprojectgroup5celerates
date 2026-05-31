@@ -15,6 +15,7 @@ import RichContent from "../components/RichContent";
 import SiteNavbar from "../components/SiteNavbar";
 import reportIcon from "../assets/icon/report-icon.svg";
 import shareIcon from "../assets/icon/share-icon.svg";
+import { resolveMediaUrl } from "../utils/media";
 import "../components/PostCard.css";
 import "./PostDetail.css";
 
@@ -404,6 +405,7 @@ function PostDetail() {
     return items.map((comment) => {
       const childComments = getChildComments(allComments, comment.id_comment);
       const inputKey = `comment-${comment.id_comment}`;
+      const replyAvatarUrl = resolveMediaUrl(comment.profile_image_url);
       const replyNumber =
         allComments.findIndex(
           (item) => item.id_comment === comment.id_comment,
@@ -418,8 +420,19 @@ function PostDetail() {
           <article className="post-reply-card">
             <header className="post-reply-header">
               <div className="post-reply-author">
-                <div className="post-reply-avatar" aria-hidden="true">
-                  {getReplyInitial(comment.username)}
+                <div
+                  className={
+                    replyAvatarUrl
+                      ? "post-reply-avatar has-image"
+                      : "post-reply-avatar"
+                  }
+                  aria-hidden="true"
+                >
+                  {replyAvatarUrl ? (
+                    <img src={replyAvatarUrl} alt="" />
+                  ) : (
+                    getReplyInitial(comment.username)
+                  )}
                 </div>
                 <div className="post-reply-meta">
                   <strong>{comment.username}</strong>
@@ -592,6 +605,7 @@ function PostDetail() {
     0,
   );
   const authorInitial = (post.username || "F").slice(0, 1).toUpperCase();
+  const authorAvatarUrl = resolveMediaUrl(post.profile_image_url);
   const selectedPostReactionOption = postReactionOptions.find(
     (item) => item.type === selectedPostReaction,
   );
@@ -610,7 +624,19 @@ function PostDetail() {
       <div className="post-detail-card community-post-card">
         <div className="community-post-card__header">
           <div className="community-post-card__author">
-            <span className="community-post-card__avatar">{authorInitial}</span>
+            <span
+              className={
+                authorAvatarUrl
+                  ? "community-post-card__avatar has-image"
+                  : "community-post-card__avatar"
+              }
+            >
+              {authorAvatarUrl ? (
+                <img src={authorAvatarUrl} alt={post.username || "Profile"} />
+              ) : (
+                authorInitial
+              )}
+            </span>
             <div>
               <h3>{post.title || "Untitled Post"}</h3>
               <p>

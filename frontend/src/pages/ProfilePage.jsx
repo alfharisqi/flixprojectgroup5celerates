@@ -1,131 +1,868 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import {
+  FaBookmark,
+  FaCalendarAlt,
+  FaCheck,
+  FaClock,
+  FaEdit,
+  FaFacebookF,
+  FaRegCommentDots,
+  FaStar,
+  FaTimes,
+  FaTrash,
+  FaTwitter,
+  FaYoutube,
+} from "react-icons/fa";
+import SiteNavbar from "../components/SiteNavbar";
+import diamondIcon from "../assets/icon/bluediamond-icon.png";
+import santaiIcon from "../assets/emoticon/santai-emoticon.png";
+import seruIcon from "../assets/emoticon/seru-emoticon.png";
+import sedihIcon from "../assets/emoticon/sedih-emoticon.png";
+import menegangkanIcon from "../assets/emoticon/menegangkan-emoticon.png";
+import romantisIcon from "../assets/emoticon/romantis-emoticon.png";
+import pikiranIcon from "../assets/emoticon/pikiran-emoticon.png";
+import { resolveMediaUrl } from "../utils/media";
+import "./ProfilePage.css";
+
+const apiUrl = import.meta.env.VITE_API_URL;
+
+const fallbackPoster =
+  "https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg";
+
+const movieGenreLookup = {
+  12: "Adventure",
+  14: "Fantasy",
+  16: "Animasi",
+  18: "Drama",
+  27: "Horror",
+  28: "Action",
+  35: "Komedi",
+  53: "Thriller",
+  80: "Crime",
+  878: "Sci-Fi",
+  9648: "Mystery",
+  10749: "Romantis",
+  10751: "Family",
+};
+
+const tvGenreLookup = {
+  16: "Animasi",
+  18: "Drama",
+  35: "Komedi",
+  80: "Crime",
+  9648: "Mystery",
+  10751: "Family",
+  10759: "Adventure",
+  10765: "Fantasy",
+};
+
+const moodDefinitions = [
+  { key: "santai", label: "Santai", icon: santaiIcon, genreIds: [35, 10751, 16] },
+  { key: "seru", label: "Seru", icon: seruIcon, genreIds: [28, 12, 10759] },
+  { key: "sedih", label: "Sedih", icon: sedihIcon, genreIds: [18] },
+  { key: "menegangkan", label: "Menegangkan", icon: menegangkanIcon, genreIds: [53, 27, 80, 9648] },
+  { key: "romantis", label: "Romantis", icon: romantisIcon, genreIds: [10749] },
+  { key: "pikiran", label: "Pikiran", icon: pikiranIcon, genreIds: [878, 10765, 9648] },
+];
+
+const readStorageArray = (key) => {
+  try {
+    const value = JSON.parse(localStorage.getItem(key));
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+};
+
+const readStorageObject = (key) => {
+  try {
+    const value = JSON.parse(localStorage.getItem(key));
+    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  } catch {
+    return {};
+  }
+};
+
+const getStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user"));
+  } catch {
+    return null;
+  }
+};
+
+const getUserStorageId = (user) => user?.id_user || "guest";
+const getMovieWatchlistKey = (user) => `flix_movie_watchlist_${getUserStorageId(user)}`;
+const getSeriesWatchlistKey = (user) => `flix_tv_watchlist_${getUserStorageId(user)}`;
+const getWatchStatusKey = (user) => `flix_watchlist_status_${getUserStorageId(user)}`;
+const getMoodHistoryKey = (user) => `flix_mood_history_${getUserStorageId(user)}`;
+const getItemKey = (item) => `${item.mediaType}:${item.id}`;
+
+const getInitial = (name = "User") => name.trim().slice(0, 1).toUpperCase() || "U";
+
+const getYear = (date) => date?.slice?.(0, 4) || "-";
+
+const formatRating = (rating) => {
+  const value = Number(rating);
+  return Number.isFinite(value) ? value.toFixed(1) : "0.0";
+};
+
+const formatDate = (dateValue) => {
+  if (!dateValue) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(dateValue));
+};
+
+const formatJoinDate = (dateValue) => {
+  if (!dateValue) {
+    return "Bergabung sejak -";
+  }
+
+  const formattedDate = new Intl.DateTimeFormat("id-ID", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(dateValue));
+
+  return `Bergabung sejak ${formattedDate}`;
+};
+
+const stripHtml = (value = "") =>
+  value
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const truncateText = (value = "", maxLength = 140) => {
+  const text = stripHtml(value);
+
+  if (text.length <= maxLength) {
+    return text || "-";
+  }
+
+  return `${text.slice(0, maxLength - 3).trim()}...`;
+};
+
+const normalizeWatchlistItem = (item, mediaType) => ({
+  ...item,
+  mediaType,
+  title: item.title || item.name || item.original_name || "Untitled",
+  poster: item.poster || item.poster_url || fallbackPoster,
+  genre_ids: item.genre_ids || [],
+});
+
+const getGenreName = (genreId, mediaType = "movie") => {
+  const lookup = mediaType === "tv" ? tvGenreLookup : movieGenreLookup;
+  return lookup[Number(genreId)] || movieGenreLookup[Number(genreId)] || "Film";
+};
+
+function ProfileStatCard({ value, label, icon }) {
+  return (
+    <div className="profile-stat-card">
+      <div>
+        <strong>{value}</strong>
+        <span>{label}</span>
+      </div>
+      <span className="profile-stat-card__icon">{icon}</span>
+    </div>
+  );
+}
+
+function ProfileReviewItem({ item }) {
+  const genres = item.genres?.length
+    ? item.genres.slice(0, 2)
+    : (item.genre_ids || []).slice(0, 2).map((genreId) => getGenreName(genreId, item.media_type));
+
+  return (
+    <article className="profile-review-item">
+      <img src={item.poster || fallbackPoster} alt={item.title} />
+      <div className="profile-review-item__body">
+        <div className="profile-review-item__header">
+          <div>
+            <h3>{item.title}</h3>
+            <div className="profile-review-rating" aria-label={`Rating ${item.rating} dari 5`}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <FaStar
+                  key={star}
+                  className={star <= Number(item.rating || 0) ? "is-active" : ""}
+                />
+              ))}
+              <span>{formatRating(Number(item.rating || 0))}</span>
+            </div>
+          </div>
+          <div className="profile-review-actions">
+            <button type="button" aria-label="Edit review">
+              <FaEdit />
+            </button>
+            <button type="button" aria-label="Hapus review">
+              <FaTrash />
+            </button>
+          </div>
+        </div>
+        <p>{truncateText(item.content)}</p>
+        <div className="profile-review-meta">
+          <span>{formatDate(item.created_at)}</span>
+          {genres.map((genre) => (
+            <span key={`${item.id_review}-${genre}`}>{genre}</span>
+          ))}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ProfilePostItem({ post }) {
+  return (
+    <article className="profile-post-item">
+      <div className="profile-post-item__header">
+        <div>
+          <h3>{post.title || "Community Post"}</h3>
+          <span>{formatDate(post.created_at)}</span>
+        </div>
+        <Link to={`/post/${post.id_post}`}>Buka Post</Link>
+      </div>
+      <p>{truncateText(post.content, 180)}</p>
+      <div className="profile-post-item__meta">
+        <span>{post.reply_count || 0} reply</span>
+        <span>{post.like_count || 0} like</span>
+        <span>{post.reaction_count || 0} reaction</span>
+      </div>
+    </article>
+  );
+}
+
+function EditProfileModal({ open, form, saving, onClose, onChange, onSubmit }) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div className="profile-edit-modal" role="presentation" onClick={onClose}>
+      <form
+        className="profile-edit-modal__dialog"
+        onSubmit={onSubmit}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="profile-edit-modal__header">
+          <h2>Edit Profil</h2>
+          <button type="button" onClick={onClose} aria-label="Tutup edit profil">
+            <FaTimes />
+          </button>
+        </div>
+
+        <label>
+          Username
+          <input
+            type="text"
+            name="username"
+            value={form.username}
+            onChange={onChange}
+          />
+        </label>
+        <label>
+          Email
+          <input type="email" name="email" value={form.email} onChange={onChange} />
+        </label>
+        <label>
+          Password Baru
+          <input
+            type="password"
+            name="password"
+            value={form.password}
+            onChange={onChange}
+            placeholder="Kosongkan jika tidak ingin ganti password"
+          />
+        </label>
+
+        <button type="submit" disabled={saving}>
+          {saving ? "Menyimpan..." : "Simpan Perubahan"}
+        </button>
+      </form>
+    </div>
+  );
+}
 
 function ProfilePage() {
+  const navigate = useNavigate();
   const token = localStorage.getItem("token");
-
+  const avatarInputRef = useRef(null);
+  const bannerInputRef = useRef(null);
+  const storedUser = useMemo(() => getStoredUser(), []);
+  const [profile, setProfile] = useState(storedUser);
+  const [activity, setActivity] = useState({
+    stats: { review_count: 0, post_count: 0 },
+    reviews: [],
+    posts: [],
+  });
+  const [reviewDetails, setReviewDetails] = useState({});
+  const [activeTab, setActiveTab] = useState("reviews");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingTarget, setUploadingTarget] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [form, setForm] = useState({
     username: "",
     email: "",
     password: "",
   });
 
-  const [loading, setLoading] = useState(true);
+  const userForStorage = profile || storedUser;
+  const movieWatchlist = useMemo(
+    () => readStorageArray(getMovieWatchlistKey(userForStorage)),
+    [userForStorage],
+  );
+  const seriesWatchlist = useMemo(
+    () => readStorageArray(getSeriesWatchlistKey(userForStorage)),
+    [userForStorage],
+  );
+  const watchStatus = useMemo(
+    () => readStorageObject(getWatchStatusKey(userForStorage)),
+    [userForStorage],
+  );
+  const moodHistory = useMemo(
+    () => readStorageObject(getMoodHistoryKey(userForStorage)),
+    [userForStorage],
+  );
 
-  const fetchProfile = async () => {
-    try {
-      const res = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/profile/me`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
+  const watchlistItems = useMemo(
+    () => [
+      ...movieWatchlist.map((item) => normalizeWatchlistItem(item, "movie")),
+      ...seriesWatchlist.map((item) => normalizeWatchlistItem(item, "tv")),
+    ],
+    [movieWatchlist, seriesWatchlist],
+  );
+
+  const watchedCount = watchlistItems.filter((item) => watchStatus[getItemKey(item)]).length;
+  const unwatchedCount = watchlistItems.length - watchedCount;
+
+  const visibleReviews = useMemo(
+    () =>
+      activity.reviews.map((review) => ({
+        title:
+          review.media_type === "tv"
+            ? `TV Series #${review.tmdb_id}`
+            : `Film #${review.tmdb_id}`,
+        poster: fallbackPoster,
+        genres: [],
+        genre_ids: [],
+        ...review,
+        ...(reviewDetails[`${review.media_type}:${review.tmdb_id}`] || {}),
+      })),
+    [activity.reviews, reviewDetails],
+  );
+
+  const genreCounts = useMemo(() => {
+    const counts = new Map();
+
+    const addGenre = (genreName) => {
+      if (!genreName) {
+        return;
+      }
+
+      counts.set(genreName, (counts.get(genreName) || 0) + 1);
+    };
+
+    watchlistItems.forEach((item) => {
+      (item.genre_ids || []).forEach((genreId) => addGenre(getGenreName(genreId, item.mediaType)));
+    });
+
+    visibleReviews.forEach((review) => {
+      (review.genres || []).forEach(addGenre);
+      (review.genre_ids || []).forEach((genreId) =>
+        addGenre(getGenreName(genreId, review.media_type)),
       );
+    });
 
-      setForm({
-        username: res.data.username || "",
-        email: res.data.email || "",
-        password: "",
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([name]) => name)
+      .slice(0, 7);
+  }, [visibleReviews, watchlistItems]);
+
+  const favoriteGenres =
+    genreCounts.length > 0
+      ? genreCounts
+      : ["Drama", "Thriller", "Animasi", "Komedi", "Adventure", "Fantasy", "Horror"];
+
+  const moodStats = useMemo(() => {
+    const derivedCounts = Object.fromEntries(moodDefinitions.map((mood) => [mood.key, 0]));
+
+    watchlistItems.forEach((item) => {
+      moodDefinitions.forEach((mood) => {
+        if ((item.genre_ids || []).some((genreId) => mood.genreIds.includes(Number(genreId)))) {
+          derivedCounts[mood.key] += 1;
+        }
       });
-    } catch (error) {
-      alert(error.response?.data?.message || "Gagal mengambil profile");
-    } finally {
-      setLoading(false);
-    }
-  };
+    });
+
+    visibleReviews.forEach((review) => {
+      moodDefinitions.forEach((mood) => {
+        if ((review.genre_ids || []).some((genreId) => mood.genreIds.includes(Number(genreId)))) {
+          derivedCounts[mood.key] += 1;
+        }
+      });
+    });
+
+    const counts = moodDefinitions.map((mood) => ({
+      ...mood,
+      count: Number(moodHistory[mood.key] || 0) + derivedCounts[mood.key],
+    }));
+    const maxCount = Math.max(...counts.map((mood) => mood.count), 1);
+
+    return counts.map((mood) => ({
+      ...mood,
+      percent: Math.max((mood.count / maxCount) * 100, mood.count > 0 ? 8 : 0),
+    }));
+  }, [moodHistory, visibleReviews, watchlistItems]);
+
+  const initial = getInitial(profile?.username || storedUser?.username);
+  const profileImageUrl = resolveMediaUrl(profile?.profile_image_url);
+  const bannerImageUrl = resolveMediaUrl(profile?.banner_image_url);
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    const fetchProfileData = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
 
-  const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-  };
+      try {
+        setLoading(true);
+        setErrorMessage("");
+        const [profileResponse, activityResponse] = await Promise.all([
+          axios.get(`${apiUrl}/api/profile/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axios.get(`${apiUrl}/api/profile/activity`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+        setProfile(profileResponse.data);
+        const currentStoredUser = getStoredUser() || {};
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            ...currentStoredUser,
+            ...profileResponse.data,
+            role: profileResponse.data.role_name || currentStoredUser.role,
+          }),
+        );
+        setForm({
+          username: profileResponse.data.username || "",
+          email: profileResponse.data.email || "",
+          password: "",
+        });
+        setActivity(activityResponse.data);
+      } catch (error) {
+        setErrorMessage(error.response?.data?.message || "Gagal mengambil profile");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    try {
-      const res = await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/profile/me`,
-        form,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
+    fetchProfileData();
+  }, [token]);
 
-      const oldUser = JSON.parse(localStorage.getItem("user"));
+  useEffect(() => {
+    const missingReviews = activity.reviews
+      .slice(0, 12)
+      .filter((review) => !reviewDetails[`${review.media_type}:${review.tmdb_id}`]);
 
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          ...oldUser,
-          username: res.data.user.username,
-          email: res.data.user.email,
+    if (missingReviews.length === 0) {
+      return undefined;
+    }
+
+    let shouldIgnore = false;
+
+    const loadReviewDetails = async () => {
+      const entries = await Promise.all(
+        missingReviews.map(async (review) => {
+          const detailKey = `${review.media_type}:${review.tmdb_id}`;
+          const endpoint =
+            review.media_type === "tv" ? "tv-series" : "movies";
+
+          try {
+            const response = await axios.get(`${apiUrl}/api/${endpoint}/${review.tmdb_id}`, {
+              params: { language: "id-ID" },
+            });
+            const media = response.data;
+            const title =
+              media.title || media.name || media.original_title || media.original_name || "Untitled";
+
+            return [
+              detailKey,
+              {
+                title,
+                poster: media.poster_url || fallbackPoster,
+                genres: (media.genres || []).map((genre) => genre.name),
+                genre_ids: media.genre_ids || (media.genres || []).map((genre) => genre.id),
+              },
+            ];
+          } catch {
+            return [
+              detailKey,
+              {
+                title:
+                  review.media_type === "tv"
+                    ? `TV Series #${review.tmdb_id}`
+                    : `Film #${review.tmdb_id}`,
+                poster: fallbackPoster,
+                genres: [],
+                genre_ids: [],
+              },
+            ];
+          }
         }),
       );
 
-      alert(res.data.message);
-      setForm((prev) => ({
-        ...prev,
-        password: "",
-      }));
+      if (!shouldIgnore) {
+        setReviewDetails((currentDetails) => ({
+          ...currentDetails,
+          ...Object.fromEntries(entries),
+        }));
+      }
+    };
 
-      window.location.reload();
+    loadReviewDetails();
+
+    return () => {
+      shouldIgnore = true;
+    };
+  }, [activity.reviews, reviewDetails]);
+
+  const handleFormChange = (event) => {
+    setForm((currentForm) => ({
+      ...currentForm,
+      [event.target.name]: event.target.value,
+    }));
+  };
+
+  const handleSubmitProfile = async (event) => {
+    event.preventDefault();
+
+    try {
+      setSaving(true);
+      const response = await axios.put(`${apiUrl}/api/profile/me`, form, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const updatedUser = {
+        ...(storedUser || {}),
+        ...response.data.user,
+        role: profile?.role_name || storedUser?.role,
+      };
+
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      setProfile((currentProfile) => ({
+        ...currentProfile,
+        ...response.data.user,
+      }));
+      setForm((currentForm) => ({ ...currentForm, password: "" }));
+      setIsEditOpen(false);
     } catch (error) {
-      alert(error.response?.data?.message || "Gagal update profile");
+      setErrorMessage(error.response?.data?.message || "Gagal update profile");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateStoredUser = (nextUser) => {
+    const currentUser = getStoredUser() || {};
+
+    localStorage.setItem(
+      "user",
+      JSON.stringify({
+        ...currentUser,
+        ...nextUser,
+        role: profile?.role_name || currentUser.role,
+      }),
+    );
+  };
+
+  const handleMediaUpload = async (event, field) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      setUploadingTarget(field);
+      setErrorMessage("");
+
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const uploadResponse = await axios.post(
+        `${apiUrl}/api/uploads/editor-image`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
+
+      const mediaResponse = await axios.put(
+        `${apiUrl}/api/profile/media`,
+        {
+          field,
+          image_url: uploadResponse.data.imageUrl,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      setProfile((currentProfile) => ({
+        ...currentProfile,
+        ...mediaResponse.data.user,
+      }));
+      updateStoredUser(mediaResponse.data.user);
+    } catch (error) {
+      setErrorMessage(
+        error.response?.data?.message ||
+          (field === "profile_image_url"
+            ? "Gagal upload foto profile"
+            : "Gagal upload banner profile"),
+      );
+    } finally {
+      setUploadingTarget("");
     }
   };
 
   if (loading) {
-    return <div style={{ padding: "24px" }}>Loading profile...</div>;
+    return (
+      <main className="profile-page profile-page--state">
+        <SiteNavbar mode="fixed" />
+        <p>Loading profile...</p>
+      </main>
+    );
   }
 
   return (
-    <div style={{ padding: "24px", maxWidth: "500px", margin: "0 auto" }}>
-      <h1>Edit Profile</h1>
+    <main className="profile-page">
+      <SiteNavbar mode="fixed" />
 
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-        }}>
-        <label>Username</label>
+      <section
+        className="profile-banner"
+        style={
+          bannerImageUrl
+            ? { "--profile-banner-image": `url(${bannerImageUrl})` }
+            : undefined
+        }
+      >
         <input
-          type="text"
-          name="username"
-          value={form.username}
-          onChange={handleChange}
+          ref={bannerInputRef}
+          className="profile-media-input"
+          type="file"
+          accept="image/jpeg,image/png,image/jpg,image/webp"
+          onChange={(event) => handleMediaUpload(event, "banner_image_url")}
         />
+        <button
+          type="button"
+          className="profile-banner__edit"
+          onClick={() => bannerInputRef.current?.click()}
+          disabled={uploadingTarget === "banner_image_url"}
+        >
+          <FaEdit />
+          {uploadingTarget === "banner_image_url" ? "Mengupload..." : "Edit Banner"}
+        </button>
+      </section>
 
-        <label>Email</label>
-        <input
-          type="email"
-          name="email"
-          value={form.email}
-          onChange={handleChange}
+      <section className="profile-header">
+        <div className="profile-avatar-wrap">
+          <input
+            ref={avatarInputRef}
+            className="profile-media-input"
+            type="file"
+            accept="image/jpeg,image/png,image/jpg,image/webp"
+            onChange={(event) => handleMediaUpload(event, "profile_image_url")}
+          />
+          <div className={profileImageUrl ? "profile-avatar has-image" : "profile-avatar"}>
+            {profileImageUrl ? (
+              <img src={profileImageUrl} alt={profile?.username || "Foto profile"} />
+            ) : (
+              initial
+            )}
+          </div>
+          <button
+            type="button"
+            aria-label="Edit avatar"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={uploadingTarget === "profile_image_url"}
+          >
+            <FaEdit />
+          </button>
+        </div>
+
+        <div className="profile-identity">
+          <h1>{profile?.username || "User FLIX"}</h1>
+          <p>{profile?.email || "-"}</p>
+          <div className="profile-join-row">
+            <FaCalendarAlt />
+            <span>{formatJoinDate(profile?.created_at)}</span>
+            <span className="profile-premium-badge">
+              <img src={diamondIcon} alt="" />
+              Premium
+            </span>
+          </div>
+        </div>
+
+        <button
+          className="profile-edit-button"
+          type="button"
+          onClick={() => setIsEditOpen(true)}
+        >
+          Edit Profil
+        </button>
+      </section>
+
+      <section className="profile-stats" aria-label="Statistik profil">
+        <ProfileStatCard
+          value={watchlistItems.length}
+          label="Film Tersimpan"
+          icon={<FaBookmark />}
         />
-
-        <label>Password Baru (opsional)</label>
-        <input
-          type="password"
-          name="password"
-          value={form.password}
-          onChange={handleChange}
-          placeholder="Kosongkan jika tidak ingin ganti password"
+        <ProfileStatCard
+          value={activity.stats?.review_count || visibleReviews.length}
+          label="Review Film"
+          icon={<FaRegCommentDots />}
         />
+        <ProfileStatCard value={watchedCount} label="Sudah Ditonton" icon={<FaCheck />} />
+        <ProfileStatCard value={unwatchedCount} label="Belum Ditonton" icon={<FaClock />} />
+      </section>
 
-        <button type="submit">Simpan Perubahan</button>
-      </form>
-    </div>
+      <div className="profile-divider" aria-hidden="true" />
+
+      {errorMessage && <p className="profile-error">{errorMessage}</p>}
+
+      <section className="profile-content">
+        <div className="profile-main-column">
+          <div className="profile-tabs">
+            <button
+              className={activeTab === "reviews" ? "is-active" : ""}
+              type="button"
+              onClick={() => setActiveTab("reviews")}
+            >
+              Review Saya ({activity.stats?.review_count || visibleReviews.length})
+            </button>
+            <button
+              className={activeTab === "posts" ? "is-active" : ""}
+              type="button"
+              onClick={() => setActiveTab("posts")}
+            >
+              Postingan Saya ({activity.stats?.post_count || activity.posts.length})
+            </button>
+            <button type="button" onClick={() => navigate("/watchlist")}>
+              Lihat Watchlist
+            </button>
+          </div>
+
+          {activeTab === "reviews" ? (
+            <div className="profile-review-list">
+              {visibleReviews.length > 0 ? (
+                visibleReviews.map((review) => (
+                  <ProfileReviewItem
+                    key={`${review.media_type}-${review.id_review}`}
+                    item={review}
+                  />
+                ))
+              ) : (
+                <div className="profile-empty-state">
+                  <h2>Belum ada review</h2>
+                  <p>Review film atau series akan muncul di halaman ini.</p>
+                  <Link to="/movies">Cari Film</Link>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="profile-post-list">
+              {activity.posts.length > 0 ? (
+                activity.posts.map((post) => (
+                  <ProfilePostItem key={post.id_post} post={post} />
+                ))
+              ) : (
+                <div className="profile-empty-state">
+                  <h2>Belum ada postingan</h2>
+                  <p>Postingan community kamu akan muncul di sini.</p>
+                  <Link to="/create-post">Buat Post</Link>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <aside className="profile-side-column">
+          <section className="profile-side-card">
+            <h2>Riwayat Mood</h2>
+            <div className="profile-mood-list">
+              {moodStats.map((mood) => (
+                <div className="profile-mood-item" key={mood.key}>
+                  <div>
+                    <span>
+                      <img src={mood.icon} alt="" />
+                      {mood.label}
+                    </span>
+                    <small>{mood.count}x</small>
+                  </div>
+                  <div className="profile-mood-track">
+                    <span style={{ width: `${mood.percent}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="profile-side-card">
+            <h2>Genre Favorit</h2>
+            <div className="profile-genre-list">
+              {favoriteGenres.map((genre, index) => (
+                <span className={index === 0 || index === 5 ? "is-active" : ""} key={genre}>
+                  {genre}
+                </span>
+              ))}
+            </div>
+          </section>
+        </aside>
+      </section>
+
+      <footer className="profile-footer">
+        <nav aria-label="Footer navigation">
+          <Link to="/">Home</Link>
+          <Link to="/movies">Movie</Link>
+          <Link to="/tv-series">TV Series</Link>
+          <Link to="/genre">Genre</Link>
+          <Link to="/community">Community</Link>
+        </nav>
+        <div>
+          <FaFacebookF />
+          <FaTwitter />
+          <FaYoutube />
+        </div>
+        <p>Copyright 2026 - Kelompok 5</p>
+      </footer>
+
+      <EditProfileModal
+        open={isEditOpen}
+        form={form}
+        saving={saving}
+        onClose={() => setIsEditOpen(false)}
+        onChange={handleFormChange}
+        onSubmit={handleSubmitProfile}
+      />
+    </main>
   );
 }
 

@@ -433,6 +433,21 @@
   line-height: 1;
 }
 
+.post-reply-avatar.has-image {
+  overflow: hidden;
+  background: #141414;
+}
+
+.post-detail-shell .community-post-card__avatar img,
+.post-detail-shell .post-reply-avatar img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  border-radius: 50% !important;
+  display: block;
+  object-fit: cover;
+}
+
 .post-reply-meta {
   min-width: 0;
   display: flex;

@@ -31,12 +31,13 @@ export const getMovieReviews = async (req, res) => {
           mr.created_at,
           mr.updated_at,
           u.username,
+          u.profile_image_url,
           COALESCE(COUNT(mrl.id_like), 0)::INTEGER AS like_count
        FROM flix.movie_reviews mr
        JOIN flix.users u ON mr.id_user = u.id_user
        LEFT JOIN flix.movie_review_likes mrl ON mr.id_review = mrl.id_review
        WHERE mr.tmdb_movie_id = $1
-       GROUP BY mr.id_review, u.username
+       GROUP BY mr.id_review, u.username, u.profile_image_url
        ORDER BY mr.created_at ASC, mr.id_review ASC`,
       [movieId],
     );

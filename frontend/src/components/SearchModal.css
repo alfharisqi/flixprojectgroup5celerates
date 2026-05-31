@@ -181,6 +181,19 @@
   font-weight: 500;
 }
 
+.flix-search-modal__avatar.has-image {
+  overflow: hidden;
+  background: #141414;
+}
+
+.flix-search-modal__avatar.has-image img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: block;
+  object-fit: cover;
+}
+
 .flix-search-modal__result--post {
   grid-template-columns: 48px minmax(0, 1fr);
 }

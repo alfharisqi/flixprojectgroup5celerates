@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FiSearch, FiX } from "react-icons/fi";
+import { resolveMediaUrl } from "../utils/media";
 import "./SearchModal.css";
 
 const stripHtml = (html = "") =>
@@ -117,31 +118,46 @@ function PostSearchModal({ open, posts = [], comments = {}, onClose, onOpenPost 
             <p className="flix-search-modal__status">Post tidak ditemukan.</p>
           ) : (
             <div className="flix-search-modal__results">
-              {results.map((post) => (
-                <button
-                  key={post.id_post}
-                  type="button"
-                  className="flix-search-modal__result flix-search-modal__result--post"
-                  onClick={() => handleOpenPost(post.id_post)}
-                >
-                  <div className="flix-search-modal__avatar" aria-hidden="true">
-                    {getPostInitial(post.username)}
-                  </div>
-                  <span>
-                    <strong>
-                      {post.title || "Untitled Post"}{" "}
-                      <em>({formatDate(post.created_at)})</em>
-                    </strong>
-                    <small>
-                      {post.username || "FLIX User"}
-                      <i aria-hidden="true" />
-                      <b>{post.replyCount} replies</b>
-                      <i aria-hidden="true" />
-                      <mark>{Number(post.total_insight || post.view_count || 0)} insight</mark>
-                    </small>
-                  </span>
-                </button>
-              ))}
+              {results.map((post) => {
+                const avatarUrl = resolveMediaUrl(post.profile_image_url);
+
+                return (
+                  <button
+                    key={post.id_post}
+                    type="button"
+                    className="flix-search-modal__result flix-search-modal__result--post"
+                    onClick={() => handleOpenPost(post.id_post)}
+                  >
+                    <div
+                      className={
+                        avatarUrl
+                          ? "flix-search-modal__avatar has-image"
+                          : "flix-search-modal__avatar"
+                      }
+                      aria-hidden="true"
+                    >
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="" />
+                      ) : (
+                        getPostInitial(post.username)
+                      )}
+                    </div>
+                    <span>
+                      <strong>
+                        {post.title || "Untitled Post"}{" "}
+                        <em>({formatDate(post.created_at)})</em>
+                      </strong>
+                      <small>
+                        {post.username || "FLIX User"}
+                        <i aria-hidden="true" />
+                        <b>{post.replyCount} replies</b>
+                        <i aria-hidden="true" />
+                        <mark>{Number(post.total_insight || post.view_count || 0)} insight</mark>
+                      </small>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

@@ -20,6 +20,7 @@ import catchplayIcon from "../assets/platformstream-logo/catchplay-icon.png";
 import disneyHotstarIcon from "../assets/platformstream-logo/disneyhotstar-icon.png";
 import hboMaxIcon from "../assets/platformstream-logo/HBOmax-icon.png";
 import netflixIcon from "../assets/platformstream-logo/netflix-icon.png";
+import { resolveMediaUrl } from "../utils/media";
 import "./MovieDetail.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -122,6 +123,28 @@ const buildReviewTree = (reviews) => {
 
   return roots;
 };
+
+const getReviewInitial = (username = "") =>
+  username.trim().charAt(0).toUpperCase() || "?";
+
+function ReviewAvatar({ review, user }) {
+  const username = review?.username || user?.username || "";
+  const avatarUrl = resolveMediaUrl(
+    review?.profile_image_url || user?.profile_image_url,
+  );
+
+  return (
+    <div
+      className={avatarUrl ? "movie-review-avatar has-image" : "movie-review-avatar"}
+    >
+      {avatarUrl ? (
+        <img src={avatarUrl} alt={username || "Profile"} />
+      ) : (
+        getReviewInitial(username)
+      )}
+    </div>
+  );
+}
 
 const getWatchlistKey = (user) =>
   `flix_tv_watchlist_${user?.id_user || "guest"}`;
@@ -641,9 +664,7 @@ function TVSeriesDetail() {
               <article className="movie-review-item" key={review.id_review}>
                 <div className="movie-review-header">
                   <div className="movie-review-user">
-                    <div className="movie-review-avatar">
-                      {review.username?.slice(0, 1).toUpperCase()}
-                    </div>
+                    <ReviewAvatar review={review} />
                     <div>
                       <h3>{review.username}</h3>
                       <p>{formatReviewDate(review.created_at)}</p>
@@ -674,9 +695,7 @@ function TVSeriesDetail() {
                     {review.replies.map((reply) => (
                       <article className="movie-review-reply" key={reply.id_review}>
                         <div className="movie-review-user">
-                          <div className="movie-review-avatar">
-                            {reply.username?.slice(0, 1).toUpperCase()}
-                          </div>
+                          <ReviewAvatar review={reply} />
                           <div>
                             <h3>{reply.username}</h3>
                             <p>{formatReviewDate(reply.created_at)}</p>
@@ -701,9 +720,7 @@ function TVSeriesDetail() {
                     className="movie-reply-form"
                     onSubmit={(event) => handleSubmitReply(event, review.id_review)}
                   >
-                    <div className="movie-review-avatar">
-                      {user?.username?.slice(0, 1).toUpperCase() || "?"}
-                    </div>
+                    <ReviewAvatar user={user} />
                     <input
                       placeholder="Reply..."
                       value={replyContent}

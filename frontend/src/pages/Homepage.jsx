@@ -256,6 +256,7 @@ const getStoredUser = () => {
 };
 
 const getWatchlistKey = (user) => `flix_movie_watchlist_${user?.id_user || "guest"}`;
+const getMoodHistoryKey = (user) => `flix_mood_history_${user?.id_user || "guest"}`;
 
 const readWatchlist = (key) => {
   try {
@@ -294,6 +295,28 @@ function Homepage() {
     () => new Set(watchlist.map((movie) => String(movie.id))),
     [watchlist],
   );
+
+  const recordMoodSelection = (mood) => {
+    const moodHistoryKey = getMoodHistoryKey(user);
+
+    try {
+      const currentHistory = JSON.parse(localStorage.getItem(moodHistoryKey)) || {};
+      localStorage.setItem(
+        moodHistoryKey,
+        JSON.stringify({
+          ...currentHistory,
+          [mood.id]: Number(currentHistory[mood.id] || 0) + 1,
+        }),
+      );
+    } catch {
+      localStorage.setItem(moodHistoryKey, JSON.stringify({ [mood.id]: 1 }));
+    }
+  };
+
+  const handleSelectMood = (mood) => {
+    setSelectedMood(mood);
+    recordMoodSelection(mood);
+  };
 
   useEffect(() => {
     localStorage.setItem(watchlistKey, JSON.stringify(watchlist));
@@ -631,7 +654,7 @@ function Homepage() {
               }`}
               key={mood.id}
               type="button"
-              onClick={() => setSelectedMood(mood)}
+              onClick={() => handleSelectMood(mood)}
             >
               <span className="homepage-mood-icon">
                 <img src={mood.icon} alt="" aria-hidden="true" />
