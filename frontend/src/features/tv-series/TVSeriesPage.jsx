@@ -11,9 +11,9 @@ import {
   FaTwitter,
   FaYoutube,
 } from "react-icons/fa";
-import SiteNavbar from "../components/SiteNavbar";
-import FilterPopup from "../components/FilterPopup";
-import WatchlistConfirmModal from "../components/WatchlistConfirmModal";
+import SiteNavbar from "@/components/layout/SiteNavbar";
+import FilterPopup from "@/components/ui/FilterPopup";
+import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
 import "./TVSeriesPage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;

@@ -10,6 +10,11 @@ const parseRating = (value) => {
   return Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : null;
 };
 
+const parseReviewId = (value) => {
+  const reviewId = Number(value);
+  return Number.isInteger(reviewId) && reviewId > 0 ? reviewId : null;
+};
+
 export const getMovieReviews = async (req, res) => {
   try {
     const movieId = parseMovieId(req.params.movieId);
@@ -129,6 +134,118 @@ export const createMovieReview = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Gagal membuat review film",
+      error: error.message,
+    });
+  }
+};
+
+export const updateMovieReview = async (req, res) => {
+  try {
+    const reviewId = parseReviewId(req.params.reviewId);
+    const { content, rating } = req.body;
+
+    if (!reviewId) {
+      return res.status(400).json({
+        message: "ID review tidak valid",
+      });
+    }
+
+    if (!content || content.trim() === "") {
+      return res.status(400).json({
+        message: "Isi review tidak boleh kosong",
+      });
+    }
+
+    const reviewCheck = await pool.query(
+      `SELECT id_review, id_user, parent_review_id
+       FROM flix.movie_reviews
+       WHERE id_review = $1`,
+      [reviewId],
+    );
+
+    if (reviewCheck.rows.length === 0) {
+      return res.status(404).json({
+        message: "Review tidak ditemukan",
+      });
+    }
+
+    const review = reviewCheck.rows[0];
+
+    if (Number(review.id_user) !== Number(req.user.id_user)) {
+      return res.status(403).json({
+        message: "Kamu tidak punya akses untuk mengubah review ini",
+      });
+    }
+
+    const reviewRating = review.parent_review_id ? null : parseRating(rating);
+
+    if (!review.parent_review_id && !reviewRating) {
+      return res.status(400).json({
+        message: "Rating review wajib 1 sampai 5",
+      });
+    }
+
+    const result = await pool.query(
+      `UPDATE flix.movie_reviews
+       SET content = $1,
+           rating = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id_review = $3
+       RETURNING *`,
+      [content.trim(), reviewRating, reviewId],
+    );
+
+    return res.json({
+      message: "Review berhasil diperbarui",
+      review: result.rows[0],
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal mengubah review film",
+      error: error.message,
+    });
+  }
+};
+
+export const deleteMovieReview = async (req, res) => {
+  try {
+    const reviewId = parseReviewId(req.params.reviewId);
+
+    if (!reviewId) {
+      return res.status(400).json({
+        message: "ID review tidak valid",
+      });
+    }
+
+    const reviewCheck = await pool.query(
+      `SELECT id_review, id_user
+       FROM flix.movie_reviews
+       WHERE id_review = $1`,
+      [reviewId],
+    );
+
+    if (reviewCheck.rows.length === 0) {
+      return res.status(404).json({
+        message: "Review tidak ditemukan",
+      });
+    }
+
+    if (Number(reviewCheck.rows[0].id_user) !== Number(req.user.id_user)) {
+      return res.status(403).json({
+        message: "Kamu tidak punya akses untuk menghapus review ini",
+      });
+    }
+
+    await pool.query(`DELETE FROM flix.movie_reviews WHERE id_review = $1`, [
+      reviewId,
+    ]);
+
+    return res.json({
+      message: "Review berhasil dihapus",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal menghapus review film",
       error: error.message,
     });
   }

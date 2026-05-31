@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { FiSearch, FiX } from "react-icons/fi";
-import "./SearchModal.css";
+import "@/components/ui/SearchModal.css";
 
 const defaultMovieGenres = {
   12: "Adventure",

@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { FiArrowLeft, FiHash, FiPlus, FiSend, FiTrash2, FiX } from "react-icons/fi";
-import SiteNavbar from "../components/SiteNavbar";
-import RichTextEditor from "../components/RichTextEditor";
+import SiteNavbar from "@/components/layout/SiteNavbar";
+import RichTextEditor from "@/components/editor/RichTextEditor";
 import "./CreatePostPage.css";
 
 function CreatePostPage() {

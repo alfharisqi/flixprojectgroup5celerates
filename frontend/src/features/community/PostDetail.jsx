@@ -9,14 +9,14 @@ import {
   FiSmile,
   FiThumbsUp,
 } from "react-icons/fi";
-import GifPickerModal from "../components/GifPickerModal";
-import PostInsightModal from "../components/PostInsightModal";
-import RichContent from "../components/RichContent";
-import SiteNavbar from "../components/SiteNavbar";
-import reportIcon from "../assets/icon/report-icon.svg";
-import shareIcon from "../assets/icon/share-icon.svg";
-import { resolveMediaUrl } from "../utils/media";
-import "../components/PostCard.css";
+import GifPickerModal from "@/components/editor/GifPickerModal";
+import PostInsightModal from "@/components/community/PostInsightModal";
+import RichContent from "@/components/editor/RichContent";
+import SiteNavbar from "@/components/layout/SiteNavbar";
+import reportIcon from "@/assets/icon/report-icon.svg";
+import shareIcon from "@/assets/icon/share-icon.svg";
+import { resolveMediaUrl } from "@/utils/media";
+import "@/components/community/PostCard.css";
 import "./PostDetail.css";
 
 const postReactionOptions = [

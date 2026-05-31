@@ -2,7 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { FiEye, FiEyeOff } from "react-icons/fi";
-import flixLogo from "../assets/flix-logo.png";
+import flixLogo from "@/assets/flix-logo.png";
 import "./Login.css";
 
 function ResetPassword() {

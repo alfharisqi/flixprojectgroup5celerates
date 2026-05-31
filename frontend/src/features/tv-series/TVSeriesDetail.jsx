@@ -12,16 +12,16 @@ import {
   FaTwitter,
   FaYoutube,
 } from "react-icons/fa";
-import SiteNavbar from "../components/SiteNavbar";
-import WatchlistConfirmModal from "../components/WatchlistConfirmModal";
-import amazonPrimeVideoIcon from "../assets/platformstream-logo/amazonprimevideo-icon.png";
-import appleTvIcon from "../assets/platformstream-logo/appletv-icon.png";
-import catchplayIcon from "../assets/platformstream-logo/catchplay-icon.png";
-import disneyHotstarIcon from "../assets/platformstream-logo/disneyhotstar-icon.png";
-import hboMaxIcon from "../assets/platformstream-logo/HBOmax-icon.png";
-import netflixIcon from "../assets/platformstream-logo/netflix-icon.png";
-import { resolveMediaUrl } from "../utils/media";
-import "./MovieDetail.css";
+import SiteNavbar from "@/components/layout/SiteNavbar";
+import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
+import amazonPrimeVideoIcon from "@/assets/platformstream-logo/amazonprimevideo-icon.png";
+import appleTvIcon from "@/assets/platformstream-logo/appletv-icon.png";
+import catchplayIcon from "@/assets/platformstream-logo/catchplay-icon.png";
+import disneyHotstarIcon from "@/assets/platformstream-logo/disneyhotstar-icon.png";
+import hboMaxIcon from "@/assets/platformstream-logo/HBOmax-icon.png";
+import netflixIcon from "@/assets/platformstream-logo/netflix-icon.png";
+import { resolveMediaUrl } from "@/utils/media";
+import "@/features/movies/MovieDetail.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
 

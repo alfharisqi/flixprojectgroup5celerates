@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import SiteNavbar from "../components/SiteNavbar";
-import bookmarkIcon from "../assets/icon/bookmark-icon.svg";
-import checkIcon from "../assets/icon/check-icon.svg";
-import clockIcon from "../assets/icon/clock-icon.svg";
-import closeIcon from "../assets/icon/close-icon.svg";
-import facebookIcon from "../assets/icon/facebook-icon.svg";
-import filterIcon from "../assets/icon/sliders-horizontal-icon.svg";
-import searchIcon from "../assets/icon/search-line-icon.svg";
-import starIcon from "../assets/icon/star-icon.svg";
-import twitterIcon from "../assets/icon/twitter-icon.svg";
-import youtubeIcon from "../assets/icon/youtube-icon.svg";
+import SiteNavbar from "@/components/layout/SiteNavbar";
+import bookmarkIcon from "@/assets/icon/bookmark-icon.svg";
+import checkIcon from "@/assets/icon/check-icon.svg";
+import clockIcon from "@/assets/icon/clock-icon.svg";
+import closeIcon from "@/assets/icon/close-icon.svg";
+import facebookIcon from "@/assets/icon/facebook-icon.svg";
+import filterIcon from "@/assets/icon/sliders-horizontal-icon.svg";
+import searchIcon from "@/assets/icon/search-line-icon.svg";
+import starIcon from "@/assets/icon/star-icon.svg";
+import twitterIcon from "@/assets/icon/twitter-icon.svg";
+import youtubeIcon from "@/assets/icon/youtube-icon.svg";
 import "./WatchlistPage.css";
 
 const getStoredUser = () => {

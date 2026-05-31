@@ -6,10 +6,10 @@ import {
   FiThumbsUp,
   FiTrash2,
 } from "react-icons/fi";
-import RichContent from "./RichContent";
-import reportIcon from "../assets/icon/report-icon.svg";
-import shareIcon from "../assets/icon/share-icon.svg";
-import { resolveMediaUrl } from "../utils/media";
+import RichContent from "@/components/editor/RichContent";
+import reportIcon from "@/assets/icon/report-icon.svg";
+import shareIcon from "@/assets/icon/share-icon.svg";
+import { resolveMediaUrl } from "@/utils/media";
 import "./PostCard.css";
 
 const reactionOptions = [

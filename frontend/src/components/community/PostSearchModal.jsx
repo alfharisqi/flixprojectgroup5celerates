@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FiSearch, FiX } from "react-icons/fi";
-import { resolveMediaUrl } from "../utils/media";
-import "./SearchModal.css";
+import { resolveMediaUrl } from "@/utils/media";
+import "@/components/ui/SearchModal.css";
 
 const stripHtml = (html = "") =>
   String(html)

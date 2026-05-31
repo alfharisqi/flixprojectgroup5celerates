@@ -111,8 +111,12 @@ Endpoint utama:
 | `/api/auth/forgot-password` | POST | Mengirim link reset password ke email |
 | `/api/auth/reset-password` | POST | Mengatur password baru |
 | `/api/profile/me` | GET, PUT | Melihat dan mengubah profile user login |
+| `/api/profile/activity` | GET | Mengambil ringkasan aktivitas user login |
+| `/api/profile/media` | PUT | Menyimpan URL foto profile dan banner user |
 | `/api/movies/*` | GET | Search, popular, top rated, now playing, upcoming, trending, genre, discover, detail, video, cast, provider, rekomendasi film |
+| `/api/tmdb/*` | GET | Alias untuk endpoint movie/TMDB |
 | `/api/tv-series/*` | GET | Search, popular, top rated, on the air, trending, genre, discover, detail, video, provider TV series |
+| `/api/tv/*` | GET | Alias untuk endpoint TV series |
 | `/api/posts` | GET, POST | Melihat dan membuat post komunitas |
 | `/api/posts/:id` | GET, DELETE | Detail post dan hapus post |
 | `/api/comments/:postId` | GET, POST | Melihat dan membuat komentar/reply |
@@ -125,8 +129,10 @@ Endpoint utama:
 | `/api/polls/:pollId/vote` | POST | Vote polling |
 | `/api/uploads/editor-image` | POST | Upload gambar dari rich text editor |
 | `/api/movie-reviews/:movieId` | GET, POST | Melihat dan membuat review film |
+| `/api/movie-reviews/:reviewId` | PUT, DELETE | Mengubah dan menghapus review film milik user |
 | `/api/movie-reviews/likes/:reviewId` | POST | Like/unlike review film |
 | `/api/tv-series-reviews/:seriesId` | GET, POST | Melihat dan membuat review TV series |
+| `/api/tv-series-reviews/:reviewId` | PUT, DELETE | Mengubah dan menghapus review TV series milik user |
 | `/api/tv-series-reviews/likes/:reviewId` | POST | Like/unlike review TV series |
 | `/api/admin/dashboard` | GET | Dashboard khusus admin |
 | `/api/moderator/dashboard` | GET | Dashboard moderator dan admin |
@@ -150,12 +156,16 @@ FLIX dibuat sebagai platform rekomendasi tontonan. User dapat mencari film atau 
 - Halaman Genre untuk eksplorasi konten berdasarkan genre.
 - Detail film dan TV series berisi poster, backdrop, sinopsis, rating, genre, trailer, cast, rekomendasi, dan watch provider.
 - Review film dan TV series dengan rating 1 sampai 5, reply review, dan like review.
+- Review film dan TV series milik user dapat diedit dan dihapus dari halaman profile.
+- Search modal untuk mencari film dan TV series dari navbar.
+- Watchlist film dan TV series dengan status sudah ditonton atau belum ditonton.
 - Community page untuk melihat post dari user lain.
 - Create post dengan rich text editor, upload gambar, tag, GIF, dan polling.
 - Detail post dengan komentar, reply komentar, like, reaction, share, view, dan insight.
 - Polling komunitas dengan pilihan vote.
-- Profile user untuk melihat dan mengubah data akun.
+- Profile user untuk melihat aktivitas, review, postingan, statistik watchlist, mengubah data akun, foto profile, dan banner.
 - Autentikasi user menggunakan register, login, JWT, forgot password, dan reset password.
+- Pop up konfirmasi untuk logout dan simpan watchlist.
 - Role user terdiri dari `registered_user`, `moderator`, dan `admin`.
 - Moderator dan admin dapat mengakses dashboard sesuai role.
 - Moderator/admin atau owner post dapat menghapus post.
@@ -199,11 +209,29 @@ flix/
     uploads/
   frontend/
     src/
+      app/
       assets/
       components/
-      pages/
+        community/
+        editor/
+        layout/
+        routing/
+        ui/
+      features/
+        admin/
+        auth/
+        community/
+        genre/
+        home/
+        movies/
+        profile/
+        tv-series/
+        watchlist/
+      utils/
     public/
 ```
+
+Frontend menggunakan alias import `@/` yang mengarah ke `frontend/src`.
 
 ## 6. Catatan Database
 
@@ -215,7 +243,10 @@ Backend menggunakan schema PostgreSQL bernama `flix`. Beberapa tabel tambahan di
 - `flix.movie_review_likes`
 - `flix.tv_series_reviews`
 - `flix.tv_series_review_likes`
+- Kolom `profile_image_url` dan `banner_image_url` pada `flix.users`
 
 File SQL tambahan tersedia di folder `backend/sql`.
 
 Pastikan tabel utama seperti `users`, `roles`, `posts`, `comments`, `post_likes`, `post_reactions`, `post_shares`, `post_polls`, `post_poll_options`, dan `post_poll_votes` sudah tersedia agar semua fitur komunitas berjalan.
+
+Saat ini data watchlist disimpan di frontend melalui `localStorage` dengan key berdasarkan user login. Jika ingin watchlist tersimpan permanen lintas device, perlu dibuat tabel dan endpoint watchlist di backend.

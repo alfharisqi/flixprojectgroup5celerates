@@ -1,16 +1,76 @@
-# React + Vite
+# FLIX Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend FLIX dibuat dengan React dan Vite. Struktur file sudah dipisah berdasarkan fitur agar lebih mudah dirawat.
 
-Currently, two official plugins are available:
+## Menjalankan Frontend
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
+Default URL:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```text
+http://localhost:5173
+```
 
-## Expanding the ESLint configuration
+## Environment
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Buat file `.env` di folder `frontend`:
+
+```env
+VITE_API_URL=http://localhost:5000
+VITE_GIPHY_API_KEY=api_key_giphy
+```
+
+## Struktur Folder
+
+```text
+src/
+  app/              # Entry app dan routing utama
+  assets/           # Logo, icon, font, emoticon, dan asset visual
+  components/
+    community/      # Komponen reusable untuk post/community
+    editor/         # Rich text editor, GIF picker, renderer content
+    layout/         # Navbar dan layout umum
+    routing/        # Protected route
+    ui/             # Modal, filter, search, confirm dialog
+  features/
+    admin/
+    auth/
+    community/
+    genre/
+    home/
+    movies/
+    profile/
+    tv-series/
+    watchlist/
+  utils/
+```
+
+## Alias Import
+
+Project memakai alias:
+
+```js
+@/ = src/
+```
+
+Contoh:
+
+```js
+import SiteNavbar from "@/components/layout/SiteNavbar";
+import MoviesPage from "@/features/movies/MoviesPage";
+```
+
+Konfigurasi alias ada di `vite.config.js` dan `jsconfig.json`.
+
+## Script
+
+```bash
+npm run dev      # menjalankan development server
+npm run build    # build production
+npm run preview  # preview hasil build
+npm run lint     # menjalankan ESLint
+```

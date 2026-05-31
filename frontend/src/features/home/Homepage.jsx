@@ -12,15 +12,15 @@ import {
   FaTwitter,
   FaYoutube,
 } from "react-icons/fa";
-import SiteNavbar from "../components/SiteNavbar";
-import FilterPopup from "../components/FilterPopup";
-import WatchlistConfirmModal from "../components/WatchlistConfirmModal";
-import menegangkanIcon from "../assets/emoticon/menegangkan-emoticon.png";
-import pikiranIcon from "../assets/emoticon/pikiran-emoticon.png";
-import romantisIcon from "../assets/emoticon/romantis-emoticon.png";
-import santaiIcon from "../assets/emoticon/santai-emoticon.png";
-import sedihIcon from "../assets/emoticon/sedih-emoticon.png";
-import seruIcon from "../assets/emoticon/seru-emoticon.png";
+import SiteNavbar from "@/components/layout/SiteNavbar";
+import FilterPopup from "@/components/ui/FilterPopup";
+import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
+import menegangkanIcon from "@/assets/emoticon/menegangkan-emoticon.png";
+import pikiranIcon from "@/assets/emoticon/pikiran-emoticon.png";
+import romantisIcon from "@/assets/emoticon/romantis-emoticon.png";
+import santaiIcon from "@/assets/emoticon/santai-emoticon.png";
+import sedihIcon from "@/assets/emoticon/sedih-emoticon.png";
+import seruIcon from "@/assets/emoticon/seru-emoticon.png";
 import "./Homepage.css";
 
 const fallbackHeroMovie = {

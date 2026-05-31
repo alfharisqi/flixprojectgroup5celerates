@@ -15,15 +15,15 @@ import {
   FaTwitter,
   FaYoutube,
 } from "react-icons/fa";
-import SiteNavbar from "../components/SiteNavbar";
-import diamondIcon from "../assets/icon/bluediamond-icon.png";
-import santaiIcon from "../assets/emoticon/santai-emoticon.png";
-import seruIcon from "../assets/emoticon/seru-emoticon.png";
-import sedihIcon from "../assets/emoticon/sedih-emoticon.png";
-import menegangkanIcon from "../assets/emoticon/menegangkan-emoticon.png";
-import romantisIcon from "../assets/emoticon/romantis-emoticon.png";
-import pikiranIcon from "../assets/emoticon/pikiran-emoticon.png";
-import { resolveMediaUrl } from "../utils/media";
+import SiteNavbar from "@/components/layout/SiteNavbar";
+import diamondIcon from "@/assets/icon/bluediamond-icon.png";
+import santaiIcon from "@/assets/emoticon/santai-emoticon.png";
+import seruIcon from "@/assets/emoticon/seru-emoticon.png";
+import sedihIcon from "@/assets/emoticon/sedih-emoticon.png";
+import menegangkanIcon from "@/assets/emoticon/menegangkan-emoticon.png";
+import romantisIcon from "@/assets/emoticon/romantis-emoticon.png";
+import pikiranIcon from "@/assets/emoticon/pikiran-emoticon.png";
+import { resolveMediaUrl } from "@/utils/media";
 import "./ProfilePage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -99,6 +99,11 @@ const getSeriesWatchlistKey = (user) => `flix_tv_watchlist_${getUserStorageId(us
 const getWatchStatusKey = (user) => `flix_watchlist_status_${getUserStorageId(user)}`;
 const getMoodHistoryKey = (user) => `flix_mood_history_${getUserStorageId(user)}`;
 const getItemKey = (item) => `${item.mediaType}:${item.id}`;
+const getReviewKey = (review) => `${review.media_type}:${review.id_review}`;
+const getReviewApiUrl = (review) =>
+  review.media_type === "tv"
+    ? `${apiUrl}/api/tv-series-reviews/${review.id_review}`
+    : `${apiUrl}/api/movie-reviews/${review.id_review}`;
 
 const getInitial = (name = "User") => name.trim().slice(0, 1).toUpperCase() || "U";
 
@@ -175,7 +180,7 @@ function ProfileStatCard({ value, label, icon }) {
   );
 }
 
-function ProfileReviewItem({ item }) {
+function ProfileReviewItem({ item, disabled, onEdit, onDelete }) {
   const genres = item.genres?.length
     ? item.genres.slice(0, 2)
     : (item.genre_ids || []).slice(0, 2).map((genreId) => getGenreName(genreId, item.media_type));
@@ -198,10 +203,20 @@ function ProfileReviewItem({ item }) {
             </div>
           </div>
           <div className="profile-review-actions">
-            <button type="button" aria-label="Edit review">
+            <button
+              type="button"
+              aria-label={`Edit review ${item.title}`}
+              disabled={disabled}
+              onClick={() => onEdit(item)}
+            >
               <FaEdit />
             </button>
-            <button type="button" aria-label="Hapus review">
+            <button
+              type="button"
+              aria-label={`Hapus review ${item.title}`}
+              disabled={disabled}
+              onClick={() => onDelete(item)}
+            >
               <FaTrash />
             </button>
           </div>
@@ -289,6 +304,124 @@ function EditProfileModal({ open, form, saving, onClose, onChange, onSubmit }) {
   );
 }
 
+function EditReviewModal({
+  open,
+  review,
+  form,
+  saving,
+  onClose,
+  onChange,
+  onRatingChange,
+  onSubmit,
+}) {
+  if (!open || !review) {
+    return null;
+  }
+
+  return (
+    <div className="profile-edit-modal" role="presentation" onClick={onClose}>
+      <form
+        className="profile-edit-modal__dialog profile-review-modal__dialog"
+        onSubmit={onSubmit}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="profile-edit-modal__header">
+          <h2>Edit Review</h2>
+          <button type="button" onClick={onClose} aria-label="Tutup edit review">
+            <FaTimes />
+          </button>
+        </div>
+
+        <div className="profile-review-modal__movie">
+          <img src={review.poster || fallbackPoster} alt="" />
+          <div>
+            <strong>{review.title}</strong>
+            <span>{review.media_type === "tv" ? "TV Series" : "Film"}</span>
+          </div>
+        </div>
+
+        <label>
+          Rating
+          <div className="profile-review-rating-input">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                className={star <= Number(form.rating) ? "is-active" : ""}
+                onClick={() => onRatingChange(star)}
+                aria-label={`Rating ${star}`}
+              >
+                <FaStar />
+              </button>
+            ))}
+          </div>
+        </label>
+
+        <label>
+          Isi Review
+          <textarea
+            name="content"
+            value={form.content}
+            onChange={onChange}
+            rows={5}
+            maxLength={500}
+            placeholder="Tulis review kamu..."
+          />
+        </label>
+
+        <div className="profile-modal-actions">
+          <button type="button" className="profile-cancel-button" onClick={onClose}>
+            Batal
+          </button>
+          <button type="submit" disabled={saving}>
+            {saving ? "Menyimpan..." : "Simpan Review"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function DeleteReviewConfirmModal({ review, saving, onCancel, onConfirm }) {
+  if (!review) {
+    return null;
+  }
+
+  return (
+    <div className="profile-edit-modal" role="presentation" onClick={onCancel}>
+      <section
+        className="profile-edit-modal__dialog profile-delete-modal__dialog"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="profile-edit-modal__header">
+          <h2>Hapus Review?</h2>
+          <button type="button" onClick={onCancel} aria-label="Tutup konfirmasi hapus">
+            <FaTimes />
+          </button>
+        </div>
+
+        <p>
+          Review untuk <strong>{review.title}</strong> akan dihapus permanen.
+        </p>
+
+        <div className="profile-modal-actions">
+          <button type="button" className="profile-cancel-button" onClick={onCancel}>
+            Batal
+          </button>
+          <button
+            type="button"
+            className="profile-danger-button"
+            disabled={saving}
+            onClick={onConfirm}
+          >
+            {saving ? "Menghapus..." : "Hapus"}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function ProfilePage() {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
@@ -308,10 +441,17 @@ function ProfilePage() {
   const [uploadingTarget, setUploadingTarget] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const [editingReview, setEditingReview] = useState(null);
+  const [reviewToDelete, setReviewToDelete] = useState(null);
   const [form, setForm] = useState({
     username: "",
     email: "",
     password: "",
+  });
+  const [reviewForm, setReviewForm] = useState({
+    content: "",
+    rating: 5,
   });
 
   const userForStorage = profile || storedUser;
@@ -642,6 +782,117 @@ function ProfilePage() {
     }
   };
 
+  const handleOpenEditReview = (review) => {
+    setEditingReview(review);
+    setReviewForm({
+      content: review.content || "",
+      rating: Number(review.rating || 5),
+    });
+    setErrorMessage("");
+  };
+
+  const handleReviewFormChange = (event) => {
+    setReviewForm((currentForm) => ({
+      ...currentForm,
+      [event.target.name]: event.target.value,
+    }));
+  };
+
+  const handleSubmitReviewEdit = async (event) => {
+    event.preventDefault();
+
+    if (!editingReview) {
+      return;
+    }
+
+    if (!reviewForm.content.trim()) {
+      setErrorMessage("Isi review tidak boleh kosong");
+      return;
+    }
+
+    try {
+      setReviewSaving(true);
+      setErrorMessage("");
+
+      const response = await axios.put(
+        getReviewApiUrl(editingReview),
+        {
+          content: reviewForm.content,
+          rating: reviewForm.rating,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      const updatedReview = response.data.review;
+      const editingReviewKey = getReviewKey(editingReview);
+
+      setActivity((currentActivity) => ({
+        ...currentActivity,
+        reviews: currentActivity.reviews.map((review) =>
+          getReviewKey(review) === editingReviewKey
+            ? {
+                ...review,
+                content: updatedReview.content,
+                rating: updatedReview.rating,
+                updated_at: updatedReview.updated_at,
+              }
+            : review,
+        ),
+      }));
+
+      setEditingReview(null);
+    } catch (error) {
+      setErrorMessage(error.response?.data?.message || "Gagal mengubah review");
+    } finally {
+      setReviewSaving(false);
+    }
+  };
+
+  const handleConfirmDeleteReview = async () => {
+    if (!reviewToDelete) {
+      return;
+    }
+
+    try {
+      setReviewSaving(true);
+      setErrorMessage("");
+
+      await axios.delete(getReviewApiUrl(reviewToDelete), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const deletedReviewKey = getReviewKey(reviewToDelete);
+      const mediaStatKey =
+        reviewToDelete.media_type === "tv" ? "tv_review_count" : "movie_review_count";
+
+      setActivity((currentActivity) => ({
+        ...currentActivity,
+        stats: {
+          ...currentActivity.stats,
+          review_count: Math.max(
+            0,
+            Number(currentActivity.stats?.review_count || currentActivity.reviews.length) - 1,
+          ),
+          [mediaStatKey]: Math.max(
+            0,
+            Number(currentActivity.stats?.[mediaStatKey] || 0) - 1,
+          ),
+        },
+        reviews: currentActivity.reviews.filter(
+          (review) => getReviewKey(review) !== deletedReviewKey,
+        ),
+      }));
+
+      setReviewToDelete(null);
+    } catch (error) {
+      setErrorMessage(error.response?.data?.message || "Gagal menghapus review");
+    } finally {
+      setReviewSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <main className="profile-page profile-page--state">
@@ -777,6 +1028,9 @@ function ProfilePage() {
                   <ProfileReviewItem
                     key={`${review.media_type}-${review.id_review}`}
                     item={review}
+                    disabled={reviewSaving}
+                    onEdit={handleOpenEditReview}
+                    onDelete={setReviewToDelete}
                   />
                 ))
               ) : (
@@ -861,6 +1115,26 @@ function ProfilePage() {
         onClose={() => setIsEditOpen(false)}
         onChange={handleFormChange}
         onSubmit={handleSubmitProfile}
+      />
+
+      <EditReviewModal
+        open={Boolean(editingReview)}
+        review={editingReview}
+        form={reviewForm}
+        saving={reviewSaving}
+        onClose={() => setEditingReview(null)}
+        onChange={handleReviewFormChange}
+        onRatingChange={(rating) =>
+          setReviewForm((currentForm) => ({ ...currentForm, rating }))
+        }
+        onSubmit={handleSubmitReviewEdit}
+      />
+
+      <DeleteReviewConfirmModal
+        review={reviewToDelete}
+        saving={reviewSaving}
+        onCancel={() => setReviewToDelete(null)}
+        onConfirm={handleConfirmDeleteReview}
       />
     </main>
   );
