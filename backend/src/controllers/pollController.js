@@ -1,4 +1,5 @@
 import pool from "../config/db.js";
+import { createNotification } from "../services/notificationService.js";
 
 export const getPollByPostId = async (req, res) => {
   try {
@@ -51,9 +52,15 @@ export const votePoll = async (req, res) => {
     const userId = req.user.id_user;
 
     const optionCheck = await pool.query(
-      `SELECT id_option, id_poll
-       FROM flix.post_poll_options
-       WHERE id_option = $1 AND id_poll = $2`,
+      `SELECT
+          o.id_option,
+          o.id_poll,
+          pp.id_post,
+          p.id_user AS post_owner_id
+       FROM flix.post_poll_options o
+       JOIN flix.post_polls pp ON o.id_poll = pp.id_poll
+       JOIN flix.posts p ON pp.id_post = p.id_post
+       WHERE o.id_option = $1 AND o.id_poll = $2`,
       [option_id, pollId]
     );
 
@@ -84,6 +91,15 @@ export const votePoll = async (req, res) => {
         [pollId, option_id, userId]
       );
     }
+
+    await createNotification({
+      recipientUserId: optionCheck.rows[0].post_owner_id,
+      actorUserId: userId,
+      type: "poll_vote",
+      postId: optionCheck.rows[0].id_post,
+      metadata: { poll_id: pollId, option_id },
+      dedupeKey: `poll_vote:${pollId}:${userId}`,
+    });
 
     return res.json({
       message: "Vote polling berhasil"

@@ -1,4 +1,5 @@
 import pool from "../config/db.js";
+import { createNotification } from "../services/notificationService.js";
 
 export const getCommentsByPost = async (req, res) => {
   try {
@@ -42,7 +43,7 @@ export const createComment = async (req, res) => {
     }
 
     const postCheck = await pool.query(
-      `SELECT id_post FROM flix.posts WHERE id_post = $1`,
+      `SELECT id_post, id_user FROM flix.posts WHERE id_post = $1`,
       [postId],
     );
 
@@ -52,9 +53,11 @@ export const createComment = async (req, res) => {
       });
     }
 
+    let parentComment = null;
+
     if (parent_comment_id) {
       const parentCheck = await pool.query(
-        `SELECT id_comment, id_post
+        `SELECT id_comment, id_post, id_user
          FROM flix.comments
          WHERE id_comment = $1`,
         [parent_comment_id],
@@ -71,6 +74,8 @@ export const createComment = async (req, res) => {
           message: "Parent comment tidak sesuai dengan post ini",
         });
       }
+
+      parentComment = parentCheck.rows[0];
     }
 
     const result = await pool.query(
@@ -80,9 +85,37 @@ export const createComment = async (req, res) => {
       [req.user.id_user, postId, parent_comment_id || null, content],
     );
 
+    const createdComment = result.rows[0];
+
+    if (parentComment) {
+      await createNotification({
+        recipientUserId: parentComment.id_user,
+        actorUserId: req.user.id_user,
+        type: "comment_reply",
+        postId,
+        commentId: createdComment.id_comment,
+        metadata: { parent_comment_id },
+        dedupeKey: `comment_reply:${createdComment.id_comment}`,
+      });
+    }
+
+    const postOwnerId = postCheck.rows[0].id_user;
+
+    if (!parentComment || Number(parentComment.id_user) !== Number(postOwnerId)) {
+      await createNotification({
+        recipientUserId: postOwnerId,
+        actorUserId: req.user.id_user,
+        type: "post_comment",
+        postId,
+        commentId: createdComment.id_comment,
+        metadata: { parent_comment_id: parent_comment_id || null },
+        dedupeKey: `post_comment:${createdComment.id_comment}`,
+      });
+    }
+
     return res.status(201).json({
       message: "Reply berhasil dibuat",
-      comment: result.rows[0],
+      comment: createdComment,
     });
   } catch (error) {
     return res.status(500).json({

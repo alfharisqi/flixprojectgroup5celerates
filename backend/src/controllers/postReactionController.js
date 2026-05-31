@@ -1,4 +1,5 @@
 import pool from "../config/db.js";
+import { createNotification } from "../services/notificationService.js";
 
 const allowedReactions = ["love", "funny", "wow", "sad", "angry"];
 
@@ -15,7 +16,7 @@ export const reactToPost = async (req, res) => {
     }
 
     const postCheck = await pool.query(
-      `SELECT id_post FROM flix.posts WHERE id_post = $1`,
+      `SELECT id_post, id_user FROM flix.posts WHERE id_post = $1`,
       [postId]
     );
 
@@ -38,6 +39,15 @@ export const reactToPost = async (req, res) => {
          VALUES ($1, $2, $3)`,
         [userId, postId, reaction_type]
       );
+
+      await createNotification({
+        recipientUserId: postCheck.rows[0].id_user,
+        actorUserId: userId,
+        type: "post_reaction",
+        postId,
+        metadata: { reaction_type },
+        dedupeKey: `post_reaction:${postId}:${userId}`,
+      });
 
       return res.json({
         message: "Reaction berhasil ditambahkan"
@@ -65,6 +75,15 @@ export const reactToPost = async (req, res) => {
        WHERE id_reaction = $2`,
       [reaction_type, currentReaction.id_reaction]
     );
+
+    await createNotification({
+      recipientUserId: postCheck.rows[0].id_user,
+      actorUserId: userId,
+      type: "post_reaction",
+      postId,
+      metadata: { reaction_type },
+      dedupeKey: `post_reaction:${postId}:${userId}`,
+    });
 
     return res.json({
       message: "Reaction berhasil diperbarui"

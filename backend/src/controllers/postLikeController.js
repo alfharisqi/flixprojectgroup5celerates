@@ -1,4 +1,5 @@
 import pool from "../config/db.js";
+import { createNotification } from "../services/notificationService.js";
 
 export const toggleLikePost = async (req, res) => {
   try {
@@ -6,7 +7,7 @@ export const toggleLikePost = async (req, res) => {
     const userId = req.user.id_user;
 
     const postCheck = await pool.query(
-      `SELECT id_post FROM flix.posts WHERE id_post = $1`,
+      `SELECT id_post, id_user FROM flix.posts WHERE id_post = $1`,
       [postId],
     );
 
@@ -40,6 +41,14 @@ export const toggleLikePost = async (req, res) => {
        VALUES ($1, $2)`,
       [userId, postId],
     );
+
+    await createNotification({
+      recipientUserId: postCheck.rows[0].id_user,
+      actorUserId: userId,
+      type: "post_like",
+      postId,
+      dedupeKey: `post_like:${postId}:${userId}`,
+    });
 
     return res.json({
       message: "Post berhasil di-like",

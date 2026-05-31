@@ -127,6 +127,9 @@ Endpoint utama:
 | `/api/post-insights/:postId` | GET | Statistik post seperti view, like, komentar, share, reaction, dan polling |
 | `/api/polls/post/:postId` | GET | Mengambil polling berdasarkan post |
 | `/api/polls/:pollId/vote` | POST | Vote polling |
+| `/api/notifications` | GET | Mengambil notifikasi user login |
+| `/api/notifications/:id/read` | PUT | Menandai satu notifikasi sudah dibaca |
+| `/api/notifications/read-all` | PUT | Menandai semua notifikasi sudah dibaca |
 | `/api/uploads/editor-image` | POST | Upload gambar dari rich text editor |
 | `/api/movie-reviews/:movieId` | GET, POST | Melihat dan membuat review film |
 | `/api/movie-reviews/:reviewId` | PUT, DELETE | Mengubah dan menghapus review film milik user |
@@ -163,6 +166,7 @@ FLIX dibuat sebagai platform rekomendasi tontonan. User dapat mencari film atau 
 - Create post dengan rich text editor, upload gambar, tag, GIF, dan polling.
 - Detail post dengan komentar, reply komentar, like, reaction, share, view, dan insight.
 - Polling komunitas dengan pilihan vote.
+- Notifikasi untuk interaksi pada post, komentar, reply, share, reaction, dan polling user.
 - Profile user untuk melihat aktivitas, review, postingan, statistik watchlist, mengubah data akun, foto profile, dan banner.
 - Autentikasi user menggunakan register, login, JWT, forgot password, dan reset password.
 - Pop up konfirmasi untuk logout dan simpan watchlist.
@@ -243,6 +247,7 @@ Backend menggunakan schema PostgreSQL bernama `flix`. Beberapa tabel tambahan di
 - `flix.movie_review_likes`
 - `flix.tv_series_reviews`
 - `flix.tv_series_review_likes`
+- `flix.notifications`
 - Kolom `profile_image_url` dan `banner_image_url` pada `flix.users`
 
 File SQL tambahan tersedia di folder `backend/sql`.

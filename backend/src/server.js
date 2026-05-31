@@ -21,7 +21,9 @@ import postViewRoutes from "./routes/postViewRoutes.js";
 import movieRoutes from "./routes/movieRoutes.js";
 import tvRoutes from "./routes/tvRoutes.js";
 import movieReviewRoutes from "./routes/movieReviewRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 import tvSeriesReviewRoutes from "./routes/tvSeriesReviewRoutes.js";
+import { initializeNotificationsTable } from "./config/initNotifications.js";
 import { initializePostViewsTable } from "./config/initPostViews.js";
 import { initializePasswordResetTable } from "./config/initPasswordReset.js";
 import { initializeMovieReviewsTable } from "./config/initMovieReviews.js";
@@ -60,6 +62,7 @@ app.use("/api/tv-series", tvRoutes);
 app.use("/api/tv", tvRoutes);
 app.use("/api/movie-reviews", movieReviewRoutes);
 app.use("/api/tv-series-reviews", tvSeriesReviewRoutes);
+app.use("/api/notifications", notificationRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
@@ -79,6 +82,7 @@ Promise.all([
   initializeMovieReviewsTable(),
   initializeTvSeriesReviewsTable(),
   initializeUserProfileMediaColumns(),
+  initializeNotificationsTable(),
 ])
   .then(() => {
     app.listen(PORT, () => {
