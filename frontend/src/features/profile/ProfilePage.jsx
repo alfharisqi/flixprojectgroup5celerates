@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import {
   FaBookmark,
@@ -8,6 +8,7 @@ import {
   FaClock,
   FaEdit,
   FaFacebookF,
+  FaEnvelope,
   FaRegCommentDots,
   FaStar,
   FaTimes,
@@ -23,6 +24,7 @@ import sedihIcon from "@/assets/emoticon/sedih-emoticon.png";
 import menegangkanIcon from "@/assets/emoticon/menegangkan-emoticon.png";
 import romantisIcon from "@/assets/emoticon/romantis-emoticon.png";
 import pikiranIcon from "@/assets/emoticon/pikiran-emoticon.png";
+import { createChatThreadFromUser, openChatThread } from "@/utils/chat";
 import { resolveMediaUrl } from "@/utils/media";
 import "./ProfilePage.css";
 
@@ -253,6 +255,77 @@ function ProfilePostItem({ post }) {
   );
 }
 
+function ProfileFriendItem({ friend, disabled, onMessage, onRemove }) {
+  const avatarUrl = resolveMediaUrl(friend.profile_image_url);
+
+  return (
+    <article className="profile-friend-item">
+      <span className={avatarUrl ? "profile-friend-avatar has-image" : "profile-friend-avatar"}>
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={friend.username || "Friend"} />
+        ) : (
+          getInitial(friend.username || friend.email)
+        )}
+      </span>
+
+      <div>
+        <h3>{friend.username || "User FLIX"}</h3>
+        <p>{friend.email || "Teman FLIX"}</p>
+        <small>Berteman sejak {formatDate(friend.friend_since)}</small>
+      </div>
+
+      <div className="profile-friend-actions">
+        <button
+          className="profile-friend-remove-button"
+          type="button"
+          onClick={() => onRemove(friend)}
+          disabled={disabled}
+        >
+          <FaTrash />
+          Remove
+        </button>
+        <button type="button" onClick={() => onMessage(friend)} disabled={disabled}>
+          <FaEnvelope />
+          Message
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function ProfileFriendRequestItem({ request, disabled, onAccept, onDecline }) {
+  const avatarUrl = resolveMediaUrl(request.profile_image_url);
+
+  return (
+    <article className="profile-friend-request-item">
+      <span className={avatarUrl ? "profile-friend-avatar has-image" : "profile-friend-avatar"}>
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={request.username || "Friend request"} />
+        ) : (
+          getInitial(request.username || request.email)
+        )}
+      </span>
+
+      <div>
+        <h3>{request.username || "User FLIX"}</h3>
+        <p>{request.email || "Mengirim permintaan pertemanan"}</p>
+        <small>Meminta berteman pada {formatDate(request.requested_at)}</small>
+      </div>
+
+      <div className="profile-friend-request-actions">
+        <button type="button" onClick={() => onAccept(request)} disabled={disabled}>
+          <FaCheck />
+          Accept
+        </button>
+        <button type="button" onClick={() => onDecline(request)} disabled={disabled}>
+          <FaTimes />
+          Decline
+        </button>
+      </div>
+    </article>
+  );
+}
+
 function EditProfileModal({ open, form, saving, onClose, onChange, onSubmit }) {
   if (!open) {
     return null;
@@ -424,6 +497,7 @@ function DeleteReviewConfirmModal({ review, saving, onCancel, onConfirm }) {
 
 function ProfilePage() {
   const navigate = useNavigate();
+  const [profileSearchParams] = useSearchParams();
   const token = localStorage.getItem("token");
   const avatarInputRef = useRef(null);
   const bannerInputRef = useRef(null);
@@ -434,14 +508,20 @@ function ProfilePage() {
     reviews: [],
     posts: [],
   });
+  const [friends, setFriends] = useState([]);
+  const [friendRequests, setFriendRequests] = useState([]);
   const [reviewDetails, setReviewDetails] = useState({});
-  const [activeTab, setActiveTab] = useState("reviews");
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = profileSearchParams.get("tab");
+    return ["reviews", "posts", "friends"].includes(tab) ? tab : "reviews";
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingTarget, setUploadingTarget] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [reviewSaving, setReviewSaving] = useState(false);
+  const [friendActionSaving, setFriendActionSaving] = useState(false);
   const [editingReview, setEditingReview] = useState(null);
   const [reviewToDelete, setReviewToDelete] = useState(null);
   const [form, setForm] = useState({
@@ -568,6 +648,14 @@ function ProfilePage() {
   const bannerImageUrl = resolveMediaUrl(profile?.banner_image_url);
 
   useEffect(() => {
+    const tab = profileSearchParams.get("tab");
+
+    if (["reviews", "posts", "friends"].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [profileSearchParams]);
+
+  useEffect(() => {
     const fetchProfileData = async () => {
       if (!token) {
         setLoading(false);
@@ -577,11 +665,22 @@ function ProfilePage() {
       try {
         setLoading(true);
         setErrorMessage("");
-        const [profileResponse, activityResponse] = await Promise.all([
+        const [
+          profileResponse,
+          activityResponse,
+          friendsResponse,
+          friendRequestsResponse,
+        ] = await Promise.all([
           axios.get(`${apiUrl}/api/profile/me`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
           axios.get(`${apiUrl}/api/profile/activity`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axios.get(`${apiUrl}/api/friends`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axios.get(`${apiUrl}/api/friends/requests`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -602,6 +701,8 @@ function ProfilePage() {
           password: "",
         });
         setActivity(activityResponse.data);
+        setFriends(friendsResponse.data || []);
+        setFriendRequests(friendRequestsResponse.data || []);
       } catch (error) {
         setErrorMessage(error.response?.data?.message || "Gagal mengambil profile");
       } finally {
@@ -893,6 +994,82 @@ function ProfilePage() {
     }
   };
 
+  const handleAcceptFriendRequest = async (request) => {
+    try {
+      setFriendActionSaving(true);
+      const response = await axios.put(
+        `${apiUrl}/api/friends/requests/${request.id_friend}/accept`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      setFriendRequests((currentRequests) =>
+        currentRequests.filter((item) => item.id_friend !== request.id_friend),
+      );
+      setFriends((currentFriends) => [response.data.friend, ...currentFriends]);
+    } catch (error) {
+      setErrorMessage(error.response?.data?.message || "Gagal menerima pertemanan");
+    } finally {
+      setFriendActionSaving(false);
+    }
+  };
+
+  const handleDeclineFriendRequest = async (request) => {
+    try {
+      setFriendActionSaving(true);
+      await axios.delete(`${apiUrl}/api/friends/requests/${request.id_friend}/decline`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setFriendRequests((currentRequests) =>
+        currentRequests.filter((item) => item.id_friend !== request.id_friend),
+      );
+    } catch (error) {
+      setErrorMessage(error.response?.data?.message || "Gagal menolak pertemanan");
+    } finally {
+      setFriendActionSaving(false);
+    }
+  };
+
+  const handleMessageFriend = (friend) => {
+    openChatThread(
+      createChatThreadFromUser({
+        id_user: friend.id_user,
+        username: friend.username,
+        email: friend.email,
+        profile_image_url: friend.profile_image_url,
+        lastMessage: "Mulai obrolan tentang film",
+      }),
+    );
+  };
+
+  const handleRemoveFriend = async (friend) => {
+    const shouldRemove = window.confirm(
+      `Hapus ${friend.username || "teman ini"} dari friendlist?`,
+    );
+
+    if (!shouldRemove) {
+      return;
+    }
+
+    try {
+      setFriendActionSaving(true);
+      await axios.delete(`${apiUrl}/api/friends/${friend.id_user}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setFriends((currentFriends) =>
+        currentFriends.filter((item) => Number(item.id_user) !== Number(friend.id_user)),
+      );
+    } catch (error) {
+      setErrorMessage(error.response?.data?.message || "Gagal menghapus teman");
+    } finally {
+      setFriendActionSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <main className="profile-page profile-page--state">
@@ -1016,6 +1193,14 @@ function ProfilePage() {
             >
               Postingan Saya ({activity.stats?.post_count || activity.posts.length})
             </button>
+            <button
+              className={activeTab === "friends" ? "is-active" : ""}
+              type="button"
+              onClick={() => setActiveTab("friends")}
+            >
+              Friendlist ({friends.length}
+              {friendRequests.length > 0 ? ` + ${friendRequests.length} request` : ""})
+            </button>
             <button type="button" onClick={() => navigate("/watchlist")}>
               Lihat Watchlist
             </button>
@@ -1041,7 +1226,7 @@ function ProfilePage() {
                 </div>
               )}
             </div>
-          ) : (
+          ) : activeTab === "posts" ? (
             <div className="profile-post-list">
               {activity.posts.length > 0 ? (
                 activity.posts.map((post) => (
@@ -1054,6 +1239,56 @@ function ProfilePage() {
                   <Link to="/create-post">Buat Post</Link>
                 </div>
               )}
+            </div>
+          ) : (
+            <div className="profile-friend-list">
+              <section className="profile-friend-requests">
+                <div className="profile-friend-section-header">
+                  <h2>Permintaan Pertemanan</h2>
+                  <span>{friendRequests.length}</span>
+                </div>
+
+                {friendRequests.length > 0 ? (
+                  friendRequests.map((request) => (
+                    <ProfileFriendRequestItem
+                      key={request.id_friend}
+                      request={request}
+                      disabled={friendActionSaving}
+                      onAccept={handleAcceptFriendRequest}
+                      onDecline={handleDeclineFriendRequest}
+                    />
+                  ))
+                ) : (
+                  <p className="profile-friend-muted">
+                    Belum ada permintaan pertemanan baru.
+                  </p>
+                )}
+              </section>
+
+              <section className="profile-friends-section">
+                <div className="profile-friend-section-header">
+                  <h2>Teman</h2>
+                  <span>{friends.length}</span>
+                </div>
+
+              {friends.length > 0 ? (
+                friends.map((friend) => (
+                  <ProfileFriendItem
+                    key={friend.id_user}
+                    friend={friend}
+                    disabled={friendActionSaving}
+                    onMessage={handleMessageFriend}
+                    onRemove={handleRemoveFriend}
+                  />
+                ))
+              ) : (
+                <div className="profile-empty-state">
+                  <h2>Belum ada teman</h2>
+                  <p>Tambahkan teman dari Community untuk mulai ngobrol tentang film.</p>
+                  <Link to="/community">Cari Teman</Link>
+                </div>
+              )}
+              </section>
             </div>
           )}
         </div>

@@ -6,6 +6,7 @@ import {
   FiThumbsUp,
   FiTrash2,
 } from "react-icons/fi";
+import CommunityUserPopover from "@/components/community/CommunityUserPopover";
 import RichContent from "@/components/editor/RichContent";
 import reportIcon from "@/assets/icon/report-icon.svg";
 import shareIcon from "@/assets/icon/share-icon.svg";
@@ -32,6 +33,9 @@ function PostCard({
   handleReportPost,
   handleVotePoll,
   handleTagClick,
+  handleAddFriend,
+  handleMessageUser,
+  handleReportUser,
 }) {
   const navigate = useNavigate();
   const [showReactionPicker, setShowReactionPicker] = useState(false);
@@ -108,7 +112,27 @@ function PostCard({
           <div>
             <h3>{post.title || "Untitled Post"}</h3>
             <p>
-              by {post.username} <span />{" "}
+              by{" "}
+              <CommunityUserPopover
+                user={{
+                  id_user: post.id_user,
+                  username: post.username,
+                  profile_image_url: post.profile_image_url,
+                }}
+                currentUser={user}
+                isFriend={Boolean(post.is_friend)}
+                friendshipStatus={post.friendship_status}
+                onAddFriend={() =>
+                  handleAddFriend?.({
+                    id_user: post.id_user,
+                    username: post.username,
+                    profile_image_url: post.profile_image_url,
+                  })
+                }
+                onMessage={() => handleMessageUser?.(post)}
+                onReportUser={() => handleReportUser?.(post.id_user)}
+              />
+              <span />{" "}
               {new Date(post.created_at).toLocaleString()}
             </p>
           </div>

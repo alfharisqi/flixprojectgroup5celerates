@@ -113,6 +113,73 @@
   transform: translateY(-1px);
 }
 
+.post-detail-shell .community-user-popover__trigger {
+  display: inline !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  transform: none !important;
+}
+
+.post-detail-shell .community-user-popover__trigger:hover,
+.post-detail-shell .community-user-popover__trigger:focus-visible {
+  background: transparent !important;
+  color: #e50914 !important;
+  transform: none !important;
+}
+
+.post-detail-shell .community-post-card__author button.community-user-popover__trigger,
+.post-detail-shell .post-reply-meta button.community-user-popover__trigger {
+  display: inline !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #ffffff !important;
+  line-height: inherit !important;
+}
+
+.post-detail-shell .community-post-card__author button.community-user-popover__trigger:hover,
+.post-detail-shell .community-post-card__author button.community-user-popover__trigger:focus-visible,
+.post-detail-shell .post-reply-meta button.community-user-popover__trigger:hover,
+.post-detail-shell .post-reply-meta button.community-user-popover__trigger:focus-visible {
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #e50914 !important;
+  transform: none !important;
+}
+
+.post-detail-shell .community-user-popover__menu button {
+  min-height: 34px !important;
+  justify-content: flex-start !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: #d2d2d2 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.post-detail-shell .community-user-popover__menu button:hover,
+.post-detail-shell .community-user-popover__menu button:focus-visible {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+.post-detail-shell .community-user-popover__menu button:disabled:hover,
+.post-detail-shell .community-user-popover__menu button:disabled:focus-visible {
+  background: transparent !important;
+  color: #d2d2d2 !important;
+}
+
 .post-detail-shell input {
   border: 1px solid rgba(255, 255, 255, 0.14) !important;
   border-radius: 999px !important;
@@ -460,6 +527,20 @@
 }
 
 .post-reply-meta strong {
+  max-width: 100%;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.post-reply-meta .community-user-popover {
+  max-width: 100%;
+}
+
+.post-reply-meta .community-user-popover__trigger {
   max-width: 100%;
   color: #ffffff;
   font-size: 15px;

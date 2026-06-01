@@ -9,12 +9,15 @@ import {
   FiSmile,
   FiThumbsUp,
 } from "react-icons/fi";
+import AddFriendConfirmModal from "@/components/community/AddFriendConfirmModal";
+import CommunityUserPopover from "@/components/community/CommunityUserPopover";
 import GifPickerModal from "@/components/editor/GifPickerModal";
 import PostInsightModal from "@/components/community/PostInsightModal";
 import RichContent from "@/components/editor/RichContent";
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import reportIcon from "@/assets/icon/report-icon.svg";
 import shareIcon from "@/assets/icon/share-icon.svg";
+import { createChatThreadFromUser, openChatThread } from "@/utils/chat";
 import { resolveMediaUrl } from "@/utils/media";
 import "@/components/community/PostCard.css";
 import "./PostDetail.css";
@@ -46,6 +49,8 @@ function PostDetail() {
   const [showInsight, setShowInsight] = useState(false);
   const [showPostReactionPicker, setShowPostReactionPicker] = useState(false);
   const [selectedPostReaction, setSelectedPostReaction] = useState(null);
+  const [friendTarget, setFriendTarget] = useState(null);
+  const [friendRequestSaving, setFriendRequestSaving] = useState(false);
 
   const token = localStorage.getItem("token");
   const storedUser = localStorage.getItem("user");
@@ -75,6 +80,13 @@ function PostDetail() {
     try {
       const res = await axios.get(
         `${import.meta.env.VITE_API_URL}/api/comments/${id}`,
+        {
+          headers: token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : {},
+        },
       );
       setComments(res.data);
     } catch (error) {
@@ -401,6 +413,65 @@ function PostDetail() {
     alert(`Fitur report ${targetType} #${targetId} akan ditambahkan.`);
   };
 
+  const handleAddFriend = (targetUser) => {
+    if (!token) {
+      alert("Silakan login dulu untuk menambahkan teman");
+      return;
+    }
+
+    setFriendTarget(targetUser);
+  };
+
+  const handleConfirmAddFriend = async () => {
+    if (!friendTarget) return;
+
+    try {
+      setFriendRequestSaving(true);
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/friends/${friendTarget.id_user}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      setPost((current) =>
+        current && Number(current.id_user) === Number(friendTarget.id_user)
+          ? { ...current, friendship_status: "pending_sent" }
+          : current,
+      );
+      setComments((currentComments) =>
+        currentComments.map((comment) =>
+          Number(comment.id_user) === Number(friendTarget.id_user)
+            ? { ...comment, friendship_status: "pending_sent" }
+            : comment,
+        ),
+      );
+      setFriendTarget(null);
+    } catch (error) {
+      alert(error.response?.data?.message || "Gagal menambahkan teman");
+    } finally {
+      setFriendRequestSaving(false);
+    }
+  };
+
+  const handleMessageUser = (targetUser) => {
+    openChatThread(
+      createChatThreadFromUser({
+        id_user: targetUser.id_user,
+        username: targetUser.username,
+        profile_image_url: targetUser.profile_image_url,
+        lastMessage: "Mulai obrolan tentang film",
+      }),
+    );
+  };
+
+  const handleReportUser = (targetUserId) => {
+    alert(`Fitur report user #${targetUserId} akan ditambahkan.`);
+  };
+
   const renderCommentTree = (allComments, items, postId, level = 0) => {
     return items.map((comment) => {
       const childComments = getChildComments(allComments, comment.id_comment);
@@ -435,7 +506,25 @@ function PostDetail() {
                   )}
                 </div>
                 <div className="post-reply-meta">
-                  <strong>{comment.username}</strong>
+                  <CommunityUserPopover
+                    user={{
+                      id_user: comment.id_user,
+                      username: comment.username,
+                      profile_image_url: comment.profile_image_url,
+                    }}
+                    currentUser={user}
+                    isFriend={Boolean(comment.is_friend)}
+                    friendshipStatus={comment.friendship_status}
+                    onAddFriend={() =>
+                      handleAddFriend({
+                        id_user: comment.id_user,
+                        username: comment.username,
+                        profile_image_url: comment.profile_image_url,
+                      })
+                    }
+                    onMessage={() => handleMessageUser(comment)}
+                    onReportUser={() => handleReportUser(comment.id_user)}
+                  />
                   <time dateTime={comment.created_at}>
                     {formatReplyDate(comment.created_at)}
                   </time>
@@ -640,7 +729,26 @@ function PostDetail() {
             <div>
               <h3>{post.title || "Untitled Post"}</h3>
               <p>
-                by {post.username}
+                by{" "}
+                <CommunityUserPopover
+                  user={{
+                    id_user: post.id_user,
+                    username: post.username,
+                    profile_image_url: post.profile_image_url,
+                  }}
+                  currentUser={user}
+                  isFriend={Boolean(post.is_friend)}
+                  friendshipStatus={post.friendship_status}
+                  onAddFriend={() =>
+                    handleAddFriend({
+                      id_user: post.id_user,
+                      username: post.username,
+                      profile_image_url: post.profile_image_url,
+                    })
+                  }
+                  onMessage={() => handleMessageUser(post)}
+                  onReportUser={() => handleReportUser(post.id_user)}
+                />
                 <span aria-hidden="true" />
                 {new Date(post.created_at).toLocaleString()}
                 <span aria-hidden="true" />
@@ -889,12 +997,20 @@ function PostDetail() {
         </section>
       </div>
 
+      </div>
+
       <PostInsightModal
         isOpen={showInsight}
         onClose={() => setShowInsight(false)}
         insight={insight}
       />
-      </div>
+      <AddFriendConfirmModal
+        open={Boolean(friendTarget)}
+        user={friendTarget}
+        saving={friendRequestSaving}
+        onCancel={() => setFriendTarget(null)}
+        onConfirm={handleConfirmAddFriend}
+      />
     </main>
   );
 }

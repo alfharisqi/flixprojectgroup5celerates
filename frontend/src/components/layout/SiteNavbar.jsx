@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import flixLogo from "@/assets/flix-logo.png";
+import arrowLeftIcon from "@/assets/icon/arrow-left-icon.svg";
 import searchIcon from "@/assets/icon/search-icon.png";
 import chatIcon from "@/assets/icon/chat-icon.png";
 import notificationIcon from "@/assets/icon/notification-icon.png";
@@ -10,6 +11,8 @@ import communityIcon from "@/assets/icon/community-icon.png";
 import settingIcon from "@/assets/icon/setting-icon.png";
 import logoutIcon from "@/assets/icon/logout-icon.png";
 import messageCircleIcon from "@/assets/icon/message-circle-icon.svg";
+import sendIcon from "@/assets/icon/send-icon.svg";
+import smileIcon from "@/assets/icon/smile-icon.svg";
 import blueDiamondIcon from "@/assets/icon/bluediamond-icon.png";
 import SearchModal from "@/components/ui/SearchModal";
 import { resolveMediaUrl } from "@/utils/media";
@@ -55,6 +58,7 @@ const getNotificationCopy = (notification) => {
     post_comment: "Mengomentari Post Anda",
     comment_reply: "Membalas Komentar Anda",
     poll_vote: "Vote Polling Anda",
+    friend_request: "Mengirim Permintaan Pertemanan",
   }[type] || "Berinteraksi dengan Anda";
 
   return { actor, actionText };
@@ -84,13 +88,70 @@ const formatNotificationTime = (dateValue) => {
   }).format(new Date(dateValue));
 };
 
+const formatChatTime = (dateValue) => {
+  if (!dateValue) return "Baru";
+
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Baru";
+  }
+
+  const today = new Date();
+  const isToday = date.toDateString() === today.toDateString();
+
+  if (isToday) {
+    return date.toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  return date.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+  });
+};
+
+const normalizeConversation = (conversation) => {
+  const friend = conversation.friend || {};
+  const conversationId = conversation.id_conversation || conversation.conversationId;
+  const lastMessageAt = conversation.last_message_at || conversation.updated_at;
+
+  return {
+    id: `conversation-${conversationId}`,
+    conversationId,
+    userId: friend.id_user || conversation.userId,
+    name: friend.username || friend.email || conversation.name || "User FLIX",
+    lastMessage: conversation.last_message || conversation.lastMessage || "Belum ada pesan",
+    time: formatChatTime(lastMessageAt),
+    lastMessageAt,
+    unreadCount: Number(conversation.unread_count || conversation.unreadCount || 0),
+    isOnline: Boolean(conversation.isOnline),
+    avatarUrl:
+      resolveMediaUrl(friend.profile_image_url) ||
+      conversation.avatarUrl ||
+      "",
+  };
+};
+
 function SiteNavbar({ mode = "absolute", activeKey }) {
   const navigate = useNavigate();
   const location = useLocation();
   const token = localStorage.getItem("token");
   const user = getStoredUser();
+  const chatRef = useRef(null);
   const notificationRef = useRef(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [showChatPanel, setShowChatPanel] = useState(false);
+  const [chatThreads, setChatThreads] = useState([]);
+  const [activeChatThread, setActiveChatThread] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatMessage, setChatMessage] = useState("");
+  const [isLoadingChats, setIsLoadingChats] = useState(false);
+  const [isLoadingChatMessages, setIsLoadingChatMessages] = useState(false);
+  const [isSendingChatMessage, setIsSendingChatMessage] = useState(false);
+  const [chatError, setChatError] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -109,6 +170,256 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
 
   const handleSearch = () => {
     setShowSearchModal(true);
+  };
+
+  const fetchChatThreads = useCallback(async () => {
+    if (!token) {
+      setChatThreads([]);
+      return [];
+    }
+
+    try {
+      setIsLoadingChats(true);
+      setChatError("");
+
+      const response = await fetch(`${API_URL}/api/chats/conversations`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Gagal mengambil chat");
+      }
+
+      const data = await response.json();
+      const nextThreads = Array.isArray(data)
+        ? data.map(normalizeConversation)
+        : [];
+
+      setChatThreads(nextThreads);
+      return nextThreads;
+    } catch (error) {
+      setChatError(error.message || "Gagal mengambil chat");
+      setChatThreads([]);
+      return [];
+    } finally {
+      setIsLoadingChats(false);
+    }
+  }, [token]);
+
+  const fetchChatMessages = useCallback(
+    async (conversationId) => {
+      if (!token || !conversationId) {
+        setChatMessages([]);
+        return;
+      }
+
+      try {
+        setIsLoadingChatMessages(true);
+        setChatError("");
+
+        const response = await fetch(
+          `${API_URL}/api/chats/conversations/${conversationId}/messages`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || "Gagal mengambil pesan");
+        }
+
+        const data = await response.json();
+        setChatMessages(data.messages || []);
+        setChatThreads((currentThreads) =>
+          currentThreads.map((thread) =>
+            Number(thread.conversationId) === Number(conversationId)
+              ? { ...thread, unreadCount: 0 }
+              : thread,
+          ),
+        );
+      } catch (error) {
+        setChatError(error.message || "Gagal mengambil pesan");
+        setChatMessages([]);
+      } finally {
+        setIsLoadingChatMessages(false);
+      }
+    },
+    [token],
+  );
+
+  const startChatWithUser = useCallback(
+    async (thread) => {
+      if (!token) {
+        navigate("/login");
+        return null;
+      }
+
+      const targetUserId = thread?.userId || thread?.id_user;
+
+      if (!targetUserId) {
+        return null;
+      }
+
+      try {
+        setChatError("");
+        const response = await fetch(
+          `${API_URL}/api/chats/conversations/${targetUserId}`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || "Gagal membuka chat");
+        }
+
+        const data = await response.json();
+        const nextThread = normalizeConversation(data);
+
+        setChatThreads((currentThreads) => [
+          nextThread,
+          ...currentThreads.filter(
+            (item) =>
+              String(item.conversationId) !== String(nextThread.conversationId),
+          ),
+        ]);
+        setActiveChatThread(nextThread);
+        setShowChatPanel(true);
+        await fetchChatMessages(nextThread.conversationId);
+
+        return nextThread;
+      } catch (error) {
+        setChatError(error.message || "Gagal membuka chat");
+        setShowChatPanel(true);
+        return null;
+      }
+    },
+    [fetchChatMessages, navigate, token],
+  );
+
+  const handleToggleChat = () => {
+    setShowChatPanel((currentValue) => {
+      const nextValue = !currentValue;
+
+      if (nextValue) {
+        fetchChatThreads();
+        setActiveChatThread(null);
+        setChatMessages([]);
+      }
+
+      return nextValue;
+    });
+    setShowNotifications(false);
+  };
+
+  const handleFindFriends = () => {
+    setShowChatPanel(false);
+    setActiveChatThread(null);
+    navigate("/community");
+  };
+
+  const handleOpenChatThread = (thread) => {
+    if (!thread.conversationId && thread.userId) {
+      startChatWithUser(thread);
+      return;
+    }
+
+    setActiveChatThread(thread);
+    fetchChatMessages(thread.conversationId);
+  };
+
+  const handleCloseChatPanel = () => {
+    setShowChatPanel(false);
+    setActiveChatThread(null);
+    setChatMessage("");
+    setChatMessages([]);
+    setChatError("");
+  };
+
+  const handleSendChatMessage = async () => {
+    const content = chatMessage.trim();
+
+    if (!content || !activeChatThread?.conversationId || isSendingChatMessage) {
+      return;
+    }
+
+    try {
+      setIsSendingChatMessage(true);
+      setChatError("");
+
+      const response = await fetch(
+        `${API_URL}/api/chats/conversations/${activeChatThread.conversationId}/messages`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ content }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Gagal mengirim pesan");
+      }
+
+      const data = await response.json();
+      const sentMessage = data.message;
+      const sentAt = sentMessage?.created_at || new Date().toISOString();
+
+      setChatMessages((currentMessages) => [
+        ...currentMessages,
+        {
+          ...sentMessage,
+          sender_username: user?.username,
+          sender_profile_image_url: user?.profile_image_url,
+        },
+      ]);
+      setChatMessage("");
+      setActiveChatThread((currentThread) =>
+        currentThread
+          ? {
+              ...currentThread,
+              lastMessage: content,
+              lastMessageAt: sentAt,
+              time: formatChatTime(sentAt),
+            }
+          : currentThread,
+      );
+      setChatThreads((currentThreads) => {
+        const nextThread = {
+          ...activeChatThread,
+          lastMessage: content,
+          lastMessageAt: sentAt,
+          time: formatChatTime(sentAt),
+          unreadCount: 0,
+        };
+
+        return [
+          nextThread,
+          ...currentThreads.filter(
+            (thread) =>
+              Number(thread.conversationId) !==
+              Number(activeChatThread.conversationId),
+          ),
+        ];
+      });
+    } catch (error) {
+      setChatError(error.message || "Gagal mengirim pesan");
+    } finally {
+      setIsSendingChatMessage(false);
+    }
   };
 
   const fetchNotifications = useCallback(async () => {
@@ -143,6 +454,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
   }, [token]);
 
   const handleToggleNotifications = () => {
+    setShowChatPanel(false);
     setShowNotifications((currentValue) => {
       const nextValue = !currentValue;
 
@@ -174,6 +486,8 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
 
     if (notification.id_post) {
       navigate(`/post/${notification.id_post}`);
+    } else if (notification.notification_type === "friend_request") {
+      navigate("/profile?tab=friends");
     }
   };
 
@@ -209,6 +523,14 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
+        chatRef.current &&
+        !chatRef.current.contains(event.target)
+      ) {
+        setShowChatPanel(false);
+        setActiveChatThread(null);
+      }
+
+      if (
         notificationRef.current &&
         !notificationRef.current.contains(event.target)
       ) {
@@ -222,6 +544,25 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    const handleOpenChat = (event) => {
+      const thread = event.detail?.thread;
+
+      if (!thread) {
+        return;
+      }
+
+      setShowNotifications(false);
+      startChatWithUser(thread);
+    };
+
+    window.addEventListener("flix:open-chat", handleOpenChat);
+
+    return () => {
+      window.removeEventListener("flix:open-chat", handleOpenChat);
+    };
+  }, [startChatWithUser]);
 
   return (
     <>
@@ -254,13 +595,218 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
 
           {token ? (
             <>
-              <Link
-                className="site-navbar__icon-button site-navbar__icon-button--plain"
-                to="/community"
-                aria-label="Messages"
-              >
-                <img src={chatIcon} alt="" />
-              </Link>
+              <div className="site-navbar__chat" ref={chatRef}>
+                <button
+                  className="site-navbar__icon-button site-navbar__icon-button--plain"
+                  type="button"
+                  aria-label="Messages"
+                  aria-expanded={showChatPanel}
+                  onClick={handleToggleChat}
+                >
+                  <img src={chatIcon} alt="" />
+                </button>
+
+                {showChatPanel && (
+                  <section
+                    className={
+                      activeChatThread
+                        ? "site-navbar__chat-panel site-navbar__chat-panel--private"
+                        : "site-navbar__chat-panel"
+                    }
+                    aria-label={activeChatThread ? "Private chat" : "Chat"}
+                  >
+                    {activeChatThread ? (
+                      <>
+                        <div className="site-navbar__private-chat-header">
+                          <button
+                            className="site-navbar__private-chat-back"
+                            type="button"
+                            aria-label="Kembali ke daftar chat"
+                            onClick={() => setActiveChatThread(null)}
+                          >
+                            <img src={arrowLeftIcon} alt="" />
+                          </button>
+
+                          <span className="site-navbar__private-chat-avatar">
+                            {activeChatThread.avatarUrl ? (
+                              <img src={activeChatThread.avatarUrl} alt="" />
+                            ) : (
+                              <span>{(activeChatThread.name || "U").slice(0, 1)}</span>
+                            )}
+                          </span>
+
+                          <h2>{activeChatThread.name}</h2>
+
+                          <button
+                            className="site-navbar__private-chat-expand"
+                            type="button"
+                            aria-label="Perbesar chat"
+                          >
+                            <span />
+                          </button>
+
+                          <button
+                            className="site-navbar__private-chat-close"
+                            type="button"
+                            aria-label="Tutup chat"
+                            onClick={handleCloseChatPanel}
+                          >
+                            x
+                          </button>
+                        </div>
+
+                        <div className="site-navbar__private-chat-body">
+                          {isLoadingChatMessages ? (
+                            <p className="site-navbar__private-chat-state">
+                              Memuat pesan...
+                            </p>
+                          ) : chatMessages.length > 0 ? (
+                            <div className="site-navbar__private-chat-messages">
+                              {chatMessages.map((message) => {
+                                const currentUserId = user?.id_user || user?.id || "";
+                                const isMine =
+                                  String(message.sender_user_id) ===
+                                  String(currentUserId);
+                                const senderAvatarUrl = isMine
+                                  ? userProfileImageUrl
+                                  : activeChatThread.avatarUrl ||
+                                    resolveMediaUrl(message.sender_profile_image_url);
+
+                                return (
+                                  <div
+                                    className={
+                                      isMine
+                                        ? "site-navbar__private-chat-message is-mine"
+                                        : "site-navbar__private-chat-message is-theirs"
+                                    }
+                                    key={message.id_message}
+                                  >
+                                    {!isMine && (
+                                      <span className="site-navbar__private-chat-message-avatar">
+                                        {senderAvatarUrl ? (
+                                          <img src={senderAvatarUrl} alt="" />
+                                        ) : (
+                                          (activeChatThread.name || "U").slice(0, 1)
+                                        )}
+                                      </span>
+                                    )}
+                                    <span className="site-navbar__private-chat-message-content">
+                                      <span className="site-navbar__private-chat-message-bubble">
+                                        {message.content}
+                                      </span>
+                                      <time>{formatChatTime(message.created_at)}</time>
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="site-navbar__private-chat-state">
+                              Belum ada pesan. Mulai obrolan tentang film.
+                            </p>
+                          )}
+
+                          {chatError && (
+                            <p className="site-navbar__chat-error">{chatError}</p>
+                          )}
+                        </div>
+
+                        <form
+                          className="site-navbar__private-chat-input"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            handleSendChatMessage();
+                          }}
+                        >
+                          <button type="button" aria-label="Pilih emoji">
+                            <img src={smileIcon} alt="" />
+                          </button>
+                          <input
+                            type="text"
+                            placeholder="Message"
+                            value={chatMessage}
+                            onChange={(event) => setChatMessage(event.target.value)}
+                            disabled={isSendingChatMessage}
+                          />
+                          <button
+                            type="submit"
+                            aria-label="Kirim pesan"
+                            disabled={isSendingChatMessage || !chatMessage.trim()}
+                          >
+                            <img src={sendIcon} alt="" />
+                          </button>
+                        </form>
+                      </>
+                    ) : (
+                      <>
+                        <div className="site-navbar__chat-header">
+                          <h2>Chat</h2>
+                          <button
+                            type="button"
+                            aria-label="Tutup chat"
+                            onClick={handleCloseChatPanel}
+                          >
+                            x
+                          </button>
+                        </div>
+
+                        {isLoadingChats ? (
+                          <div className="site-navbar__chat-empty">
+                            <p>Memuat chat...</p>
+                          </div>
+                        ) : chatThreads.length > 0 ? (
+                          <div className="site-navbar__chat-list">
+                            {chatThreads.slice(0, 4).map((thread) => (
+                              <button
+                                className="site-navbar__chat-item"
+                                type="button"
+                                key={thread.id}
+                                onClick={() => handleOpenChatThread(thread)}
+                              >
+                                <span className="site-navbar__chat-avatar">
+                                  {thread.avatarUrl ? (
+                                    <img src={thread.avatarUrl} alt="" />
+                                  ) : (
+                                    <span>{(thread.name || "U").slice(0, 1)}</span>
+                                  )}
+                                  {thread.isOnline && (
+                                    <span
+                                      className="site-navbar__chat-online"
+                                      aria-label="Online"
+                                    />
+                                  )}
+                                </span>
+
+                                <span className="site-navbar__chat-copy">
+                                  <strong>{thread.name}</strong>
+                                  <small>{thread.lastMessage}</small>
+                                </span>
+
+                                <span className="site-navbar__chat-meta">
+                                  <time>{thread.time}</time>
+                                  {Number(thread.unreadCount || 0) > 0 && (
+                                    <span>{thread.unreadCount}</span>
+                                  )}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="site-navbar__chat-empty">
+                            <p>
+                              {chatError ||
+                                "Tambah teman untuk ngobrol tentang film."}
+                            </p>
+                            <button type="button" onClick={handleFindFriends}>
+                              Cari Teman
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </section>
+                )}
+              </div>
 
               <div className="site-navbar__notification" ref={notificationRef}>
                 <button
@@ -291,7 +837,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
                         aria-label="Tutup notifikasi"
                         onClick={() => setShowNotifications(false)}
                       >
-                        ×
+                        x
                       </button>
                     </div>
 

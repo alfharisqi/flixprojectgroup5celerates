@@ -14,9 +14,11 @@ import {
   FiX,
 } from "react-icons/fi";
 import SiteNavbar from "@/components/layout/SiteNavbar";
+import AddFriendConfirmModal from "@/components/community/AddFriendConfirmModal";
 import PostCard from "@/components/community/PostCard";
 import PostInsightModal from "@/components/community/PostInsightModal";
 import PostSearchModal from "@/components/community/PostSearchModal";
+import { createChatThreadFromUser, openChatThread } from "@/utils/chat";
 import { resolveMediaUrl } from "@/utils/media";
 import "./Community.css";
 
@@ -28,6 +30,8 @@ function Community() {
   const [showActivityDetail, setShowActivityDetail] = useState(false);
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [showPostSearch, setShowPostSearch] = useState(false);
+  const [friendTarget, setFriendTarget] = useState(null);
+  const [friendRequestSaving, setFriendRequestSaving] = useState(false);
 
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -240,7 +244,14 @@ function Community() {
   const fetchComments = async (postId) => {
     try {
       const res = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/comments/${postId}`
+        `${import.meta.env.VITE_API_URL}/api/comments/${postId}`,
+        {
+          headers: token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : {},
+        },
       );
 
       setComments((prev) => ({
@@ -369,6 +380,60 @@ function Community() {
 
   const handleReportPost = (postId) => {
     alert(`Fitur report post #${postId} akan ditambahkan.`);
+  };
+
+  const handleReportUser = (targetUserId) => {
+    alert(`Fitur report user #${targetUserId} akan ditambahkan.`);
+  };
+
+  const handleAddFriend = (targetUser) => {
+    if (!token) {
+      alert("Silakan login terlebih dahulu");
+      return;
+    }
+
+    setFriendTarget(targetUser);
+  };
+
+  const handleConfirmAddFriend = async () => {
+    if (!friendTarget) return;
+
+    try {
+      setFriendRequestSaving(true);
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/friends/${friendTarget.id_user}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      setPosts((currentPosts) =>
+        currentPosts.map((post) =>
+          Number(post.id_user) === Number(friendTarget.id_user)
+            ? { ...post, friendship_status: "pending_sent" }
+            : post,
+        ),
+      );
+      setFriendTarget(null);
+    } catch (error) {
+      alert(error.response?.data?.message || "Gagal menambahkan teman");
+    } finally {
+      setFriendRequestSaving(false);
+    }
+  };
+
+  const handleMessageUser = (post) => {
+    openChatThread(
+      createChatThreadFromUser({
+        id_user: post.id_user,
+        username: post.username,
+        profile_image_url: post.profile_image_url,
+        lastMessage: "Mulai obrolan tentang film",
+      }),
+    );
   };
 
   const handleVotePoll = async (postId, pollId, optionId) => {
@@ -596,6 +661,9 @@ function Community() {
                   handleReportPost={handleReportPost}
                   handleVotePoll={handleVotePoll}
                   handleTagClick={handleTagClick}
+                  handleAddFriend={handleAddFriend}
+                  handleMessageUser={handleMessageUser}
+                  handleReportUser={handleReportUser}
                 />
               ))
             ) : (
@@ -661,6 +729,14 @@ function Community() {
         comments={comments}
         onClose={() => setShowPostSearch(false)}
         onOpenPost={(postId) => navigate(`/post/${postId}`)}
+      />
+
+      <AddFriendConfirmModal
+        open={Boolean(friendTarget)}
+        user={friendTarget}
+        saving={friendRequestSaving}
+        onCancel={() => setFriendTarget(null)}
+        onConfirm={handleConfirmAddFriend}
       />
     </main>
   );

@@ -4,6 +4,7 @@ import { createNotification } from "../services/notificationService.js";
 export const getCommentsByPost = async (req, res) => {
   try {
     const { postId } = req.params;
+    const userId = req.user?.id_user || null;
 
     const result = await pool.query(
       `SELECT
@@ -14,12 +15,44 @@ export const getCommentsByPost = async (req, res) => {
           c.content,
           c.created_at,
           u.username,
-          u.profile_image_url
+          u.profile_image_url,
+          CASE
+            WHEN $2::BIGINT IS NULL OR c.id_user = $2 THEN FALSE
+            ELSE EXISTS (
+              SELECT 1
+              FROM flix.user_friends uf
+              WHERE uf.status = 'accepted'
+                AND (
+                  (uf.requester_user_id = $2 AND uf.addressee_user_id = c.id_user)
+                  OR
+                  (uf.requester_user_id = c.id_user AND uf.addressee_user_id = $2)
+                )
+            )
+          END AS is_friend,
+          CASE
+            WHEN $2::BIGINT IS NULL THEN NULL
+            WHEN c.id_user = $2 THEN 'self'
+            ELSE (
+              SELECT CASE
+                WHEN uf.status = 'accepted' THEN 'accepted'
+                WHEN uf.status = 'pending' AND uf.requester_user_id = $2 THEN 'pending_sent'
+                WHEN uf.status = 'pending' AND uf.addressee_user_id = $2 THEN 'pending_received'
+                ELSE uf.status
+              END
+              FROM flix.user_friends uf
+              WHERE (
+                  (uf.requester_user_id = $2 AND uf.addressee_user_id = c.id_user)
+                  OR
+                  (uf.requester_user_id = c.id_user AND uf.addressee_user_id = $2)
+                )
+              LIMIT 1
+            )
+          END AS friendship_status
        FROM flix.comments c
        JOIN flix.users u ON c.id_user = u.id_user
        WHERE c.id_post = $1
        ORDER BY c.id_comment ASC`,
-      [postId],
+      [postId, userId],
     );
 
     return res.json(result.rows);

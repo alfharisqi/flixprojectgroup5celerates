@@ -28,6 +28,38 @@ export const getPosts = async (req, res) => {
           u.id_user,
           u.username,
           u.profile_image_url,
+          CASE
+            WHEN $1::BIGINT IS NULL OR p.id_user = $1 THEN FALSE
+            ELSE EXISTS (
+              SELECT 1
+              FROM flix.user_friends uf
+              WHERE uf.status = 'accepted'
+                AND (
+                  (uf.requester_user_id = $1 AND uf.addressee_user_id = p.id_user)
+                  OR
+                  (uf.requester_user_id = p.id_user AND uf.addressee_user_id = $1)
+                )
+            )
+          END AS is_friend,
+          CASE
+            WHEN $1::BIGINT IS NULL THEN NULL
+            WHEN p.id_user = $1 THEN 'self'
+            ELSE (
+              SELECT CASE
+                WHEN uf.status = 'accepted' THEN 'accepted'
+                WHEN uf.status = 'pending' AND uf.requester_user_id = $1 THEN 'pending_sent'
+                WHEN uf.status = 'pending' AND uf.addressee_user_id = $1 THEN 'pending_received'
+                ELSE uf.status
+              END
+              FROM flix.user_friends uf
+              WHERE (
+                  (uf.requester_user_id = $1 AND uf.addressee_user_id = p.id_user)
+                  OR
+                  (uf.requester_user_id = p.id_user AND uf.addressee_user_id = $1)
+                )
+              LIMIT 1
+            )
+          END AS friendship_status,
 
           COALESCE(v.view_count, 0) AS view_count,
           COALESCE(c.reply_count, 0) AS reply_count,
@@ -158,6 +190,38 @@ export const getPostById = async (req, res) => {
           u.id_user,
           u.username,
           u.profile_image_url,
+          CASE
+            WHEN $2::BIGINT IS NULL OR p.id_user = $2 THEN FALSE
+            ELSE EXISTS (
+              SELECT 1
+              FROM flix.user_friends uf
+              WHERE uf.status = 'accepted'
+                AND (
+                  (uf.requester_user_id = $2 AND uf.addressee_user_id = p.id_user)
+                  OR
+                  (uf.requester_user_id = p.id_user AND uf.addressee_user_id = $2)
+                )
+            )
+          END AS is_friend,
+          CASE
+            WHEN $2::BIGINT IS NULL THEN NULL
+            WHEN p.id_user = $2 THEN 'self'
+            ELSE (
+              SELECT CASE
+                WHEN uf.status = 'accepted' THEN 'accepted'
+                WHEN uf.status = 'pending' AND uf.requester_user_id = $2 THEN 'pending_sent'
+                WHEN uf.status = 'pending' AND uf.addressee_user_id = $2 THEN 'pending_received'
+                ELSE uf.status
+              END
+              FROM flix.user_friends uf
+              WHERE (
+                  (uf.requester_user_id = $2 AND uf.addressee_user_id = p.id_user)
+                  OR
+                  (uf.requester_user_id = p.id_user AND uf.addressee_user_id = $2)
+                )
+              LIMIT 1
+            )
+          END AS friendship_status,
 
           COALESCE(v.view_count, 0) AS view_count,
           COALESCE(c.reply_count, 0) AS reply_count,

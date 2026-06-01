@@ -3,6 +3,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 import authRoutes from "./routes/authRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
+import friendRoutes from "./routes/friendRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import moderatorRoutes from "./routes/moderatorRoutes.js";
@@ -23,6 +25,8 @@ import tvRoutes from "./routes/tvRoutes.js";
 import movieReviewRoutes from "./routes/movieReviewRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import tvSeriesReviewRoutes from "./routes/tvSeriesReviewRoutes.js";
+import { initializeChatsTable } from "./config/initChats.js";
+import { initializeFriendsTable } from "./config/initFriends.js";
 import { initializeNotificationsTable } from "./config/initNotifications.js";
 import { initializePostViewsTable } from "./config/initPostViews.js";
 import { initializePasswordResetTable } from "./config/initPasswordReset.js";
@@ -46,6 +50,8 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/chats", chatRoutes);
+app.use("/api/friends", friendRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/moderator", moderatorRoutes);
@@ -82,7 +88,9 @@ Promise.all([
   initializeMovieReviewsTable(),
   initializeTvSeriesReviewsTable(),
   initializeUserProfileMediaColumns(),
+  initializeChatsTable(),
   initializeNotificationsTable(),
+  initializeFriendsTable(),
 ])
   .then(() => {
     app.listen(PORT, () => {

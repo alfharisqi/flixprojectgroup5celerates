@@ -304,9 +304,56 @@
 }
 
 .profile-review-list,
-.profile-post-list {
+.profile-post-list,
+.profile-friend-list {
   display: flex;
   flex-direction: column;
+}
+
+.profile-friend-requests,
+.profile-friends-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-friend-requests {
+  margin-bottom: 34px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.profile-friend-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.profile-friend-section-header h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.profile-friend-section-header span {
+  min-width: 30px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(229, 9, 20, 0.18);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.profile-friend-muted {
+  margin: 0;
+  color: #979797;
+  font-size: 15px;
 }
 
 .profile-review-item {
@@ -441,6 +488,139 @@
   padding: 10px 18px;
   border-radius: 18px;
   background: #e50914;
+}
+
+.profile-friend-item,
+.profile-friend-request-item {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.profile-friend-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e50914, #7f050b);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.profile-friend-avatar.has-image {
+  overflow: hidden;
+  background: #141414;
+}
+
+.profile-friend-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.profile-friend-item h3,
+.profile-friend-request-item h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.profile-friend-item p,
+.profile-friend-request-item p {
+  margin: 6px 0 0;
+  color: #bcbcbc;
+  font-size: 15px;
+}
+
+.profile-friend-item small,
+.profile-friend-request-item small {
+  display: block;
+  margin-top: 8px;
+  color: #808080;
+  font-size: 13px;
+}
+
+.profile-friend-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-friend-actions button {
+  min-width: 120px;
+  height: 40px;
+  border: 0;
+  border-radius: 20px;
+  background: #e50914;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.profile-friend-actions .profile-friend-remove-button {
+  background: rgba(255, 255, 255, 0.08);
+  color: #d2d2d2;
+}
+
+.profile-friend-actions .profile-friend-remove-button:hover,
+.profile-friend-actions .profile-friend-remove-button:focus-visible {
+  background: rgba(229, 9, 20, 0.16);
+  color: #ffffff;
+}
+
+.profile-friend-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.profile-friend-request-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-friend-request-actions button {
+  min-width: 102px;
+  height: 38px;
+  border: 0;
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.profile-friend-request-actions button:first-child {
+  background: #e50914;
+}
+
+.profile-friend-request-actions button:last-child {
+  background: rgba(255, 255, 255, 0.08);
+  color: #d2d2d2;
+}
+
+.profile-friend-request-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .profile-side-column {
@@ -599,6 +779,8 @@
 .profile-edit-button,
 .profile-tabs button,
 .profile-review-actions button,
+.profile-friend-actions button,
+.profile-friend-request-actions button,
 .profile-post-item__header a,
 .profile-empty-state a,
 .profile-edit-modal button {
@@ -610,6 +792,8 @@
 .profile-edit-button:hover,
 .profile-tabs button:hover,
 .profile-review-actions button:hover,
+.profile-friend-actions button:hover,
+.profile-friend-request-actions button:hover,
 .profile-post-item__header a:hover,
 .profile-empty-state a:hover,
 .profile-edit-modal button:hover {
@@ -617,6 +801,8 @@
 }
 
 .profile-edit-button:hover,
+.profile-friend-actions button:not(.profile-friend-remove-button):hover,
+.profile-friend-request-actions button:first-child:hover,
 .profile-post-item__header a:hover,
 .profile-empty-state a:hover {
   background: #f20d18;
@@ -899,6 +1085,28 @@
 
   .profile-review-actions {
     padding-top: 14px;
+  }
+
+  .profile-friend-item,
+  .profile-friend-request-item {
+    grid-template-columns: 58px minmax(0, 1fr);
+  }
+
+  .profile-friend-avatar {
+    width: 54px;
+    height: 54px;
+    font-size: 20px;
+  }
+
+  .profile-friend-actions,
+  .profile-friend-request-actions {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .profile-friend-actions,
+  .profile-friend-request-actions {
+    flex-wrap: wrap;
   }
 
   .profile-side-column {

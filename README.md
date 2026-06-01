@@ -110,6 +110,15 @@ Endpoint utama:
 | `/api/auth/login` | POST | Login dan mendapatkan JWT |
 | `/api/auth/forgot-password` | POST | Mengirim link reset password ke email |
 | `/api/auth/reset-password` | POST | Mengatur password baru |
+| `/api/chats/conversations` | GET | Mengambil inbox private chat user login |
+| `/api/chats/conversations/:userId` | POST | Membuka atau membuat chat dengan teman |
+| `/api/chats/conversations/:conversationId/messages` | GET, POST | Mengambil dan mengirim pesan private chat |
+| `/api/friends` | GET | Mengambil friendlist user login |
+| `/api/friends/ids` | GET | Mengambil daftar ID teman user login |
+| `/api/friends/requests` | GET | Mengambil request pertemanan masuk |
+| `/api/friends/requests/:friendId/accept` | PUT | Menerima request pertemanan |
+| `/api/friends/requests/:friendId/decline` | DELETE | Menolak request pertemanan |
+| `/api/friends/:userId` | POST, DELETE | Mengirim request pertemanan atau menghapus teman |
 | `/api/profile/me` | GET, PUT | Melihat dan mengubah profile user login |
 | `/api/profile/activity` | GET | Mengambil ringkasan aktivitas user login |
 | `/api/profile/media` | PUT | Menyimpan URL foto profile dan banner user |
@@ -163,6 +172,9 @@ FLIX dibuat sebagai platform rekomendasi tontonan. User dapat mencari film atau 
 - Search modal untuk mencari film dan TV series dari navbar.
 - Watchlist film dan TV series dengan status sudah ditonton atau belum ditonton.
 - Community page untuk melihat post dari user lain.
+- Popup Add Friend / Message / Report User pada nama user post dan reply Community.
+- Request pertemanan masuk dengan tombol Accept / Decline di halaman Profile.
+- Friendlist di halaman Profile dan private chat antar teman yang tersimpan di PostgreSQL.
 - Create post dengan rich text editor, upload gambar, tag, GIF, dan polling.
 - Detail post dengan komentar, reply komentar, like, reaction, share, view, dan insight.
 - Polling komunitas dengan pilihan vote.
@@ -248,6 +260,9 @@ Backend menggunakan schema PostgreSQL bernama `flix`. Beberapa tabel tambahan di
 - `flix.tv_series_reviews`
 - `flix.tv_series_review_likes`
 - `flix.notifications`
+- `flix.user_friends`
+- `flix.chat_conversations`
+- `flix.chat_messages`
 - Kolom `profile_image_url` dan `banner_image_url` pada `flix.users`
 
 File SQL tambahan tersedia di folder `backend/sql`.
