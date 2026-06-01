@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react";
+import { FiMaximize2, FiMinimize2 } from "react-icons/fi";
 import flixLogo from "@/assets/flix-logo.png";
 import arrowLeftIcon from "@/assets/icon/arrow-left-icon.svg";
 import searchIcon from "@/assets/icon/search-icon.png";
@@ -151,6 +153,8 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
   const [isLoadingChats, setIsLoadingChats] = useState(false);
   const [isLoadingChatMessages, setIsLoadingChatMessages] = useState(false);
   const [isSendingChatMessage, setIsSendingChatMessage] = useState(false);
+  const [showChatEmojiPicker, setShowChatEmojiPicker] = useState(false);
+  const [isChatExpanded, setIsChatExpanded] = useState(false);
   const [chatError, setChatError] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -335,6 +339,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
     }
 
     setActiveChatThread(thread);
+    setShowChatEmojiPicker(false);
     fetchChatMessages(thread.conversationId);
   };
 
@@ -343,6 +348,8 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
     setActiveChatThread(null);
     setChatMessage("");
     setChatMessages([]);
+    setShowChatEmojiPicker(false);
+    setIsChatExpanded(false);
     setChatError("");
   };
 
@@ -420,6 +427,10 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
     } finally {
       setIsSendingChatMessage(false);
     }
+  };
+
+  const handleChatEmojiSelect = (emojiData) => {
+    setChatMessage((currentMessage) => `${currentMessage}${emojiData.emoji}`);
   };
 
   const fetchNotifications = useCallback(async () => {
@@ -528,6 +539,8 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
       ) {
         setShowChatPanel(false);
         setActiveChatThread(null);
+        setShowChatEmojiPicker(false);
+        setIsChatExpanded(false);
       }
 
       if (
@@ -610,7 +623,9 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
                   <section
                     className={
                       activeChatThread
-                        ? "site-navbar__chat-panel site-navbar__chat-panel--private"
+                        ? `site-navbar__chat-panel site-navbar__chat-panel--private${
+                            isChatExpanded ? " site-navbar__chat-panel--expanded" : ""
+                          }`
                         : "site-navbar__chat-panel"
                     }
                     aria-label={activeChatThread ? "Private chat" : "Chat"}
@@ -622,7 +637,11 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
                             className="site-navbar__private-chat-back"
                             type="button"
                             aria-label="Kembali ke daftar chat"
-                            onClick={() => setActiveChatThread(null)}
+                            onClick={() => {
+                              setActiveChatThread(null);
+                              setShowChatEmojiPicker(false);
+                              setIsChatExpanded(false);
+                            }}
                           >
                             <img src={arrowLeftIcon} alt="" />
                           </button>
@@ -638,11 +657,21 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
                           <h2>{activeChatThread.name}</h2>
 
                           <button
-                            className="site-navbar__private-chat-expand"
+                            className={
+                              isChatExpanded
+                                ? "site-navbar__private-chat-expand is-expanded"
+                                : "site-navbar__private-chat-expand"
+                            }
                             type="button"
-                            aria-label="Perbesar chat"
+                            aria-label={isChatExpanded ? "Perkecil chat" : "Perbesar chat"}
+                            aria-pressed={isChatExpanded}
+                            onClick={() => setIsChatExpanded((currentValue) => !currentValue)}
                           >
-                            <span />
+                            {isChatExpanded ? (
+                              <FiMinimize2 aria-hidden="true" />
+                            ) : (
+                              <FiMaximize2 aria-hidden="true" />
+                            )}
                           </button>
 
                           <button
@@ -718,7 +747,14 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
                             handleSendChatMessage();
                           }}
                         >
-                          <button type="button" aria-label="Pilih emoji">
+                          <button
+                            type="button"
+                            aria-label="Pilih emoji"
+                            aria-expanded={showChatEmojiPicker}
+                            onClick={() =>
+                              setShowChatEmojiPicker((currentValue) => !currentValue)
+                            }
+                          >
                             <img src={smileIcon} alt="" />
                           </button>
                           <input
@@ -735,6 +771,22 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
                           >
                             <img src={sendIcon} alt="" />
                           </button>
+
+                          {showChatEmojiPicker && (
+                            <div className="site-navbar__chat-emoji-picker">
+                              <EmojiPicker
+                                theme={Theme.DARK}
+                                emojiStyle={EmojiStyle.NATIVE}
+                                width="100%"
+                                height={320}
+                                lazyLoadEmojis
+                                skinTonesDisabled
+                                searchPlaceholder="Cari emote"
+                                previewConfig={{ showPreview: false }}
+                                onEmojiClick={handleChatEmojiSelect}
+                              />
+                            </div>
+                          )}
                         </form>
                       </>
                     ) : (

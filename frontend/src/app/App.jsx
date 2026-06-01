@@ -5,6 +5,7 @@ import Login from "@/features/auth/Login";
 import ForgotPassword from "@/features/auth/ForgotPassword";
 import Register from "@/features/auth/Register";
 import ResetPassword from "@/features/auth/ResetPassword";
+import VerifyEmail from "@/features/auth/VerifyEmail";
 import Homepage from "@/features/home/Homepage";
 import MovieDetail from "@/features/movies/MovieDetail";
 import MoviesPage from "@/features/movies/MoviesPage";
@@ -26,6 +27,7 @@ function App() {
     "/register",
     "/forgot-password",
     "/reset-password",
+    "/verify-email",
     "/movies",
     "/genre",
     "/tv-series",
@@ -59,6 +61,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
 
         <Route
           path="/profile"

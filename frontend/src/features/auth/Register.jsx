@@ -14,6 +14,7 @@ function Register() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const [form, setForm] = useState({
     email: "",
@@ -39,6 +40,7 @@ function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    setSuccessMessage("");
 
     if (form.password !== form.confirmPassword) {
       setErrorMessage("Password dan confirm password tidak sama");
@@ -59,9 +61,15 @@ function Register() {
         password: form.password,
       };
 
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/register`, payload);
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/auth/register`,
+        payload
+      );
 
-      navigate("/login");
+      setSuccessMessage(
+        response.data.message || "Register berhasil. Cek email untuk verifikasi akun."
+      );
+      setTimeout(() => navigate("/login"), 1800);
     } catch (error) {
       setErrorMessage(error.response?.data?.message || "Register gagal");
     } finally {
@@ -152,6 +160,7 @@ function Register() {
           </label>
 
           {errorMessage && <p className="login-error">{errorMessage}</p>}
+          {successMessage && <p className="login-success">{successMessage}</p>}
 
           <button className="login-submit" type="submit" disabled={loading}>
             {loading ? "Loading..." : "Create Account"}

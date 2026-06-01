@@ -28,6 +28,7 @@ import tvSeriesReviewRoutes from "./routes/tvSeriesReviewRoutes.js";
 import { initializeChatsTable } from "./config/initChats.js";
 import { initializeFriendsTable } from "./config/initFriends.js";
 import { initializeNotificationsTable } from "./config/initNotifications.js";
+import { initializeEmailVerificationTable } from "./config/initEmailVerification.js";
 import { initializePostViewsTable } from "./config/initPostViews.js";
 import { initializePasswordResetTable } from "./config/initPasswordReset.js";
 import { initializeMovieReviewsTable } from "./config/initMovieReviews.js";
@@ -83,6 +84,7 @@ transporter.verify()
 const PORT = process.env.PORT || 5000;
 
 Promise.all([
+  initializeEmailVerificationTable(),
   initializePostViewsTable(),
   initializePasswordResetTable(),
   initializeMovieReviewsTable(),

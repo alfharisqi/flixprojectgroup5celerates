@@ -288,6 +288,54 @@
   font-size: 14px;
 }
 
+.auth-status-shell {
+  text-align: left;
+}
+
+.auth-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  margin: 0 0 18px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: rgba(229, 9, 20, 0.14);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.auth-status-badge--success {
+  background: rgba(126, 231, 135, 0.16);
+  color: #7ee787;
+}
+
+.auth-status-badge--error {
+  background: rgba(255, 123, 123, 0.16);
+  color: #ff7b7b;
+}
+
+.auth-status-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 8px;
+}
+
+.auth-status-link {
+  width: auto;
+  min-width: 154px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0;
+  text-decoration: none;
+}
+
+.auth-status-secondary {
+  color: rgba(255, 255, 255, 0.78);
+}
+
 @media (max-width: 760px) {
   .login-page {
     display: block;
@@ -326,5 +374,14 @@
 
   .login-socials {
     grid-template-columns: 1fr;
+  }
+
+  .auth-status-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .auth-status-link {
+    width: 100%;
   }
 }

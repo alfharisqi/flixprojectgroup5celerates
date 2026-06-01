@@ -3,13 +3,16 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import {
-  sendWelcomeEmail,
+  sendAccountVerificationEmail,
   sendLoginNotificationEmail,
   sendPasswordResetEmail
 } from "../utils/sendEmail.js";
 
-const hashResetToken = (token) =>
+const hashToken = (token) =>
   crypto.createHash("sha256").update(token).digest("hex");
+
+const getFrontendUrl = () =>
+  (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
 
 export const register = async (req, res) => {
   try {
@@ -39,24 +42,48 @@ export const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const roleId = roleResult.rows[0].id_role;
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const verificationTokenHash = hashToken(verificationToken);
+    const frontendUrl = getFrontendUrl();
+    const verificationLink = `${frontendUrl}/verify-email?token=${verificationToken}`;
+    const client = await pool.connect();
+    let newUser;
 
-    const result = await pool.query(
-      `INSERT INTO flix.users (id_role, username, email, password)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id_user, username, email, profile_image_url, banner_image_url`,
-      [roleId, username, email, hashedPassword]
-    );
-
-    // kirim email welcome
     try {
-      await sendWelcomeEmail(email, username);
+      await client.query("BEGIN");
+
+      const result = await client.query(
+        `INSERT INTO flix.users (id_role, username, email, password, email_verified)
+         VALUES ($1, $2, $3, $4, FALSE)
+         RETURNING id_user, username, email, profile_image_url, banner_image_url, email_verified`,
+        [roleId, username, email, hashedPassword]
+      );
+
+      newUser = result.rows[0];
+
+      await client.query(
+        `INSERT INTO flix.email_verification_tokens (id_user, token_hash, expires_at)
+         VALUES ($1, $2, CURRENT_TIMESTAMP + INTERVAL '24 hours')`,
+        [newUser.id_user, verificationTokenHash]
+      );
+
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    try {
+      await sendAccountVerificationEmail(email, username, verificationLink);
     } catch (mailError) {
-      console.error("Gagal kirim email register:", mailError.message);
+      console.error("Gagal kirim email verifikasi:", mailError.message);
     }
 
     return res.status(201).json({
-      message: "Register berhasil",
-      user: result.rows[0]
+      message: "Register berhasil. Cek email kamu untuk verifikasi akun.",
+      user: newUser
     });
   } catch (error) {
     return res.status(500).json({
@@ -76,6 +103,7 @@ export const login = async (req, res) => {
           u.username,
           u.email,
           u.password,
+          u.email_verified,
           u.profile_image_url,
           u.banner_image_url,
           r.role_name
@@ -101,12 +129,19 @@ export const login = async (req, res) => {
       });
     }
 
+    if (!user.email_verified) {
+      return res.status(403).json({
+        message: "Akun belum diverifikasi. Silakan cek email untuk verifikasi akun."
+      });
+    }
+
     const token = jwt.sign(
       {
         id_user: user.id_user,
         username: user.username,
         email: user.email,
-        role: user.role_name
+        role: user.role_name,
+        email_verified: user.email_verified
       },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
@@ -127,6 +162,7 @@ export const login = async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role_name,
+        email_verified: user.email_verified,
         profile_image_url: user.profile_image_url,
         banner_image_url: user.banner_image_url
       }
@@ -134,6 +170,85 @@ export const login = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Terjadi kesalahan saat login",
+      error: error.message
+    });
+  }
+};
+
+export const verifyEmail = async (req, res) => {
+  try {
+    const token = req.body?.token || req.query?.token;
+
+    if (!token) {
+      return res.status(400).json({
+        message: "Token verifikasi wajib diisi"
+      });
+    }
+
+    const tokenHash = hashToken(token);
+    const tokenResult = await pool.query(
+      `SELECT evt.id_verification, evt.id_user, evt.used_at, evt.expires_at, u.email_verified
+       FROM flix.email_verification_tokens evt
+       JOIN flix.users u ON u.id_user = evt.id_user
+       WHERE evt.token_hash = $1`,
+      [tokenHash]
+    );
+
+    if (tokenResult.rows.length === 0) {
+      return res.status(400).json({
+        message: "Token verifikasi tidak valid"
+      });
+    }
+
+    const verificationToken = tokenResult.rows[0];
+
+    if (verificationToken.email_verified) {
+      return res.json({
+        message: "Akun sudah terverifikasi. Kamu bisa login."
+      });
+    }
+
+    if (verificationToken.used_at || new Date(verificationToken.expires_at) <= new Date()) {
+      return res.status(400).json({
+        message: "Token verifikasi sudah digunakan atau kedaluwarsa"
+      });
+    }
+
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      await client.query(
+        `UPDATE flix.users
+         SET email_verified = TRUE,
+             email_verified_at = CURRENT_TIMESTAMP,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id_user = $1`,
+        [verificationToken.id_user]
+      );
+
+      await client.query(
+        `UPDATE flix.email_verification_tokens
+         SET used_at = CURRENT_TIMESTAMP
+         WHERE id_verification = $1`,
+        [verificationToken.id_verification]
+      );
+
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    return res.json({
+      message: "Akun berhasil diverifikasi. Kamu bisa login sekarang."
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal verifikasi akun",
       error: error.message
     });
   }
@@ -167,8 +282,8 @@ export const forgotPassword = async (req, res) => {
 
     const user = userResult.rows[0];
     const token = crypto.randomBytes(32).toString("hex");
-    const tokenHash = hashResetToken(token);
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const tokenHash = hashToken(token);
+    const frontendUrl = getFrontendUrl();
     const resetLink = `${frontendUrl}/reset-password?token=${token}`;
 
     await pool.query(
@@ -213,7 +328,7 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    const tokenHash = hashResetToken(token);
+    const tokenHash = hashToken(token);
 
     const tokenResult = await pool.query(
       `SELECT prt.id_reset, prt.id_user
