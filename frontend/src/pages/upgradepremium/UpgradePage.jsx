@@ -119,7 +119,7 @@ function UpgradePage() {
         </p>
       </section>
 
-      {/* 3. Kartu Paket */}
+      /* 3. Kartu Paket */
       <section className="upgrade-cards-container">
         <div className="upgrade-cards">
           {packages.map((pkg) => (
