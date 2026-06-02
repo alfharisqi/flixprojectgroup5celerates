@@ -92,7 +92,7 @@ http://localhost:5000
 | TMDB API | Mengambil data film, TV series, genre, trending, popular, detail, trailer, cast, rekomendasi, dan watch provider. | Backend `movieController.js` dan `tvController.js` |
 | TMDB Image API | Menampilkan poster dan backdrop film/series. | Frontend dan hasil mapping backend |
 | GIPHY API | Mencari dan menampilkan GIF pada editor post komunitas. | Frontend `GifPickerModal.jsx` |
-| SMTP/Mailtrap via Nodemailer | Mengirim email reset password. | Backend `mail.js` dan `sendEmail.js` |
+| SMTP/Mailtrap via Nodemailer | Mengirim email verifikasi akun dan reset password. | Backend `mail.js` dan `sendEmail.js` |
 
 ### API Internal Backend
 
@@ -108,6 +108,7 @@ Endpoint utama:
 | --- | --- | --- |
 | `/api/auth/register` | POST | Registrasi user baru |
 | `/api/auth/login` | POST | Login dan mendapatkan JWT |
+| `/api/auth/verify-email` | GET, POST | Verifikasi akun dari token email |
 | `/api/auth/forgot-password` | POST | Mengirim link reset password ke email |
 | `/api/auth/reset-password` | POST | Mengatur password baru |
 | `/api/chats/conversations` | GET | Mengambil inbox private chat user login |
@@ -125,6 +126,7 @@ Endpoint utama:
 | `/api/movies/*` | GET | Search, popular, top rated, now playing, upcoming, trending, genre, discover, detail, video, cast, provider, rekomendasi film |
 | `/api/tmdb/*` | GET | Alias untuk endpoint movie/TMDB |
 | `/api/tv-series/*` | GET | Search, popular, top rated, on the air, trending, genre, discover, detail, video, provider TV series |
+| `/api/tv-series/:id/seasons/:seasonNumber` | GET | Mengambil daftar episode berdasarkan season TV series |
 | `/api/tv/*` | GET | Alias untuk endpoint TV series |
 | `/api/posts` | GET, POST | Melihat dan membuat post komunitas |
 | `/api/posts/:id` | GET, DELETE | Detail post dan hapus post |
@@ -167,10 +169,13 @@ FLIX dibuat sebagai platform rekomendasi tontonan. User dapat mencari film atau 
 - Halaman TV Series untuk mencari dan menelusuri series dari TMDB.
 - Halaman Genre untuk eksplorasi konten berdasarkan genre.
 - Detail film dan TV series berisi poster, backdrop, sinopsis, rating, genre, trailer, cast, rekomendasi, dan watch provider.
+- Detail TV series memiliki pilihan season, daftar episode, dan checklist episode yang sudah ditonton.
 - Review film dan TV series dengan rating 1 sampai 5, reply review, dan like review.
 - Review film dan TV series milik user dapat diedit dan dihapus dari halaman profile.
 - Search modal untuk mencari film dan TV series dari navbar.
 - Watchlist film dan TV series dengan status sudah ditonton atau belum ditonton.
+- Watchlist TV series memiliki pilihan season dan dropdown episode untuk menandai progres tontonan per episode.
+- Checklist episode memakai pola progres berurutan: jika episode 3 ditandai, episode 1 sampai 3 ikut tertandai; jika progres diturunkan, episode setelahnya ikut dibatalkan.
 - Community page untuk melihat post dari user lain.
 - Popup Add Friend / Message / Report User pada nama user post dan reply Community.
 - Request pertemanan masuk dengan tombol Accept / Decline di halaman Profile.
@@ -181,7 +186,7 @@ FLIX dibuat sebagai platform rekomendasi tontonan. User dapat mencari film atau 
 - Notifikasi untuk interaksi pada post, komentar, reply, share, reaction, dan polling user.
 - Profile user untuk melihat aktivitas, review, postingan, statistik watchlist, mengubah data akun, foto profile, dan banner.
 - Autentikasi user menggunakan register, login, JWT, forgot password, dan reset password.
-- Pop up konfirmasi untuk logout dan simpan watchlist.
+- Pop up konfirmasi untuk logout, simpan watchlist, dan hapus item watchlist.
 - Role user terdiri dari `registered_user`, `moderator`, dan `admin`.
 - Moderator dan admin dapat mengakses dashboard sesuai role.
 - Moderator/admin atau owner post dapat menghapus post.
@@ -269,4 +274,16 @@ File SQL tambahan tersedia di folder `backend/sql`.
 
 Pastikan tabel utama seperti `users`, `roles`, `posts`, `comments`, `post_likes`, `post_reactions`, `post_shares`, `post_polls`, `post_poll_options`, dan `post_poll_votes` sudah tersedia agar semua fitur komunitas berjalan.
 
-Saat ini data watchlist disimpan di frontend melalui `localStorage` dengan key berdasarkan user login. Jika ingin watchlist tersimpan permanen lintas device, perlu dibuat tabel dan endpoint watchlist di backend.
+Saat ini data watchlist disimpan di frontend melalui `localStorage` dengan key berdasarkan user login:
+
+- `flix_movie_watchlist_<id_user>` untuk daftar film tersimpan
+- `flix_tv_watchlist_<id_user>` untuk daftar TV series tersimpan
+- `flix_watchlist_status_<id_user>` untuk status sudah/belum ditonton
+
+Format status watchlist:
+
+- `movie:<movie_id>` untuk status film
+- `tv:<series_id>` untuk status selesai seluruh TV series
+- `tv:<series_id>:s<season_number>:e<episode_number>` untuk status episode TV series
+
+Progress episode TV series dibuat berurutan. Contoh: jika user menandai episode 3, maka episode 1, 2, dan 3 ikut tersimpan sebagai sudah ditonton. Jika ingin watchlist tersimpan permanen lintas device, perlu dibuat tabel dan endpoint watchlist di backend.
