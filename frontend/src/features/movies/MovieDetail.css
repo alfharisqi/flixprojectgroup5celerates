@@ -429,6 +429,313 @@
   font-size: 16px;
 }
 
+.tv-detail-episodes {
+  padding: 0 20px 72px;
+}
+
+.tv-detail-season-picker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  color: #9f9f9f;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tv-detail-season-picker > span {
+  line-height: 1;
+}
+
+.tv-detail-season-picker__control {
+  position: relative;
+}
+
+.tv-detail-season-picker__control > button::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 12px;
+  border-bottom: 1.5px solid #d8d8d8;
+  border-right: 1.5px solid #d8d8d8;
+  transform: translateY(-3px) rotate(45deg);
+  transition: transform 160ms ease;
+}
+
+.tv-detail-season-picker__control > button.is-open::after {
+  transform: translateY(1px) rotate(225deg);
+}
+
+.tv-detail-season-picker__control > button {
+  min-width: 118px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+}
+
+.tv-detail-season-picker__control > button:hover,
+.tv-detail-season-picker__control > button:focus-visible,
+.tv-detail-season-picker__control > button.is-open {
+  border-color: rgba(229, 9, 20, 0.75);
+  background: rgba(20, 20, 20, 0.9);
+}
+
+.tv-detail-season-picker__menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 134px;
+  max-height: 210px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: #141414;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.38);
+  padding: 6px;
+}
+
+.tv-detail-season-picker__menu button {
+  width: 100%;
+  min-height: 32px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #d8d8d8;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.tv-detail-season-picker__menu button:hover,
+.tv-detail-season-picker__menu button:focus-visible,
+.tv-detail-season-picker__menu button.is-active {
+  background: rgba(229, 9, 20, 0.16);
+  color: #ffffff;
+}
+
+.tv-detail-episodes__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.tv-detail-episodes__header h2 {
+  margin: 0;
+  color: #b3b3b3;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.tv-detail-episodes__header p,
+.tv-detail-season-summary,
+.tv-detail-episodes__state,
+.tv-detail-episodes__hint {
+  margin: 8px 0 0;
+  color: #9f9f9f;
+  font-size: 15px;
+}
+
+.tv-detail-episodes__hint {
+  margin: -8px 0 18px;
+  font-size: 14px;
+}
+
+.tv-detail-season-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.tv-detail-episode-list {
+  display: grid;
+  grid-auto-columns: minmax(282px, 320px);
+  grid-auto-flow: column;
+  gap: 34px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  padding: 0 0 18px;
+  scrollbar-width: thin;
+  scrollbar-color: #e50914 #111111;
+}
+
+.tv-detail-episode-list::-webkit-scrollbar {
+  height: 7px;
+}
+
+.tv-detail-episode-list::-webkit-scrollbar-track {
+  background: #111111;
+}
+
+.tv-detail-episode-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #e50914;
+}
+
+.tv-detail-episode-card {
+  min-width: 0;
+}
+
+.tv-detail-episode-thumb {
+  position: relative;
+  height: 178px;
+  overflow: hidden;
+  background: #111111;
+}
+
+.tv-detail-episode-thumb img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.tv-detail-episode-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px;
+  align-content: end;
+  gap: 10px 14px;
+  padding: 16px;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.82) 100%),
+    rgba(0, 0, 0, 0.12);
+}
+
+.tv-detail-episode-overlay h3 {
+  margin: 0;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tv-detail-episode-overlay span {
+  color: #ffffff;
+  font-size: 16px;
+}
+
+.tv-detail-episode-overlay button {
+  width: 52px;
+  height: 52px;
+  grid-row: span 2;
+  align-self: center;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.18);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.tv-detail-episode-overlay button svg {
+  margin-left: 3px;
+}
+
+.tv-detail-episode-overlay p {
+  grid-column: 1 / -1;
+  display: -webkit-box;
+  min-height: 34px;
+  margin: 0;
+  overflow: hidden;
+  color: #dcdcdc;
+  font-size: 12px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.tv-detail-episode-meta {
+  display: block;
+  padding: 20px 14px 0;
+  text-align: center;
+}
+
+.tv-detail-episode-meta h3 {
+  margin: 0;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tv-detail-episode-meta p {
+  margin: 8px 0 0;
+  color: #9f9f9f;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.tv-detail-episode-watch-toggle {
+  min-height: 34px;
+  width: calc(100% - 28px);
+  margin: 14px 14px 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #bdbdbd;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.tv-detail-episode-watch-toggle svg {
+  font-size: 17px;
+}
+
+.tv-detail-episode-watch-toggle.is-active,
+.tv-detail-episode-card.is-watched .tv-detail-episode-watch-toggle {
+  background: rgba(229, 9, 20, 0.16);
+  color: #e50914;
+}
+
+.tv-detail-episode-card.is-watched .tv-detail-episode-thumb img {
+  filter: saturate(0.72) brightness(0.7);
+}
+
+.tv-detail-episode-card.is-watched .tv-detail-episode-meta h3::after {
+  content: "Ditonton";
+  display: inline-flex;
+  margin-left: 8px;
+  color: #e50914;
+  font-size: 12px;
+  font-weight: 500;
+  vertical-align: middle;
+}
+
 .movie-detail-main {
   border-top: 1px solid #454545;
   padding: 28px 20px 72px;
@@ -947,6 +1254,11 @@
     grid-template-columns: 1fr;
   }
 
+  .tv-detail-episode-list {
+    grid-auto-columns: minmax(260px, 300px);
+    gap: 24px;
+  }
+
   .movie-detail-cast-list {
     grid-auto-columns: minmax(96px, 118px);
     gap: 28px;
@@ -976,6 +1288,26 @@
     grid-template-columns: 1fr;
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .tv-detail-episodes__header,
+  .tv-detail-season-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tv-detail-season-picker {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .tv-detail-season-picker__menu {
+    left: 0;
+    right: auto;
+  }
+
+  .tv-detail-episode-list {
+    grid-auto-columns: minmax(248px, 82vw);
   }
 
   .movie-detail-buttons button,

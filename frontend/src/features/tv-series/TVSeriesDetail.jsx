@@ -3,10 +3,12 @@ import { Link, useParams } from "react-router-dom";
 import axios from "axios";
 import {
   FaBookmark,
+  FaCheckCircle,
   FaFacebookF,
   FaPen,
   FaPlay,
   FaRegBookmark,
+  FaRegCircle,
   FaRegStar,
   FaShareAlt,
   FaStar,
@@ -165,12 +167,29 @@ function ReviewAvatar({ review, user }) {
 const getWatchlistKey = (user) =>
   `flix_tv_watchlist_${user?.id_user || "guest"}`;
 
+const getWatchStatusKey = (user) =>
+  `flix_watchlist_status_${user?.id_user || "guest"}`;
+
+const getSeriesStatusKey = (seriesId) => `tv:${seriesId}`;
+
+const getEpisodeStatusKey = (seriesId, seasonNumber, episodeNumber) =>
+  `tv:${seriesId}:s${seasonNumber}:e${episodeNumber}`;
+
 const readWatchlist = (key) => {
   try {
     const savedWatchlist = JSON.parse(localStorage.getItem(key));
     return Array.isArray(savedWatchlist) ? savedWatchlist : [];
   } catch {
     return [];
+  }
+};
+
+const readStorageObject = (key) => {
+  try {
+    const value = JSON.parse(localStorage.getItem(key));
+    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  } catch {
+    return {};
   }
 };
 
@@ -185,6 +204,10 @@ const mapSeriesToWatchlist = (series) => ({
   releaseLabel: series.first_air_date || "-",
   providers: [],
   genre_ids: series.genre_ids || (series.genres || []).map((genre) => genre.id),
+  seasons: series.seasons || [],
+  number_of_episodes: series.number_of_episodes || 0,
+  number_of_seasons: series.number_of_seasons || 0,
+  episode_run_time: series.episode_run_time || [],
 });
 
 function RatingStars({ value, onChange, readonly = false }) {
@@ -225,8 +248,12 @@ function TVSeriesDetail() {
   }, []);
 
   const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
+  const watchStatusKey = useMemo(() => getWatchStatusKey(user), [user]);
   const [series, setSeries] = useState(null);
   const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const [watchStatus, setWatchStatus] = useState(() =>
+    readStorageObject(watchStatusKey),
+  );
   const [pendingWatchlistSeries, setPendingWatchlistSeries] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [reviewSummary, setReviewSummary] = useState({
@@ -242,6 +269,11 @@ function TVSeriesDetail() {
   const [isSynopsisExpanded, setIsSynopsisExpanded] = useState(false);
   const [showSynopsisToggle, setShowSynopsisToggle] = useState(false);
   const [shareMessage, setShareMessage] = useState("");
+  const [selectedSeasonNumber, setSelectedSeasonNumber] = useState(null);
+  const [isSeasonMenuOpen, setIsSeasonMenuOpen] = useState(false);
+  const [seasonEpisodes, setSeasonEpisodes] = useState([]);
+  const [episodesLoading, setEpisodesLoading] = useState(false);
+  const [episodesError, setEpisodesError] = useState("");
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const synopsisRef = useRef(null);
@@ -257,12 +289,58 @@ function TVSeriesDetail() {
   const ratingPercent = Math.min((detailRating / 5) * 100, 100);
   const seriesTitle = series?.name || series?.title || series?.original_name || "TV Series";
   const isSaved = savedSeriesIds.has(String(series?.id));
+  const availableSeasons = useMemo(
+    () =>
+      (series?.seasons || [])
+        .filter((season) => Number(season.season_number) > 0)
+        .filter((season) => Number(season.episode_count || 0) > 0)
+        .sort((a, b) => Number(a.season_number) - Number(b.season_number)),
+    [series?.seasons],
+  );
+  const totalEpisodeCount = useMemo(() => {
+    const tmdbTotal = Number(series?.number_of_episodes || 0);
+
+    if (tmdbTotal > 0) {
+      return tmdbTotal;
+    }
+
+    return availableSeasons.reduce(
+      (total, season) => total + Number(season.episode_count || 0),
+      0,
+    );
+  }, [availableSeasons, series?.number_of_episodes]);
+  const watchedEpisodeCount = useMemo(() => {
+    if (!series?.id || !isSaved) {
+      return 0;
+    }
+
+    const prefix = `tv:${series.id}:s`;
+    return Object.entries(watchStatus).filter(
+      ([key, value]) => key.startsWith(prefix) && Boolean(value),
+    ).length;
+  }, [isSaved, series?.id, watchStatus]);
+  const currentSeasonWatchedCount = useMemo(() => {
+    if (!series?.id || !selectedSeasonNumber || !isSaved) {
+      return 0;
+    }
+
+    const prefix = `tv:${series.id}:s${selectedSeasonNumber}:e`;
+    return Object.entries(watchStatus).filter(
+      ([key, value]) => key.startsWith(prefix) && Boolean(value),
+    ).length;
+  }, [isSaved, selectedSeasonNumber, series?.id, watchStatus]);
 
   const fetchSeries = async () => {
     const res = await axios.get(`${apiUrl}/api/tv-series/${id}`, {
       params: { language: "id-ID" },
     });
     setSeries(res.data);
+    const firstSeason = (res.data.seasons || [])
+      .filter((season) => Number(season.season_number) > 0)
+      .filter((season) => Number(season.episode_count || 0) > 0)
+      .sort((a, b) => Number(a.season_number) - Number(b.season_number))[0];
+
+    setSelectedSeasonNumber(firstSeason?.season_number || 1);
   };
 
   const fetchReviews = async () => {
@@ -274,6 +352,14 @@ function TVSeriesDetail() {
   useEffect(() => {
     localStorage.setItem(watchlistKey, JSON.stringify(watchlist));
   }, [watchlist, watchlistKey]);
+
+  useEffect(() => {
+    localStorage.setItem(watchStatusKey, JSON.stringify(watchStatus));
+  }, [watchStatus, watchStatusKey]);
+
+  useEffect(() => {
+    setIsSeasonMenuOpen(false);
+  }, [id]);
 
   useEffect(() => {
     const loadDetail = async () => {
@@ -292,6 +378,50 @@ function TVSeriesDetail() {
 
     loadDetail();
   }, [id]);
+
+  useEffect(() => {
+    if (!selectedSeasonNumber) {
+      setSeasonEpisodes([]);
+      return undefined;
+    }
+
+    let shouldIgnore = false;
+
+    const loadSeasonEpisodes = async () => {
+      try {
+        setEpisodesLoading(true);
+        setEpisodesError("");
+
+        const response = await axios.get(
+          `${apiUrl}/api/tv-series/${id}/seasons/${selectedSeasonNumber}`,
+          {
+            params: { language: "id-ID" },
+          },
+        );
+
+        if (!shouldIgnore) {
+          setSeasonEpisodes(response.data.episodes || []);
+        }
+      } catch (error) {
+        if (!shouldIgnore) {
+          setSeasonEpisodes([]);
+          setEpisodesError(
+            error.response?.data?.message || "Gagal memuat episode TV series",
+          );
+        }
+      } finally {
+        if (!shouldIgnore) {
+          setEpisodesLoading(false);
+        }
+      }
+    };
+
+    loadSeasonEpisodes();
+
+    return () => {
+      shouldIgnore = true;
+    };
+  }, [id, selectedSeasonNumber]);
 
   useEffect(() => {
     if (activeTab !== "synopsis" || !series?.overview) {
@@ -365,6 +495,17 @@ function TVSeriesDetail() {
       setWatchlist((currentWatchlist) =>
         currentWatchlist.filter((savedSeries) => String(savedSeries.id) !== seriesId),
       );
+      setWatchStatus((currentStatus) => {
+        const nextStatus = { ...currentStatus };
+        const episodePrefix = `tv:${seriesId}:s`;
+        delete nextStatus[getSeriesStatusKey(seriesId)];
+        Object.keys(nextStatus).forEach((statusKey) => {
+          if (statusKey.startsWith(episodePrefix)) {
+            delete nextStatus[statusKey];
+          }
+        });
+        return nextStatus;
+      });
       return;
     }
 
@@ -377,6 +518,55 @@ function TVSeriesDetail() {
     }
 
     setPendingWatchlistSeries(null);
+  };
+
+  const toggleEpisodeWatched = (episode) => {
+    if (!series?.id || !selectedSeasonNumber || !isSaved) {
+      return;
+    }
+
+    const episodeKey = getEpisodeStatusKey(
+      series.id,
+      selectedSeasonNumber,
+      episode.episode_number,
+    );
+    const seriesKey = getSeriesStatusKey(series.id);
+    const episodePrefix = `tv:${series.id}:s`;
+
+    setWatchStatus((currentStatus) => {
+      const shouldMarkWatched = !currentStatus[episodeKey];
+      const nextStatus = {
+        ...currentStatus,
+      };
+
+      seasonEpisodes.forEach((seasonEpisode) => {
+        const currentEpisodeNumber = Number(seasonEpisode.episode_number);
+        const clickedEpisodeNumber = Number(episode.episode_number);
+        const currentEpisodeKey = getEpisodeStatusKey(
+          series.id,
+          selectedSeasonNumber,
+          seasonEpisode.episode_number,
+        );
+
+        if (shouldMarkWatched) {
+          nextStatus[currentEpisodeKey] = currentEpisodeNumber <= clickedEpisodeNumber;
+          return;
+        }
+
+        if (currentEpisodeNumber >= clickedEpisodeNumber) {
+          nextStatus[currentEpisodeKey] = false;
+        }
+      });
+
+      const nextWatchedEpisodeCount = Object.entries(nextStatus).filter(
+        ([key, value]) => key.startsWith(episodePrefix) && Boolean(value),
+      ).length;
+
+      nextStatus[seriesKey] =
+        totalEpisodeCount > 0 && nextWatchedEpisodeCount >= totalEpisodeCount;
+
+      return nextStatus;
+    });
   };
 
   const handleReviewTabClick = () => {
@@ -552,6 +742,12 @@ function TVSeriesDetail() {
   const watchProviders = series.watch_providers?.all || [];
   const visibleWatchProviders = watchProviders.slice(0, 6);
   const hasWatchProviders = visibleWatchProviders.length > 0;
+  const selectedSeason = availableSeasons.find(
+    (season) => String(season.season_number) === String(selectedSeasonNumber),
+  );
+  const runtimeFallback = Array.isArray(series.episode_run_time)
+    ? series.episode_run_time.find(Boolean)
+    : series.episode_run_time;
 
   return (
     <main className="movie-detail-page">
@@ -650,6 +846,150 @@ function TVSeriesDetail() {
           )}
         </div>
       </section>
+
+      {availableSeasons.length > 0 && (
+        <section className="tv-detail-episodes movie-detail-container">
+          <div className="tv-detail-season-picker">
+            <span>Pilih Season</span>
+            <div className="tv-detail-season-picker__control">
+              <button
+                className={isSeasonMenuOpen ? "is-open" : ""}
+                type="button"
+                onClick={() => setIsSeasonMenuOpen((current) => !current)}
+                aria-expanded={isSeasonMenuOpen}
+              >
+                Season {selectedSeasonNumber || 1}
+              </button>
+              {isSeasonMenuOpen && (
+                <div className="tv-detail-season-picker__menu">
+                  {availableSeasons.map((season) => (
+                    <button
+                      className={
+                        String(season.season_number) === String(selectedSeasonNumber)
+                          ? "is-active"
+                          : ""
+                      }
+                      key={season.id || season.season_number}
+                      type="button"
+                      onClick={() => {
+                        setSelectedSeasonNumber(Number(season.season_number));
+                        setIsSeasonMenuOpen(false);
+                      }}
+                    >
+                      Season {season.season_number}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="tv-detail-episodes__header">
+            <h2>Episode</h2>
+            <p>
+              {watchedEpisodeCount}/{totalEpisodeCount || "?"} episode ditonton
+            </p>
+          </div>
+          {!isSaved && (
+            <p className="tv-detail-episodes__hint">
+              Simpan series ke Watchlist untuk menandai episode yang sudah ditonton.
+            </p>
+          )}
+
+          {episodesLoading ? (
+            <p className="tv-detail-episodes__state">Memuat episode...</p>
+          ) : episodesError ? (
+            <p className="tv-detail-episodes__state">{episodesError}</p>
+          ) : seasonEpisodes.length > 0 ? (
+            <>
+              <div className="tv-detail-season-summary">
+                <span>{selectedSeason?.name || `Season ${selectedSeasonNumber}`}</span>
+                <span>
+                  {currentSeasonWatchedCount}/{seasonEpisodes.length} selesai
+                </span>
+              </div>
+
+              <div className="tv-detail-episode-list" aria-label="Daftar episode">
+                {seasonEpisodes.map((episode) => {
+                  const episodeWatched =
+                    isSaved &&
+                    Boolean(
+                      watchStatus[
+                        getEpisodeStatusKey(
+                          series.id,
+                          selectedSeasonNumber,
+                          episode.episode_number,
+                        )
+                      ],
+                    );
+                  const runtime = episode.runtime || runtimeFallback;
+
+                  return (
+                    <article
+                      className={
+                        episodeWatched
+                          ? "tv-detail-episode-card is-watched"
+                          : "tv-detail-episode-card"
+                      }
+                      key={episode.id || episode.episode_number}
+                    >
+                      <div className="tv-detail-episode-thumb">
+                        <img
+                          src={episode.still_url || series.backdrop_url || series.poster_url}
+                          alt={episode.name || `Episode ${episode.episode_number}`}
+                        />
+                        <div className="tv-detail-episode-overlay">
+                          <div>
+                            <h3>{episode.name || `Episode ${episode.episode_number}`}</h3>
+                            {runtime && <span>{runtime}m</span>}
+                          </div>
+                          <button
+                            type="button"
+                            aria-label={`Putar ${episode.name || "episode"}`}
+                          >
+                            <FaPlay />
+                          </button>
+                          <p>{episode.overview || "Deskripsi episode belum tersedia."}</p>
+                        </div>
+                      </div>
+
+                      <div className="tv-detail-episode-meta">
+                        <div>
+                          <h3>{episode.name || seriesTitle}</h3>
+                          <p>Episode {episode.episode_number}</p>
+                        </div>
+                      </div>
+                      {isSaved && (
+                        <button
+                          className={
+                            episodeWatched
+                              ? "tv-detail-episode-watch-toggle is-active"
+                              : "tv-detail-episode-watch-toggle"
+                          }
+                          type="button"
+                          onClick={() => toggleEpisodeWatched(episode)}
+                          aria-label={
+                            episodeWatched
+                              ? `Tandai episode ${episode.episode_number} belum ditonton`
+                              : `Tandai episode ${episode.episode_number} sudah ditonton`
+                          }
+                        >
+                          {episodeWatched ? <FaCheckCircle /> : <FaRegCircle />}
+                          <span>{episodeWatched ? "Sudah ditonton" : "Tandai ditonton"}</span>
+                        </button>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <p className="tv-detail-episodes__state">
+              Episode belum tersedia untuk season ini.
+            </p>
+          )}
+        </section>
+      )}
 
       <section className="movie-detail-main movie-detail-container">
         <div className="movie-detail-tabs">

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import bookmarkIcon from "@/assets/icon/bookmark-icon.svg";
 import checkIcon from "@/assets/icon/check-icon.svg";
@@ -12,6 +13,8 @@ import starIcon from "@/assets/icon/star-icon.svg";
 import twitterIcon from "@/assets/icon/twitter-icon.svg";
 import youtubeIcon from "@/assets/icon/youtube-icon.svg";
 import "./WatchlistPage.css";
+
+const apiUrl = import.meta.env.VITE_API_URL;
 
 const getStoredUser = () => {
   try {
@@ -45,6 +48,30 @@ const getSeriesWatchlistKey = (user) => `flix_tv_watchlist_${getUserStorageId(us
 const getWatchStatusKey = (user) => `flix_watchlist_status_${getUserStorageId(user)}`;
 
 const getItemKey = (item) => `${item.mediaType}:${item.id}`;
+const getSeriesStatusKey = (seriesId) => `tv:${seriesId}`;
+const getEpisodeStatusKey = (seriesId, seasonNumber, episodeNumber) =>
+  `tv:${seriesId}:s${seasonNumber}:e${episodeNumber}`;
+const getSeasonEpisodesKey = (seriesId, seasonNumber) =>
+  `${seriesId}:${seasonNumber}`;
+
+const getAvailableSeasons = (series) =>
+  (series?.seasons || [])
+    .filter((season) => Number(season.season_number) > 0)
+    .filter((season) => Number(season.episode_count || 0) > 0)
+    .sort((a, b) => Number(a.season_number) - Number(b.season_number));
+
+const getTotalEpisodeCount = (series) => {
+  const tmdbTotal = Number(series?.number_of_episodes || 0);
+
+  if (tmdbTotal > 0) {
+    return tmdbTotal;
+  }
+
+  return getAvailableSeasons(series).reduce(
+    (total, season) => total + Number(season.episode_count || 0),
+    0,
+  );
+};
 
 const normalizeItem = (item, mediaType) => ({
   ...item,
@@ -56,7 +83,42 @@ const normalizeItem = (item, mediaType) => ({
   overview: item.overview || "Deskripsi belum tersedia.",
 });
 
-function WatchlistCard({ item, watched, onOpen, onToggleWatched, onRemove }) {
+function WatchlistCard({
+  item,
+  watched,
+  watchStatus,
+  seriesDetail,
+  selectedSeasonNumber,
+  seasonEpisodes,
+  episodesLoading,
+  onOpen,
+  onSelectSeason,
+  onToggleEpisodeWatched,
+  onToggleWatched,
+  onRemove,
+}) {
+  const [isEpisodePickerOpen, setIsEpisodePickerOpen] = useState(false);
+  const [isSeasonPickerOpen, setIsSeasonPickerOpen] = useState(false);
+  const seriesSource = seriesDetail || item;
+  const availableSeasons = item.mediaType === "tv" ? getAvailableSeasons(seriesSource) : [];
+  const selectedSeason =
+    availableSeasons.find(
+      (season) => String(season.season_number) === String(selectedSeasonNumber),
+    ) || availableSeasons[0];
+  const activeSeasonNumber = selectedSeason?.season_number || selectedSeasonNumber;
+  const watchedSeasonEpisodeCount = seasonEpisodes.filter((episode) =>
+    Boolean(
+      watchStatus[
+        getEpisodeStatusKey(item.id, activeSeasonNumber, episode.episode_number)
+      ],
+    ),
+  ).length;
+
+  useEffect(() => {
+    setIsEpisodePickerOpen(false);
+    setIsSeasonPickerOpen(false);
+  }, [activeSeasonNumber, item.id]);
+
   return (
     <article className="watchlist-card">
       <button
@@ -83,6 +145,106 @@ function WatchlistCard({ item, watched, onOpen, onToggleWatched, onRemove }) {
         </div>
       </div>
 
+      {item.mediaType === "tv" && (
+        <div className="watchlist-card__series-progress">
+          {availableSeasons.length > 0 ? (
+            <>
+              <div className="watchlist-card__season-field">
+                <span>Season :</span>
+                <div className="watchlist-card__season-control">
+                  <button
+                    className={isSeasonPickerOpen ? "is-open" : ""}
+                    type="button"
+                    onClick={() => setIsSeasonPickerOpen((current) => !current)}
+                    aria-expanded={isSeasonPickerOpen}
+                  >
+                    Season {activeSeasonNumber || 1}
+                  </button>
+                  {isSeasonPickerOpen && (
+                    <div className="watchlist-card__season-menu">
+                      {availableSeasons.map((season) => (
+                        <button
+                          className={
+                            String(season.season_number) === String(activeSeasonNumber)
+                              ? "is-active"
+                              : ""
+                          }
+                          key={season.id || season.season_number}
+                          type="button"
+                          onClick={() => {
+                            onSelectSeason(item, season.season_number);
+                            setIsSeasonPickerOpen(false);
+                          }}
+                        >
+                          Season {season.season_number}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="watchlist-card__episode-list">
+                <div className="watchlist-card__episode-head">
+                  <span>Episode :</span>
+                  {episodesLoading ? (
+                    <p>Memuat episode...</p>
+                  ) : seasonEpisodes.length > 0 ? (
+                    <button
+                      className={isEpisodePickerOpen ? "is-open" : ""}
+                      type="button"
+                      onClick={() => setIsEpisodePickerOpen((current) => !current)}
+                      aria-expanded={isEpisodePickerOpen}
+                    >
+                      {watchedSeasonEpisodeCount}/{seasonEpisodes.length} ditonton
+                    </button>
+                  ) : (
+                    <p>Episode belum tersedia.</p>
+                  )}
+                </div>
+
+                {isEpisodePickerOpen && seasonEpisodes.length > 0 && (
+                  <div className="watchlist-card__episode-scroll">
+                    {seasonEpisodes.map((episode) => {
+                      const isEpisodeWatched = Boolean(
+                        watchStatus[
+                          getEpisodeStatusKey(
+                            item.id,
+                            activeSeasonNumber,
+                            episode.episode_number,
+                          )
+                        ],
+                      );
+
+                      return (
+                        <label
+                          className={
+                            isEpisodeWatched
+                              ? "watchlist-card__episode-row is-active"
+                              : "watchlist-card__episode-row"
+                          }
+                          key={episode.id || episode.episode_number}
+                        >
+                          <input
+                            checked={isEpisodeWatched}
+                            type="checkbox"
+                            onChange={() => onToggleEpisodeWatched(item, episode)}
+                          />
+                          <span>Episode {episode.episode_number}</span>
+                          <strong>{isEpisodeWatched ? "Ditonton" : "Belum"}</strong>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <p className="watchlist-card__series-empty">Data episode belum tersedia.</p>
+          )}
+        </div>
+      )}
+
       <div className="watchlist-card__actions">
         <button
           type="button"
@@ -90,7 +252,13 @@ function WatchlistCard({ item, watched, onOpen, onToggleWatched, onRemove }) {
           className={watched ? "is-active" : ""}
         >
           <img src={watched ? checkIcon : clockIcon} alt="" />
-          {watched ? "Sudah ditonton" : "Tandai ditonton"}
+          {item.mediaType === "tv"
+            ? watched
+              ? "Sudah ditonton"
+              : "Tandai sudah ditonton"
+            : watched
+              ? "Sudah ditonton"
+              : "Tandai sudah ditonton"}
         </button>
         <button type="button" onClick={() => onRemove(item)} aria-label="Hapus dari watchlist">
           <img src={closeIcon} alt="" />
@@ -116,10 +284,18 @@ function WatchlistPage() {
   const [watchStatus, setWatchStatus] = useState(() =>
     readStorageObject(watchStatusKey),
   );
+  const [seriesDetails, setSeriesDetails] = useState({});
+  const [seriesSeasonSelection, setSeriesSeasonSelection] = useState({});
+  const [seriesEpisodes, setSeriesEpisodes] = useState({});
+  const [seriesDetailsLoading, setSeriesDetailsLoading] = useState({});
+  const [seriesEpisodesLoading, setSeriesEpisodesLoading] = useState({});
+  const requestedSeriesDetailsRef = useRef(new Set());
+  const requestedSeasonEpisodesRef = useRef(new Set());
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [mediaFilter, setMediaFilter] = useState("all");
   const [showFilter, setShowFilter] = useState(false);
+  const [removeCandidate, setRemoveCandidate] = useState(null);
 
   useEffect(() => {
     localStorage.setItem(movieWatchlistKey, JSON.stringify(movieWatchlist));
@@ -132,6 +308,116 @@ function WatchlistPage() {
   useEffect(() => {
     localStorage.setItem(watchStatusKey, JSON.stringify(watchStatus));
   }, [watchStatus, watchStatusKey]);
+
+  useEffect(() => {
+    seriesWatchlist.forEach((series) => {
+      const seriesId = String(series.id);
+
+      if (
+        Object.prototype.hasOwnProperty.call(seriesDetails, seriesId) ||
+        requestedSeriesDetailsRef.current.has(seriesId)
+      ) {
+        return;
+      }
+
+      requestedSeriesDetailsRef.current.add(seriesId);
+      setSeriesDetailsLoading((current) => ({
+        ...current,
+        [seriesId]: true,
+      }));
+
+      axios
+        .get(`${apiUrl}/api/tv-series/${seriesId}`, {
+          params: { language: "id-ID" },
+        })
+        .then((response) => {
+          setSeriesDetails((current) => ({
+            ...current,
+            [seriesId]: response.data,
+          }));
+        })
+        .catch(() => {
+          setSeriesDetails((current) => ({
+            ...current,
+            [seriesId]: series,
+          }));
+        })
+        .finally(() => {
+          setSeriesDetailsLoading((current) => ({
+            ...current,
+            [seriesId]: false,
+          }));
+        });
+    });
+  }, [seriesWatchlist, seriesDetails]);
+
+  useEffect(() => {
+    setSeriesSeasonSelection((current) => {
+      let didChange = false;
+      const nextSelection = { ...current };
+
+      seriesWatchlist.forEach((series) => {
+        const seriesId = String(series.id);
+
+        if (nextSelection[seriesId]) {
+          return;
+        }
+
+        const seriesSource = seriesDetails[seriesId] || series;
+        const firstSeason = getAvailableSeasons(seriesSource)[0];
+
+        if (firstSeason?.season_number) {
+          nextSelection[seriesId] = Number(firstSeason.season_number);
+          didChange = true;
+        }
+      });
+
+      return didChange ? nextSelection : current;
+    });
+  }, [seriesWatchlist, seriesDetails]);
+
+  useEffect(() => {
+    Object.entries(seriesSeasonSelection).forEach(([seriesId, seasonNumber]) => {
+      const seasonKey = getSeasonEpisodesKey(seriesId, seasonNumber);
+
+      if (
+        !seriesWatchlist.some((series) => String(series.id) === seriesId) ||
+        Object.prototype.hasOwnProperty.call(seriesEpisodes, seasonKey) ||
+        requestedSeasonEpisodesRef.current.has(seasonKey)
+      ) {
+        return;
+      }
+
+      requestedSeasonEpisodesRef.current.add(seasonKey);
+      setSeriesEpisodesLoading((current) => ({
+        ...current,
+        [seasonKey]: true,
+      }));
+
+      axios
+        .get(`${apiUrl}/api/tv-series/${seriesId}/seasons/${seasonNumber}`, {
+          params: { language: "id-ID" },
+        })
+        .then((response) => {
+          setSeriesEpisodes((current) => ({
+            ...current,
+            [seasonKey]: response.data.episodes || [],
+          }));
+        })
+        .catch(() => {
+          setSeriesEpisodes((current) => ({
+            ...current,
+            [seasonKey]: [],
+          }));
+        })
+        .finally(() => {
+          setSeriesEpisodesLoading((current) => ({
+            ...current,
+            [seasonKey]: false,
+          }));
+        });
+    });
+  }, [seriesEpisodes, seriesSeasonSelection, seriesWatchlist]);
 
   const watchlistItems = useMemo(
     () => [
@@ -171,20 +457,127 @@ function WatchlistPage() {
 
     setWatchStatus((current) => {
       const nextStatus = { ...current };
-      delete nextStatus[getItemKey(item)];
+      const itemKey = getItemKey(item);
+      delete nextStatus[itemKey];
+
+      if (item.mediaType === "tv") {
+        const episodePrefix = `tv:${item.id}:s`;
+        Object.keys(nextStatus).forEach((statusKey) => {
+          if (statusKey.startsWith(episodePrefix)) {
+            delete nextStatus[statusKey];
+          }
+        });
+      }
+
       return nextStatus;
     });
   };
 
   const toggleWatched = (item) => {
-    setWatchStatus((current) => ({
+    if (item.mediaType !== "tv") {
+      setWatchStatus((current) => ({
+        ...current,
+        [getItemKey(item)]: !current[getItemKey(item)],
+      }));
+      return;
+    }
+
+    const seriesId = String(item.id);
+    const seriesSource = seriesDetails[seriesId] || item;
+    const availableSeriesSeasons = getAvailableSeasons(seriesSource);
+
+    setWatchStatus((current) => {
+      const shouldMarkWatched = !current[getSeriesStatusKey(seriesId)];
+      const nextStatus = { ...current };
+      const episodePrefix = `tv:${seriesId}:s`;
+
+      if (!shouldMarkWatched) {
+        delete nextStatus[getSeriesStatusKey(seriesId)];
+        Object.keys(nextStatus).forEach((statusKey) => {
+          if (statusKey.startsWith(episodePrefix)) {
+            delete nextStatus[statusKey];
+          }
+        });
+        return nextStatus;
+      }
+
+      nextStatus[getSeriesStatusKey(seriesId)] = true;
+
+      availableSeriesSeasons.forEach((season) => {
+        const seasonNumber = Number(season.season_number);
+        const episodeCount = Number(season.episode_count || 0);
+
+        for (let episodeNumber = 1; episodeNumber <= episodeCount; episodeNumber += 1) {
+          nextStatus[getEpisodeStatusKey(seriesId, seasonNumber, episodeNumber)] = true;
+        }
+      });
+
+      return nextStatus;
+    });
+  };
+
+  const selectSeriesSeason = (item, seasonNumber) => {
+    setSeriesSeasonSelection((current) => ({
       ...current,
-      [getItemKey(item)]: !current[getItemKey(item)],
+      [String(item.id)]: Number(seasonNumber),
     }));
+  };
+
+  const toggleSeriesEpisodeWatched = (item, episode) => {
+    const seriesId = String(item.id);
+    const seasonNumber = seriesSeasonSelection[seriesId] || episode.season_number || 1;
+    const episodeKey = getEpisodeStatusKey(seriesId, seasonNumber, episode.episode_number);
+    const seasonKey = getSeasonEpisodesKey(seriesId, seasonNumber);
+    const currentSeasonEpisodes = seriesEpisodes[seasonKey] || [];
+    const seriesSource = seriesDetails[seriesId] || item;
+    const totalEpisodes = getTotalEpisodeCount(seriesSource);
+
+    setWatchStatus((current) => {
+      const shouldMarkWatched = !current[episodeKey];
+      const nextStatus = { ...current };
+
+      currentSeasonEpisodes.forEach((seasonEpisode) => {
+        const currentEpisodeNumber = Number(seasonEpisode.episode_number);
+        const clickedEpisodeNumber = Number(episode.episode_number);
+        const currentEpisodeKey = getEpisodeStatusKey(
+          seriesId,
+          seasonNumber,
+          seasonEpisode.episode_number,
+        );
+
+        if (shouldMarkWatched) {
+          nextStatus[currentEpisodeKey] = currentEpisodeNumber <= clickedEpisodeNumber;
+          return;
+        }
+
+        if (currentEpisodeNumber >= clickedEpisodeNumber) {
+          nextStatus[currentEpisodeKey] = false;
+        }
+      });
+
+      const watchedEpisodeCount = Object.entries(nextStatus).filter(
+        ([statusKey, value]) =>
+          statusKey.startsWith(`tv:${seriesId}:s`) && Boolean(value),
+      ).length;
+
+      nextStatus[getSeriesStatusKey(seriesId)] =
+        totalEpisodes > 0 && watchedEpisodeCount >= totalEpisodes;
+
+      return nextStatus;
+    });
   };
 
   const openDetail = (item) => {
     navigate(item.mediaType === "tv" ? `/tv-series/${item.id}` : `/movie/${item.id}`);
+  };
+
+  const confirmRemoveItem = () => {
+    if (!removeCandidate) {
+      return;
+    }
+
+    removeItem(removeCandidate);
+    setRemoveCandidate(null);
   };
 
   const tabs = [
@@ -288,9 +681,30 @@ function WatchlistPage() {
                 key={getItemKey(item)}
                 item={item}
                 watched={Boolean(watchStatus[getItemKey(item)])}
+                watchStatus={watchStatus}
+                seriesDetail={seriesDetails[String(item.id)]}
+                selectedSeasonNumber={seriesSeasonSelection[String(item.id)]}
+                seasonEpisodes={
+                  seriesEpisodes[
+                    getSeasonEpisodesKey(
+                      item.id,
+                      seriesSeasonSelection[String(item.id)] || 1,
+                    )
+                  ] || []
+                }
+                episodesLoading={Boolean(
+                  seriesEpisodesLoading[
+                    getSeasonEpisodesKey(
+                      item.id,
+                      seriesSeasonSelection[String(item.id)] || 1,
+                    )
+                  ],
+                )}
                 onOpen={openDetail}
+                onSelectSeason={selectSeriesSeason}
+                onToggleEpisodeWatched={toggleSeriesEpisodeWatched}
                 onToggleWatched={toggleWatched}
-                onRemove={removeItem}
+                onRemove={setRemoveCandidate}
               />
             ))}
           </div>
@@ -304,6 +718,53 @@ function WatchlistPage() {
           </div>
         )}
       </section>
+
+      {removeCandidate && (
+        <div
+          className="watchlist-remove-modal"
+          role="presentation"
+          onClick={() => setRemoveCandidate(null)}
+        >
+          <section
+            className="watchlist-remove-modal__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="watchlist-remove-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {removeCandidate.poster && (
+              <img
+                className="watchlist-remove-modal__poster"
+                src={removeCandidate.poster}
+                alt={removeCandidate.title}
+              />
+            )}
+            <div>
+              <h2 id="watchlist-remove-title">
+                Hapus{" "}
+                {removeCandidate.mediaType === "tv" ? "series" : "film"}{" "}
+                <strong>{removeCandidate.title}</strong> dari Watchlist?
+              </h2>
+              <div className="watchlist-remove-modal__actions">
+                <button
+                  className="watchlist-remove-modal__cancel"
+                  type="button"
+                  onClick={() => setRemoveCandidate(null)}
+                >
+                  Batal
+                </button>
+                <button
+                  className="watchlist-remove-modal__delete"
+                  type="button"
+                  onClick={confirmRemoveItem}
+                >
+                  Hapus
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
 
       <footer className="watchlist-footer">
         <nav aria-label="Footer navigation">

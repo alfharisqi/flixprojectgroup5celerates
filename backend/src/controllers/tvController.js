@@ -250,6 +250,20 @@ const mapTvSeriesDetail = (series) => ({
     : undefined,
 });
 
+const mapEpisode = (episode) => ({
+  id: episode.id,
+  name: episode.name,
+  overview: episode.overview,
+  season_number: episode.season_number,
+  episode_number: episode.episode_number,
+  air_date: episode.air_date,
+  runtime: episode.runtime,
+  vote_average: episode.vote_average,
+  vote_count: episode.vote_count,
+  still_path: episode.still_path,
+  still_url: mapImageUrl(episode.still_path, TMDB_BACKDROP_BASE_URL),
+});
+
 const getLanguage = (req) => req.query.language || "en-US";
 const getPage = (req) => req.query.page || 1;
 
@@ -421,5 +435,29 @@ export const getTvSeriesVideos = async (req, res) => {
     });
   } catch (error) {
     return handleTmdbError(res, error, "Gagal mengambil video TV series");
+  }
+};
+
+export const getTvSeasonEpisodes = async (req, res) => {
+  try {
+    const data = await requestTmdb(
+      `/tv/${req.params.id}/season/${req.params.seasonNumber}`,
+      {
+        language: getLanguage(req),
+      }
+    );
+
+    return res.json({
+      id: data.id,
+      name: data.name,
+      overview: data.overview,
+      season_number: data.season_number,
+      air_date: data.air_date,
+      poster_path: data.poster_path,
+      poster_url: mapImageUrl(data.poster_path),
+      episodes: (data.episodes || []).map(mapEpisode),
+    });
+  } catch (error) {
+    return handleTmdbError(res, error, "Gagal mengambil episode TV series");
   }
 };
