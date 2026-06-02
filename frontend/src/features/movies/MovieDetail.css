@@ -222,8 +222,19 @@
   font-weight: 500;
 }
 
+.movie-detail-buttons button:first-child {
+  min-width: 190px;
+  border-color: #e50914;
+  background: #e50914;
+}
+
+.movie-detail-buttons button:nth-child(2) {
+  min-width: 228px;
+}
+
 .movie-detail-buttons button:last-child {
   width: 52px;
+  min-width: 52px;
   padding: 0;
 }
 
@@ -232,6 +243,13 @@
   border-color: #ffffff;
   background: rgba(242, 7, 18, 0.16);
   transform: translateY(-2px);
+}
+
+.movie-detail-share-feedback {
+  margin: 12px 0 0;
+  color: #d7d7d7;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 .movie-detail-poster-card {
@@ -587,6 +605,39 @@
   font-weight: 600;
 }
 
+.movie-review-open-button {
+  width: 100%;
+  min-height: 73px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.9);
+  color: #bcbcbc;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.5;
+  margin-bottom: 70px;
+}
+
+.movie-review-open-button svg {
+  width: 24px;
+  height: 24px;
+}
+
+.movie-review-open-button:hover,
+.movie-review-open-button:focus-visible {
+  border-color: #ffffff;
+  color: #ffffff;
+  background: rgba(229, 9, 20, 0.12);
+  transform: translateY(-1px);
+}
+
 .movie-review-form {
   margin-bottom: 70px;
 }
@@ -925,6 +976,14 @@
     grid-template-columns: 1fr;
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .movie-detail-buttons button,
+  .movie-detail-buttons button:first-child,
+  .movie-detail-buttons button:nth-child(2),
+  .movie-detail-buttons button:last-child {
+    width: 100%;
+    min-width: 0;
   }
 
   .movie-review-header {

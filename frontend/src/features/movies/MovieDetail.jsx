@@ -4,6 +4,8 @@ import axios from "axios";
 import {
   FaBookmark,
   FaFacebookF,
+  FaPen,
+  FaPlay,
   FaRegBookmark,
   FaRegStar,
   FaShareAlt,
@@ -13,6 +15,7 @@ import {
   FaYoutube,
 } from "react-icons/fa";
 import SiteNavbar from "@/components/layout/SiteNavbar";
+import ReviewModal from "@/components/ui/ReviewModal";
 import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
 import amazonPrimeVideoIcon from "@/assets/platformstream-logo/amazonprimevideo-icon.png";
 import appleTvIcon from "@/assets/platformstream-logo/appletv-icon.png";
@@ -119,6 +122,19 @@ const formatRating = (rating) => {
   return (numericRating / 2).toFixed(1);
 };
 
+const getTrailerUrl = (videos = []) => {
+  const youtubeVideos = videos.filter((video) => video.youtube_url);
+  const trailer =
+    youtubeVideos.find(
+      (video) => video.official && video.type?.toLowerCase() === "trailer",
+    ) ||
+    youtubeVideos.find((video) => video.type?.toLowerCase() === "trailer") ||
+    youtubeVideos.find((video) => video.type?.toLowerCase() === "teaser") ||
+    youtubeVideos[0];
+
+  return trailer?.youtube_url || null;
+};
+
 const formatReviewDate = (dateValue) =>
   new Intl.DateTimeFormat("id-ID", {
     day: "numeric",
@@ -217,6 +233,7 @@ function MovieDetail() {
     average_rating: 0,
     review_count: 0,
   });
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [reviewContent, setReviewContent] = useState("");
   const [reviewRating, setReviewRating] = useState(5);
   const [replyContent, setReplyContent] = useState("");
@@ -224,9 +241,11 @@ function MovieDetail() {
   const [activeTab, setActiveTab] = useState("synopsis");
   const [isSynopsisExpanded, setIsSynopsisExpanded] = useState(false);
   const [showSynopsisToggle, setShowSynopsisToggle] = useState(false);
+  const [shareMessage, setShareMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const synopsisRef = useRef(null);
+  const reviewSectionRef = useRef(null);
 
   const reviewTree = useMemo(() => buildReviewTree(reviews), [reviews]);
   const audienceRating = Number(reviewSummary.average_rating || 0);
@@ -357,6 +376,76 @@ function MovieDetail() {
     setPendingWatchlistMovie(null);
   };
 
+  const handleReviewTabClick = () => {
+    setActiveTab("review");
+
+    window.requestAnimationFrame(() => {
+      reviewSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  };
+
+  const handleWatchTrailer = async () => {
+    if (!movie) {
+      return;
+    }
+
+    const trailerUrl = getTrailerUrl(movie.videos || []);
+
+    if (trailerUrl) {
+      window.open(trailerUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/api/movies/${id}/videos?language=en-US`);
+
+      if (!response.ok) {
+        throw new Error("Gagal mengambil trailer");
+      }
+
+      const data = await response.json();
+      const fallbackTrailerUrl = getTrailerUrl(data.results || []);
+
+      if (!fallbackTrailerUrl) {
+        window.alert("Trailer belum tersedia untuk film ini.");
+        return;
+      }
+
+      window.open(fallbackTrailerUrl, "_blank", "noopener,noreferrer");
+    } catch {
+      window.alert("Gagal membuka trailer film.");
+    }
+  };
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    const shareData = {
+      title: movie?.title || "FLIX",
+      text: `Lihat ${movie?.title || "film ini"} di FLIX`,
+      url,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+
+      await navigator.clipboard.writeText(url);
+      setShareMessage("Link film berhasil disalin.");
+      window.setTimeout(() => setShareMessage(""), 1800);
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        return;
+      }
+
+      window.prompt("Salin link film:", url);
+    }
+  };
+
   const handleSubmitReview = async (event) => {
     event.preventDefault();
 
@@ -385,6 +474,7 @@ function MovieDetail() {
     setReviewContent("");
     setReviewRating(5);
     await fetchReviews();
+    setIsReviewModalOpen(false);
   };
 
   const handleSubmitReply = async (event, parentReviewId) => {
@@ -472,14 +562,23 @@ function MovieDetail() {
             </div>
 
             <div className="movie-detail-buttons">
+              <button type="button" onClick={handleWatchTrailer}>
+                <FaPlay />
+                Tonton Trailer
+              </button>
               <button type="button" onClick={toggleWatchlist}>
                 {isSaved ? <FaBookmark /> : <FaRegBookmark />}
                 {isSaved ? "Tersimpan di Watchlist" : "Simpan ke Watchlist"}
               </button>
-              <button type="button" aria-label="Bagikan film">
+              <button type="button" onClick={handleShare} aria-label="Bagikan film">
                 <FaShareAlt />
               </button>
             </div>
+            {shareMessage && (
+              <p className="movie-detail-share-feedback" role="status">
+                {shareMessage}
+              </p>
+            )}
           </div>
 
           <article className="movie-detail-poster-card">
@@ -555,90 +654,83 @@ function MovieDetail() {
           <button
             className={activeTab === "review" ? "is-active" : ""}
             type="button"
-            onClick={() => setActiveTab("review")}
+            onClick={handleReviewTabClick}
           >
             Review
           </button>
         </div>
 
-        <div className="movie-detail-content-grid">
-          <div>
-            {activeTab === "synopsis" ? (
-              <>
-                <p
-                  className={`movie-detail-synopsis ${
-                    showSynopsisToggle && !isSynopsisExpanded ? "is-clamped" : ""
-                  }`}
-                  ref={synopsisRef}
-                >
-                  {movie.overview || "Sinopsis belum tersedia."}
-                </p>
-                {showSynopsisToggle && (
-                  <button
-                    className="movie-detail-more"
-                    type="button"
-                    onClick={() => setIsSynopsisExpanded((current) => !current)}
-                  >
-                    {isSynopsisExpanded ? "Tampilkan lebih sedikit" : "Selengkapnya"}
-                  </button>
-                )}
-              </>
-            ) : (
-              <p className="movie-detail-synopsis">
-                Review penonton membantu menentukan rekomendasi dan rating film ini.
+        {activeTab === "synopsis" && (
+          <div className="movie-detail-content-grid">
+            <div>
+              <p
+                className={`movie-detail-synopsis ${
+                  showSynopsisToggle && !isSynopsisExpanded ? "is-clamped" : ""
+                }`}
+                ref={synopsisRef}
+              >
+                {movie.overview || "Sinopsis belum tersedia."}
               </p>
-            )}
+              {showSynopsisToggle && (
+                <button
+                  className="movie-detail-more"
+                  type="button"
+                  onClick={() => setIsSynopsisExpanded((current) => !current)}
+                >
+                  {isSynopsisExpanded ? "Tampilkan lebih sedikit" : "Selengkapnya"}
+                </button>
+              )}
 
-            <div className="movie-detail-cast">
-              <h3>Pemeran Utama</h3>
-              <div className="movie-detail-cast-list">
-                {cast.map((person) => (
-                  <article key={`${person.id}-${person.character}`}>
-                    <img
-                      src={person.profile_url || "https://placehold.co/96x96/444/fff?text=FLIX"}
-                      alt={person.name}
-                    />
-                    <h4>{person.name}</h4>
-                    <p>{person.character || "-"}</p>
-                  </article>
-                ))}
+              <div className="movie-detail-cast">
+                <h3>Pemeran Utama</h3>
+                <div className="movie-detail-cast-list">
+                  {cast.map((person) => (
+                    <article key={`${person.id}-${person.character}`}>
+                      <img
+                        src={
+                          person.profile_url ||
+                          "https://placehold.co/96x96/444/fff?text=FLIX"
+                        }
+                        alt={person.name}
+                      />
+                      <h4>{person.name}</h4>
+                      <p>{person.character || "-"}</p>
+                    </article>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="movie-detail-score">
-            <div
-              className="movie-detail-score-ring"
-              style={{ "--score-percent": `${ratingPercent}%` }}
-            >
-              <span>
-                <FaStar />
-                {detailRating.toFixed(1)}
-              </span>
+            <div className="movie-detail-score">
+              <div
+                className="movie-detail-score-ring"
+                style={{ "--score-percent": `${ratingPercent}%` }}
+              >
+                <span>
+                  <FaStar />
+                  {detailRating.toFixed(1)}
+                </span>
+              </div>
+              <p>{reviewSummary.review_count} review penonton</p>
             </div>
-            <p>{reviewSummary.review_count} review penonton</p>
           </div>
-        </div>
+        )}
       </section>
 
-      <section className="movie-review-section movie-detail-container">
+      <section
+        className="movie-review-section movie-detail-container"
+        ref={reviewSectionRef}
+      >
         <h2>Review Penonton</h2>
 
-        <form className="movie-review-form" onSubmit={handleSubmitReview}>
-          <div className="movie-review-form-top">
-            <textarea
-              maxLength={500}
-              placeholder="Bagikan pendapatmu tentang film ini..."
-              value={reviewContent}
-              onChange={(event) => setReviewContent(event.target.value)}
-            />
-            <button type="submit">Kirim</button>
-          </div>
-          <div className="movie-review-form-bottom">
-            <RatingStars value={reviewRating} onChange={setReviewRating} />
-            <span>{reviewContent.length}/500 karakter</span>
-          </div>
-        </form>
+        <button
+          className="movie-review-open-button"
+          type="button"
+          onClick={() => setIsReviewModalOpen(true)}
+        >
+          <FaPen />
+          Berikan Review
+        </button>
 
         <div className="movie-review-list">
           {reviewTree.length > 0 ? (
@@ -741,6 +833,21 @@ function MovieDetail() {
         mediaLabel="Film"
         onCancel={() => setPendingWatchlistMovie(null)}
         onConfirm={confirmSaveToWatchlist}
+      />
+      <ReviewModal
+        open={isReviewModalOpen}
+        mediaLabel="Film"
+        itemTitle={movie.title}
+        itemPoster={movie.poster_url}
+        itemYear={getYear(movie.release_date)}
+        itemGenres={(movie.genres || []).map((genre) => genre.name)}
+        rating={reviewRating}
+        content={reviewContent}
+        placeholder="Bagikan pendapatmu tentang film ini..."
+        onRatingChange={setReviewRating}
+        onContentChange={setReviewContent}
+        onClose={() => setIsReviewModalOpen(false)}
+        onSubmit={handleSubmitReview}
       />
     </main>
   );
