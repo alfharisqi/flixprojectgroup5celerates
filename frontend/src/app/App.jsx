@@ -36,6 +36,7 @@ function App() {
     "/create-post",
     "/watchlist",
     "/profile",
+    "/admin",
     "/",
   ];
   const hideNavbar =
