@@ -168,52 +168,77 @@ const getChartData = async () => {
 };
 
 const getRecentActivities = async () => {
-  const [users, movieReviews, tvReviews, posts, reportNotifications] =
+  const [latestUserRows, movieReviewRows, tvReviewRows, latestPostRows, reportRows, reportCount] =
     await Promise.all([
       safeRows(`
-        SELECT 'User baru mendaftar' AS title, created_at, 'user' AS icon
+        SELECT created_at
         FROM flix.users
         ORDER BY created_at DESC
-        LIMIT 5
+        LIMIT 1
       `),
       safeRows(`
-        SELECT 'Review film baru' AS title, created_at, 'review' AS icon
+        SELECT created_at
         FROM flix.movie_reviews
         WHERE parent_review_id IS NULL
         ORDER BY created_at DESC
-        LIMIT 5
+        LIMIT 1
       `),
       safeRows(`
-        SELECT 'Review series baru' AS title, created_at, 'review' AS icon
+        SELECT created_at
         FROM flix.tv_series_reviews
         WHERE parent_review_id IS NULL
         ORDER BY created_at DESC
-        LIMIT 5
+        LIMIT 1
       `),
       safeRows(`
-        SELECT 'Post terbaru' AS title, created_at, 'community' AS icon
+        SELECT created_at
         FROM flix.posts
         ORDER BY created_at DESC
-        LIMIT 5
+        LIMIT 1
       `),
       safeRows(`
-        SELECT 'Konten dilaporkan' AS title, created_at, 'report' AS icon
+        SELECT created_at
         FROM flix.notifications
         WHERE notification_type ILIKE '%report%'
         ORDER BY created_at DESC
-        LIMIT 5
+        LIMIT 1
+      `),
+      safeCount(`
+        SELECT COUNT(*)::INTEGER AS count
+        FROM flix.notifications
+        WHERE notification_type ILIKE '%report%'
       `),
     ]);
 
-  return [...users, ...movieReviews, ...tvReviews, ...posts, ...reportNotifications]
+  const latestReview = [...movieReviewRows, ...tvReviewRows]
     .filter((activity) => activity.created_at)
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 4)
-    .map((activity) => ({
-      title: activity.title,
-      time: getRelativeTime(activity.created_at),
-      icon: activity.icon,
-    }));
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+  const latestReport = reportRows[0];
+
+  return [
+    {
+      title: "User baru mendaftar",
+      time: latestUserRows[0]?.created_at ? getRelativeTime(latestUserRows[0].created_at) : "Belum ada user",
+      icon: "user",
+    },
+    {
+      title: "Review terbaru",
+      time: latestReview?.created_at ? getRelativeTime(latestReview.created_at) : "Belum ada review",
+      icon: "review",
+    },
+    {
+      title: "Community Post terbaru",
+      time: latestPostRows[0]?.created_at ? getRelativeTime(latestPostRows[0].created_at) : "Belum ada post",
+      icon: "community",
+    },
+    {
+      title: "Total report masuk",
+      time: latestReport?.created_at
+        ? `${formatNumber(reportCount)} laporan - ${getRelativeTime(latestReport.created_at)}`
+        : `${formatNumber(reportCount)} laporan`,
+      icon: "report",
+    },
+  ];
 };
 
 const getTopMediaRows = async () =>
