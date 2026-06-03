@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/routing/ProtectedRoute";
+import LoginRequiredModal from "@/components/ui/LoginRequiredModal";
 import Login from "@/features/auth/Login";
 import ForgotPassword from "@/features/auth/ForgotPassword";
 import Register from "@/features/auth/Register";
@@ -46,6 +47,7 @@ function App() {
   return (
     <>
       {!hideNavbar && <Navbar />}
+      <LoginRequiredModal />
       <Routes>
         <Route path="/" element={<Homepage />} />
         <Route path="/movies" element={<MoviesPage />} />

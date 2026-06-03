@@ -18,6 +18,7 @@ import SiteNavbar from "@/components/layout/SiteNavbar";
 import reportIcon from "@/assets/icon/report-icon.svg";
 import shareIcon from "@/assets/icon/share-icon.svg";
 import { createChatThreadFromUser, openChatThread } from "@/utils/chat";
+import { requireLogin } from "@/utils/authPrompt";
 import { resolveMediaUrl } from "@/utils/media";
 import "@/components/community/PostCard.css";
 import "./PostDetail.css";
@@ -107,6 +108,10 @@ function PostDetail() {
   };
 
   const fetchInsight = async () => {
+    if (!requireLogin()) {
+      return;
+    }
+
     try {
       const res = await axios.get(
         `${import.meta.env.VITE_API_URL}/api/post-insights/${id}`,
@@ -243,6 +248,10 @@ function PostDetail() {
   };
 
   const handleLike = async (postId) => {
+    if (!requireLogin()) {
+      return;
+    }
+
     try {
       await axios.post(
         `${import.meta.env.VITE_API_URL}/api/post-likes/${postId}`,
@@ -260,6 +269,10 @@ function PostDetail() {
   };
 
   const handleReaction = async (postId, reactionType) => {
+    if (!requireLogin()) {
+      return false;
+    }
+
     try {
       await axios.post(
         `${import.meta.env.VITE_API_URL}/api/post-reactions/${postId}`,
@@ -290,6 +303,10 @@ function PostDetail() {
   };
 
   const handleShare = async (postId) => {
+    if (!requireLogin()) {
+      return;
+    }
+
     const shareLink = `${window.location.origin}/post/${postId}`;
 
     try {
@@ -314,6 +331,10 @@ function PostDetail() {
   };
 
   const handleVotePoll = async (pollId, optionId) => {
+    if (!requireLogin()) {
+      return;
+    }
+
     try {
       await axios.post(
         `${import.meta.env.VITE_API_URL}/api/polls/${pollId}/vote`,
@@ -337,6 +358,10 @@ function PostDetail() {
     parentCommentId = null,
     inputKey,
   ) => {
+    if (!requireLogin()) {
+      return;
+    }
+
     try {
       const replyText = replyInputs[inputKey];
 
@@ -414,8 +439,7 @@ function PostDetail() {
   };
 
   const handleAddFriend = (targetUser) => {
-    if (!token) {
-      alert("Silakan login dulu untuk menambahkan teman");
+    if (!requireLogin()) {
       return;
     }
 
@@ -458,6 +482,10 @@ function PostDetail() {
   };
 
   const handleMessageUser = (targetUser) => {
+    if (!requireLogin()) {
+      return;
+    }
+
     openChatThread(
       createChatThreadFromUser({
         id_user: targetUser.id_user,

@@ -19,6 +19,7 @@ import PostCard from "@/components/community/PostCard";
 import PostInsightModal from "@/components/community/PostInsightModal";
 import PostSearchModal from "@/components/community/PostSearchModal";
 import { createChatThreadFromUser, openChatThread } from "@/utils/chat";
+import { requireLogin } from "@/utils/authPrompt";
 import { resolveMediaUrl } from "@/utils/media";
 import "./Community.css";
 
@@ -284,8 +285,7 @@ function Community() {
   };
 
   const handleLike = async (postId) => {
-    if (!token) {
-      alert("Silakan login terlebih dahulu");
+    if (!requireLogin()) {
       return;
     }
 
@@ -307,8 +307,7 @@ function Community() {
   };
 
   const handleReaction = async (postId, reactionType) => {
-    if (!token) {
-      alert("Silakan login terlebih dahulu");
+    if (!requireLogin()) {
       return false;
     }
 
@@ -332,6 +331,10 @@ function Community() {
   };
 
   const handleShare = async (postId) => {
+    if (!requireLogin()) {
+      return;
+    }
+
     const shareLink = `${window.location.origin}/post/${postId}`;
 
     try {
@@ -356,8 +359,7 @@ function Community() {
   };
 
   const handleInsight = async (postId) => {
-    if (!token) {
-      alert("Silakan login untuk melihat insight");
+    if (!requireLogin()) {
       return;
     }
 
@@ -387,8 +389,7 @@ function Community() {
   };
 
   const handleAddFriend = (targetUser) => {
-    if (!token) {
-      alert("Silakan login terlebih dahulu");
+    if (!requireLogin()) {
       return;
     }
 
@@ -426,6 +427,10 @@ function Community() {
   };
 
   const handleMessageUser = (post) => {
+    if (!requireLogin()) {
+      return;
+    }
+
     openChatThread(
       createChatThreadFromUser({
         id_user: post.id_user,
@@ -437,8 +442,7 @@ function Community() {
   };
 
   const handleVotePoll = async (postId, pollId, optionId) => {
-    if (!token) {
-      alert("Silakan login terlebih dahulu");
+    if (!requireLogin()) {
       return;
     }
 
@@ -537,9 +541,10 @@ function Community() {
             <button
               className="community-create-button community-create-button--ghost"
               type="button"
-              onClick={() => navigate("/login")}
+              onClick={() => requireLogin()}
             >
-              Login
+              <FiPlus />
+              Create Post
             </button>
           )}
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import SiteNavbar from "@/components/layout/SiteNavbar";
+import { requireLogin } from "@/utils/authPrompt";
 import bookmarkIcon from "@/assets/icon/bookmark-icon.svg";
 import checkIcon from "@/assets/icon/check-icon.svg";
 import clockIcon from "@/assets/icon/clock-icon.svg";
@@ -150,7 +151,7 @@ function WatchlistCard({
           {availableSeasons.length > 0 ? (
             <>
               <div className="watchlist-card__season-field">
-                <span>Season :</span>
+                <span>Season</span>
                 <div className="watchlist-card__season-control">
                   <button
                     className={isSeasonPickerOpen ? "is-open" : ""}
@@ -158,7 +159,7 @@ function WatchlistCard({
                     onClick={() => setIsSeasonPickerOpen((current) => !current)}
                     aria-expanded={isSeasonPickerOpen}
                   >
-                    Season {activeSeasonNumber || 1}
+                    {activeSeasonNumber || 1}
                   </button>
                   {isSeasonPickerOpen && (
                     <div className="watchlist-card__season-menu">
@@ -186,7 +187,7 @@ function WatchlistCard({
 
               <div className="watchlist-card__episode-list">
                 <div className="watchlist-card__episode-head">
-                  <span>Episode :</span>
+                  <span>Episode</span>
                   {episodesLoading ? (
                     <p>Memuat episode...</p>
                   ) : seasonEpisodes.length > 0 ? (
@@ -270,6 +271,7 @@ function WatchlistCard({
 
 function WatchlistPage() {
   const navigate = useNavigate();
+  const token = localStorage.getItem("token");
   const user = useMemo(() => getStoredUser(), []);
   const movieWatchlistKey = useMemo(() => getMovieWatchlistKey(user), [user]);
   const seriesWatchlistKey = useMemo(() => getSeriesWatchlistKey(user), [user]);
@@ -296,6 +298,12 @@ function WatchlistPage() {
   const [mediaFilter, setMediaFilter] = useState("all");
   const [showFilter, setShowFilter] = useState(false);
   const [removeCandidate, setRemoveCandidate] = useState(null);
+
+  useEffect(() => {
+    if (!token) {
+      requireLogin();
+    }
+  }, [token]);
 
   useEffect(() => {
     localStorage.setItem(movieWatchlistKey, JSON.stringify(movieWatchlist));
@@ -474,6 +482,10 @@ function WatchlistPage() {
   };
 
   const toggleWatched = (item) => {
+    if (!requireLogin()) {
+      return;
+    }
+
     if (item.mediaType !== "tv") {
       setWatchStatus((current) => ({
         ...current,
@@ -524,6 +536,10 @@ function WatchlistPage() {
   };
 
   const toggleSeriesEpisodeWatched = (item, episode) => {
+    if (!requireLogin()) {
+      return;
+    }
+
     const seriesId = String(item.id);
     const seasonNumber = seriesSeasonSelection[seriesId] || episode.season_number || 1;
     const episodeKey = getEpisodeStatusKey(seriesId, seasonNumber, episode.episode_number);
@@ -572,6 +588,10 @@ function WatchlistPage() {
   };
 
   const confirmRemoveItem = () => {
+    if (!requireLogin()) {
+      return;
+    }
+
     if (!removeCandidate) {
       return;
     }

@@ -23,6 +23,7 @@ import catchplayIcon from "@/assets/platformstream-logo/catchplay-icon.png";
 import disneyHotstarIcon from "@/assets/platformstream-logo/disneyhotstar-icon.png";
 import hboMaxIcon from "@/assets/platformstream-logo/HBOmax-icon.png";
 import netflixIcon from "@/assets/platformstream-logo/netflix-icon.png";
+import { requireLogin } from "@/utils/authPrompt";
 import { resolveMediaUrl } from "@/utils/media";
 import "@/features/movies/MovieDetail.css";
 
@@ -351,6 +352,10 @@ function MovieDetail() {
   };
 
   const toggleWatchlist = () => {
+    if (!requireLogin()) {
+      return;
+    }
+
     if (!movie) {
       return;
     }
@@ -449,8 +454,7 @@ function MovieDetail() {
   const handleSubmitReview = async (event) => {
     event.preventDefault();
 
-    if (!token) {
-      alert("Silakan login untuk menulis review");
+    if (!requireLogin()) {
       return;
     }
 
@@ -480,8 +484,7 @@ function MovieDetail() {
   const handleSubmitReply = async (event, parentReviewId) => {
     event.preventDefault();
 
-    if (!token) {
-      alert("Silakan login untuk membalas review");
+    if (!requireLogin()) {
       return;
     }
 
@@ -508,8 +511,7 @@ function MovieDetail() {
   };
 
   const handleLikeReview = async (reviewId) => {
-    if (!token) {
-      alert("Silakan login untuk like review");
+    if (!requireLogin()) {
       return;
     }
 
@@ -726,7 +728,13 @@ function MovieDetail() {
         <button
           className="movie-review-open-button"
           type="button"
-          onClick={() => setIsReviewModalOpen(true)}
+          onClick={() => {
+            if (!requireLogin()) {
+              return;
+            }
+
+            setIsReviewModalOpen(true);
+          }}
         >
           <FaPen />
           Berikan Review

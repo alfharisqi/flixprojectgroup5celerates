@@ -25,6 +25,7 @@ import catchplayIcon from "@/assets/platformstream-logo/catchplay-icon.png";
 import disneyHotstarIcon from "@/assets/platformstream-logo/disneyhotstar-icon.png";
 import hboMaxIcon from "@/assets/platformstream-logo/HBOmax-icon.png";
 import netflixIcon from "@/assets/platformstream-logo/netflix-icon.png";
+import { requireLogin } from "@/utils/authPrompt";
 import { resolveMediaUrl } from "@/utils/media";
 import "@/features/movies/MovieDetail.css";
 
@@ -484,6 +485,10 @@ function TVSeriesDetail() {
   };
 
   const toggleWatchlist = () => {
+    if (!requireLogin()) {
+      return;
+    }
+
     if (!series) {
       return;
     }
@@ -644,8 +649,7 @@ function TVSeriesDetail() {
   const handleSubmitReview = async (event) => {
     event.preventDefault();
 
-    if (!token) {
-      alert("Silakan login untuk menulis review");
+    if (!requireLogin()) {
       return;
     }
 
@@ -675,8 +679,7 @@ function TVSeriesDetail() {
   const handleSubmitReply = async (event, parentReviewId) => {
     event.preventDefault();
 
-    if (!token) {
-      alert("Silakan login untuk membalas review");
+    if (!requireLogin()) {
       return;
     }
 
@@ -703,8 +706,7 @@ function TVSeriesDetail() {
   };
 
   const handleLikeReview = async (reviewId) => {
-    if (!token) {
-      alert("Silakan login untuk like review");
+    if (!requireLogin()) {
       return;
     }
 
@@ -886,9 +888,7 @@ function TVSeriesDetail() {
 
           <div className="tv-detail-episodes__header">
             <h2>Episode</h2>
-            <p>
-              {watchedEpisodeCount}/{totalEpisodeCount || "?"} episode ditonton
-            </p>
+            
           </div>
           {!isSaved && (
             <p className="tv-detail-episodes__hint">
@@ -1076,7 +1076,13 @@ function TVSeriesDetail() {
         <button
           className="movie-review-open-button"
           type="button"
-          onClick={() => setIsReviewModalOpen(true)}
+          onClick={() => {
+            if (!requireLogin()) {
+              return;
+            }
+
+            setIsReviewModalOpen(true);
+          }}
         >
           <FaPen />
           Berikan Review

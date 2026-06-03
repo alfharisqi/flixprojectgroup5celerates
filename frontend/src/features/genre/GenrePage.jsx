@@ -11,6 +11,7 @@ import {
 } from "react-icons/fa";
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
+import { requireLogin } from "@/utils/authPrompt";
 import "./GenrePage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -528,6 +529,10 @@ function GenrePage() {
   };
 
   const toggleWatchlist = (mediaItem) => {
+    if (!requireLogin()) {
+      return;
+    }
+
     const mediaType = getMediaType(mediaItem.media_type || selectedMedia);
     const mediaId = String(mediaItem.id);
 

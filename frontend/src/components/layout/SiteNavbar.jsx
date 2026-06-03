@@ -17,6 +17,7 @@ import sendIcon from "@/assets/icon/send-icon.svg";
 import smileIcon from "@/assets/icon/smile-icon.svg";
 import blueDiamondIcon from "@/assets/icon/bluediamond-icon.png";
 import SearchModal from "@/components/ui/SearchModal";
+import { requireLogin } from "@/utils/authPrompt";
 import { resolveMediaUrl } from "@/utils/media";
 import "./SiteNavbar.css";
 
@@ -259,8 +260,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
 
   const startChatWithUser = useCallback(
     async (thread) => {
-      if (!token) {
-        navigate("/login");
+      if (!requireLogin()) {
         return null;
       }
 
@@ -312,6 +312,10 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
   );
 
   const handleToggleChat = () => {
+    if (!requireLogin()) {
+      return;
+    }
+
     setShowChatPanel((currentValue) => {
       const nextValue = !currentValue;
 
@@ -465,6 +469,10 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
   }, [token]);
 
   const handleToggleNotifications = () => {
+    if (!requireLogin()) {
+      return;
+    }
+
     setShowChatPanel(false);
     setShowNotifications((currentValue) => {
       const nextValue = !currentValue;
@@ -478,7 +486,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
   };
 
   const handleNotificationClick = async (notification) => {
-    if (!token) return;
+    if (!requireLogin()) return;
 
     try {
       if (!notification.is_read) {

@@ -14,6 +14,7 @@ import {
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import FilterPopup from "@/components/ui/FilterPopup";
 import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
+import { requireLogin } from "@/utils/authPrompt";
 import "./TVSeriesPage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -543,6 +544,10 @@ function TVSeriesPage() {
   };
 
   const toggleWatchlist = (series) => {
+    if (!requireLogin()) {
+      return;
+    }
+
     const seriesId = String(series.id);
 
     if (savedSeriesIds.has(seriesId)) {

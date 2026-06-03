@@ -136,6 +136,7 @@
   border-radius: 19px;
   overflow: visible;
   background: #141414;
+  cursor: pointer;
 }
 
 .movies-hero::before {
@@ -265,6 +266,7 @@
   font-weight: 500;
   white-space: nowrap;
   flex: 0 0 auto;
+  cursor: pointer;
 }
 
 .movies-hero-buttons button:first-child {
@@ -305,6 +307,7 @@
   place-items: center;
   padding: 0;
   transform: translateY(-50%);
+  cursor: pointer;
 }
 
 .movies-hero-arrow:hover,
@@ -339,6 +342,7 @@
   border-radius: 999px;
   background: #ffffff;
   padding: 0;
+  cursor: pointer;
 }
 
 .movies-hero-dots button.is-active {

@@ -18,6 +18,7 @@ import {
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import FilterPopup from "@/components/ui/FilterPopup";
 import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
+import { requireLogin } from "@/utils/authPrompt";
 import amazonPrimeVideoIcon from "@/assets/platformstream-logo/amazonprimevideo-icon.png";
 import appleTvIcon from "@/assets/platformstream-logo/appletv-icon.png";
 import catchplayIcon from "@/assets/platformstream-logo/catchplay-icon.png";
@@ -630,6 +631,10 @@ function MoviesPage() {
   };
 
   const toggleWatchlist = (movie) => {
+    if (!requireLogin()) {
+      return;
+    }
+
     const movieId = String(movie.id);
 
     if (savedMovieIds.has(movieId)) {
@@ -713,6 +718,16 @@ function MoviesPage() {
     }
   };
 
+  const handleOpenHeroDetail = (event) => {
+    const interactiveElement = event.target.closest("button, a");
+
+    if (interactiveElement) {
+      return;
+    }
+
+    navigate(`/movie/${activeHeroMovie.id}`);
+  };
+
   return (
     <main className="movies-page">
       <SiteNavbar mode="fixed" activeKey="movies" />
@@ -720,6 +735,8 @@ function MoviesPage() {
       <section
         className="movies-hero"
         style={{ "--movies-hero-backdrop": `url(${activeHeroMovie.backdrop})` }}
+        onClick={handleOpenHeroDetail}
+        aria-label={`Buka detail ${activeHeroMovie.title}`}
       >
         <button
           className="movies-hero-arrow movies-hero-arrow-left"

@@ -15,6 +15,7 @@ import {
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import FilterPopup from "@/components/ui/FilterPopup";
 import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
+import { requireLogin } from "@/utils/authPrompt";
 import menegangkanIcon from "@/assets/emoticon/menegangkan-emoticon.png";
 import pikiranIcon from "@/assets/emoticon/pikiran-emoticon.png";
 import romantisIcon from "@/assets/emoticon/romantis-emoticon.png";
@@ -511,6 +512,10 @@ function Homepage() {
   };
 
   const toggleWatchlist = (movie) => {
+    if (!requireLogin()) {
+      return;
+    }
+
     const movieId = String(movie.id);
 
     if (savedMovieIds.has(movieId)) {
@@ -567,7 +572,13 @@ function Homepage() {
               <button
                 className="homepage-secondary-btn"
                 type="button"
-                onClick={() => navigate("/watchlist")}
+                onClick={() => {
+                  if (!requireLogin()) {
+                    return;
+                  }
+
+                  navigate("/watchlist");
+                }}
               >
                 Lihat Watchlist
               </button>

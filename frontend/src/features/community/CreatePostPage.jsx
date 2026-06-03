@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { FiArrowLeft, FiHash, FiPlus, FiSend, FiTrash2, FiX } from "react-icons/fi";
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import RichTextEditor from "@/components/editor/RichTextEditor";
+import { requireLogin } from "@/utils/authPrompt";
 import "./CreatePostPage.css";
 
 function CreatePostPage() {
@@ -16,6 +17,12 @@ function CreatePostPage() {
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState([]);
   const [pollOptions, setPollOptions] = useState(["", ""]);
+
+  useEffect(() => {
+    if (!token) {
+      requireLogin();
+    }
+  }, [token]);
 
   const addTag = () => {
     const cleanTag = tagInput.trim();
@@ -70,8 +77,7 @@ function CreatePostPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!token) {
-      alert("Silakan login terlebih dahulu");
+    if (!requireLogin()) {
       return;
     }
 
