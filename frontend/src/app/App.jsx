@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/routing/ProtectedRoute";
+import FlixChatbot from "@/components/ui/FlixChatbot";
 import LoginRequiredModal from "@/components/ui/LoginRequiredModal";
 import Login from "@/features/auth/Login";
 import ForgotPassword from "@/features/auth/ForgotPassword";
@@ -44,6 +45,16 @@ function App() {
     location.pathname.startsWith("/movie/") ||
     location.pathname.startsWith("/tv-series/") ||
     location.pathname.startsWith("/post/");
+  const hideChatbot =
+    [
+      "/login",
+      "/register",
+      "/forgot-password",
+      "/reset-password",
+      "/verify-email",
+      "/admin",
+      "/moderator",
+    ].includes(location.pathname) || location.pathname.startsWith("/reset-password/");
 
   return (
     <>
@@ -93,6 +104,7 @@ function App() {
           }
         />
       </Routes>
+      {!hideChatbot && <FlixChatbot />}
     </>
   );
 }

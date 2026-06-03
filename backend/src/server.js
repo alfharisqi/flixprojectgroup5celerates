@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 
 import authRoutes from "./routes/authRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
+import chatbotRoutes from "./routes/chatbotRoutes.js";
 import friendRoutes from "./routes/friendRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
@@ -52,6 +53,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/chats", chatRoutes);
+app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/friends", friendRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/admin", adminRoutes);
