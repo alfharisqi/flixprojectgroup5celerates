@@ -13,6 +13,170 @@ const navigationLinks = [
   { label: "Community", to: "/community" }
 ];
 
+const pageTextLinks = [
+  { aliases: ["Home"], to: "/" },
+  { aliases: ["/movies", "Movies", "Movie"], to: "/movies" },
+  { aliases: ["/tv-series", "TV Series"], to: "/tv-series" },
+  { aliases: ["/genre", "Genre"], to: "/genre" },
+  { aliases: ["/watchlist", "Watchlist"], to: "/watchlist" },
+  { aliases: ["/community", "Community"], to: "/community" },
+  { aliases: ["/profile", "Profile"], to: "/profile" },
+  { aliases: ["/login", "Login"], to: "/login" },
+  { aliases: ["/register", "Register", "Sign Up", "Daftar"], to: "/register" },
+];
+
+const normalizeTitle = (value = "") =>
+  value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const stripTitleDecorations = (value = "") =>
+  value
+    .replace(/^["']+|["']+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const getItemYear = (item = {}) =>
+  (item.release_date || item.first_air_date || item.year || "").slice(0, 4);
+
+const extractRecommendationCandidates = (text = "") => {
+  const candidates = [];
+  const seenTitles = new Set();
+
+  text.split("\n").forEach((line) => {
+    const match = line.match(
+      /^\s*(?:\d+[.)]|[-*•])\s+(.+?)(?:\s*\((\d{4})\))?(?:\s*[-–—:]\s+|$)/
+    );
+
+    if (!match) {
+      return;
+    }
+
+    const title = stripTitleDecorations(match[1]);
+    const normalizedTitle = normalizeTitle(title);
+
+    if (!title || title.length > 90 || seenTitles.has(normalizedTitle)) {
+      return;
+    }
+
+    seenTitles.add(normalizedTitle);
+    candidates.push({
+      title,
+      year: match[2] || "",
+    });
+  });
+
+  return candidates.slice(0, 6);
+};
+
+const findBestMovieResult = (results = [], candidate) => {
+  const candidateTitle = normalizeTitle(candidate.title);
+  const candidateYear = candidate.year;
+
+  return [...results]
+    .filter((item) => item?.id)
+    .sort((a, b) => {
+      const titleA = normalizeTitle(a.title || a.original_title || a.name || "");
+      const titleB = normalizeTitle(b.title || b.original_title || b.name || "");
+      const yearA = getItemYear(a);
+      const yearB = getItemYear(b);
+      const scoreA =
+        (titleA === candidateTitle ? 8 : titleA.includes(candidateTitle) ? 4 : 0) +
+        (candidateYear && yearA === candidateYear ? 6 : 0) +
+        Number(a.popularity || 0) / 100;
+      const scoreB =
+        (titleB === candidateTitle ? 8 : titleB.includes(candidateTitle) ? 4 : 0) +
+        (candidateYear && yearB === candidateYear ? 6 : 0) +
+        Number(b.popularity || 0) / 100;
+
+      return scoreB - scoreA;
+    })[0];
+};
+
+const resolveRecommendationLinks = async (text = "") => {
+  const candidates = extractRecommendationCandidates(text);
+
+  if (!candidates.length) {
+    return [];
+  }
+
+  const links = await Promise.all(
+    candidates.map(async (candidate) => {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/movies/search?query=${encodeURIComponent(candidate.title)}&language=id-ID`
+        );
+
+        if (!response.ok) {
+          return null;
+        }
+
+        const data = await response.json();
+        const result = findBestMovieResult(data.results || [], candidate);
+
+        if (!result?.id) {
+          return null;
+        }
+
+        return {
+          aliases: [candidate.title],
+          to: `/movie/${result.id}`,
+        };
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  return links.filter(Boolean);
+};
+
+const isTextBoundary = (text, index, length, alias) => {
+  if (alias.startsWith("/")) {
+    return true;
+  }
+
+  const before = text[index - 1] || "";
+  const after = text[index + length] || "";
+  const isWord = (character) => /[a-zA-Z0-9]/.test(character);
+
+  return !isWord(before) && !isWord(after);
+};
+
+const findNextTextLink = (text, startIndex, links) => {
+  const lowerText = text.toLowerCase();
+  let bestMatch = null;
+
+  links.forEach((link) => {
+    link.aliases.forEach((alias) => {
+      const lowerAlias = alias.toLowerCase();
+      const index = lowerText.indexOf(lowerAlias, startIndex);
+
+      if (index < 0 || !isTextBoundary(text, index, alias.length, alias)) {
+        return;
+      }
+
+      if (
+        !bestMatch ||
+        index < bestMatch.index ||
+        (index === bestMatch.index && alias.length > bestMatch.alias.length)
+      ) {
+        bestMatch = {
+          ...link,
+          alias,
+          index,
+          length: alias.length,
+        };
+      }
+    });
+  });
+
+  return bestMatch;
+};
+
 const readJson = (key, fallback) => {
   try {
     const value = JSON.parse(localStorage.getItem(key));
@@ -113,16 +277,19 @@ function FlixChatbot() {
       });
 
       const data = await response.json();
+      const assistantContent =
+        data.reply ||
+        data.message ||
+        "Maaf, saya belum bisa menjawab pertanyaan itu sekarang.";
+      const assistantLinks = await resolveRecommendationLinks(assistantContent);
 
       setMessages((current) => [
         ...current,
         {
           id: `assistant-${Date.now()}`,
           role: "assistant",
-          content:
-            data.reply ||
-            data.message ||
-            "Maaf, saya belum bisa menjawab pertanyaan itu sekarang."
+          content: assistantContent,
+          links: assistantLinks
         }
       ]);
     } catch {
