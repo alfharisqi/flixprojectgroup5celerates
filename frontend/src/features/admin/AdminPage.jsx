@@ -1,21 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  FiArrowLeft,
   FiBell,
+  FiCalendar,
   FiCheck,
   FiChevronDown,
+  FiClock,
   FiEdit3,
+  FiEye,
   FiFilm,
   FiFilter,
   FiGrid,
+  FiHeart,
+  FiKey,
   FiLogOut,
+  FiMapPin,
   FiMessageSquare,
   FiMoon,
   FiMoreVertical,
   FiPlus,
   FiSearch,
   FiSettings,
+  FiShield,
   FiUploadCloud,
+  FiUserCheck,
+  FiUserX,
   FiUserPlus,
   FiUsers
 } from "react-icons/fi";
@@ -52,6 +62,13 @@ const fallbackDashboard = {
   ],
   activities: [],
   watchlistMovies: []
+};
+
+const fallbackUsersSummary = {
+  total: 0,
+  admin: 0,
+  moderator: 0,
+  registeredUser: 0
 };
 
 const navItems = [
@@ -178,17 +195,25 @@ function AdminPage() {
   const [managedMovies, setManagedMovies] = useState([]);
   const [localAdminMovies, setLocalAdminMovies] = useState(getStoredAdminMovies);
   const [managedMoviesTotal, setManagedMoviesTotal] = useState(0);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [adminUsersSummary, setAdminUsersSummary] = useState(fallbackUsersSummary);
   const [activeAdminPage, setActiveAdminPage] = useState("dashboard");
   const [activeMoviePanel, setActiveMoviePanel] = useState("list");
+  const [activeUserPanel, setActiveUserPanel] = useState("list");
+  const [selectedUserDetail, setSelectedUserDetail] = useState(null);
+  const [isUserDetailLoading, setIsUserDetailLoading] = useState(false);
   const [addMovieForm, setAddMovieForm] = useState(defaultAddMovieForm);
   const [addMovieFeedback, setAddMovieFeedback] = useState("");
   const [nightMode, setNightMode] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [tableLimit, setTableLimit] = useState(10);
   const [filmPage, setFilmPage] = useState(1);
+  const [userPage, setUserPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState("");
   const [moviesError, setMoviesError] = useState("");
+  const [usersError, setUsersError] = useState("");
+  const [userDetailError, setUserDetailError] = useState("");
 
   const user = useMemo(getStoredUser, []);
   const adminName = user?.username || user?.name || "Marsyanda F";
@@ -206,13 +231,18 @@ function AdminPage() {
 
     const loadAdminData = async () => {
       try {
-        const [dashboardResponse, moviesResponse] = await Promise.all([
+        const [dashboardResponse, moviesResponse, usersResponse] = await Promise.all([
           fetch(`${API_URL}/api/admin/dashboard`, {
             headers: {
               Authorization: `Bearer ${token}`
             }
           }),
           fetch(`${API_URL}/api/admin/movies`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }),
+          fetch(`${API_URL}/api/admin/users`, {
             headers: {
               Authorization: `Bearer ${token}`
             }
@@ -225,6 +255,7 @@ function AdminPage() {
 
         const dashboardData = dashboardResponse.ok ? await dashboardResponse.json() : null;
         const moviesData = moviesResponse.ok ? await moviesResponse.json() : null;
+        const usersData = usersResponse.ok ? await usersResponse.json() : null;
 
         setDashboard(normalizeDashboard(dashboardData?.dashboard || dashboardData));
         setDashboardError(dashboardResponse.ok ? "" : "Dashboard belum bisa mengambil data backend.");
@@ -232,6 +263,10 @@ function AdminPage() {
         setManagedMovies(Array.isArray(moviesData?.movies) ? moviesData.movies : []);
         setManagedMoviesTotal(Number(moviesData?.total || 0));
         setMoviesError(moviesResponse.ok ? "" : "Daftar film admin belum bisa mengambil data backend.");
+
+        setAdminUsers(Array.isArray(usersData?.users) ? usersData.users : []);
+        setAdminUsersSummary(usersData?.summary || fallbackUsersSummary);
+        setUsersError(usersResponse.ok ? "" : "Daftar user admin belum bisa mengambil data backend.");
       } catch {
         if (isMounted) {
           setDashboard(fallbackDashboard);
@@ -239,6 +274,9 @@ function AdminPage() {
           setManagedMovies([]);
           setManagedMoviesTotal(0);
           setMoviesError("Daftar film admin belum bisa mengambil data backend.");
+          setAdminUsers([]);
+          setAdminUsersSummary(fallbackUsersSummary);
+          setUsersError("Daftar user admin belum bisa mengambil data backend.");
         }
       } finally {
         if (isMounted) {
@@ -267,10 +305,13 @@ function AdminPage() {
       ? "Tambah Film"
       : activeAdminPage === "movies" && activeMoviePanel === "edit"
         ? "Edit Film"
-        : activeNavItem.label;
+        : activeAdminPage === "users" && activeUserPanel === "detail"
+          ? "Detail User"
+          : activeNavItem.label;
 
   useEffect(() => {
     setFilmPage(1);
+    setUserPage(1);
   }, [normalizedSearch, activeAdminPage]);
 
   useEffect(() => {
@@ -332,6 +373,33 @@ function AdminPage() {
   const paginationItems = getPaginationItems(currentFilmPage, totalFilmPages);
   const addMoviePosterPreview = addMovieForm.posterDataUrl || addMovieForm.posterUrl;
 
+  const filteredAdminUsers = useMemo(() => {
+    if (!normalizedSearch) {
+      return adminUsers;
+    }
+
+    return adminUsers.filter((item) =>
+      `${item.username} ${item.email} ${item.roleLabel} ${item.status}`
+        .toLowerCase()
+        .includes(normalizedSearch)
+    );
+  }, [adminUsers, normalizedSearch]);
+
+  const userRowsPerPage = 9;
+  const totalUserPages = Math.max(1, Math.ceil(filteredAdminUsers.length / userRowsPerPage));
+  const currentUserPage = Math.min(userPage, totalUserPages);
+  const visibleAdminUsers = filteredAdminUsers.slice(
+    (currentUserPage - 1) * userRowsPerPage,
+    currentUserPage * userRowsPerPage
+  );
+  const userPaginationItems = getPaginationItems(currentUserPage, totalUserPages);
+  const detailUser = selectedUserDetail?.user;
+  const detailStats = selectedUserDetail?.stats || {};
+  const detailActivities = selectedUserDetail?.activities || [];
+  const detailReviews = selectedUserDetail?.reviews || [];
+  const detailPosts = selectedUserDetail?.posts || [];
+  const detailWatchlist = selectedUserDetail?.watchlist || [];
+
   const chartItems = useMemo(() => {
     const values = dashboard.chart.map((item) => Number(item.value || 0));
     const maxValue = Math.max(...values, 1);
@@ -369,6 +437,53 @@ function AdminPage() {
     if (itemId === "movies") {
       setActiveMoviePanel("list");
     }
+
+    if (itemId === "users") {
+      setActiveUserPanel("list");
+      setSelectedUserDetail(null);
+      setUserDetailError("");
+    }
+  };
+
+  const loadAdminUserDetail = async (userId) => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setUserDetailError("Sesi admin tidak tersedia.");
+      return;
+    }
+
+    setActiveUserPanel("detail");
+    setSelectedUserDetail(null);
+    setUserDetailError("");
+    setIsUserDetailLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/api/admin/users/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      const data = response.ok ? await response.json() : null;
+
+      if (!response.ok || !data) {
+        setUserDetailError(data?.message || "Detail user belum bisa dimuat.");
+        return;
+      }
+
+      setSelectedUserDetail(data);
+    } catch {
+      setUserDetailError("Detail user belum bisa dimuat.");
+    } finally {
+      setIsUserDetailLoading(false);
+    }
+  };
+
+  const closeUserDetail = () => {
+    setActiveUserPanel("list");
+    setSelectedUserDetail(null);
+    setUserDetailError("");
   };
 
   const handleAddMovieFieldChange = (field, value) => {
@@ -538,7 +653,13 @@ function AdminPage() {
                 <FiSearch aria-hidden="true" />
                 <input
                   type="search"
-                  placeholder={activeAdminPage === "movies" ? "Cari film..." : "Cari..."}
+                  placeholder={
+                    activeAdminPage === "movies"
+                      ? "Cari film..."
+                      : activeAdminPage === "users"
+                        ? "Cari user..."
+                        : "Cari..."
+                  }
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                 />
@@ -918,6 +1039,343 @@ function AdminPage() {
                   </button>
                 </div>
               </article>
+              )}
+            </section>
+          ) : activeAdminPage === "users" ? (
+            <section className="admin-user-management" aria-label="Kelola user">
+              {usersError && <p className="admin-dashboard-alert">{usersError}</p>}
+
+              {activeUserPanel === "detail" && (
+                <section className="admin-user-detail" aria-label="Detail user">
+                  <div className="admin-user-detail__head">
+                    <div>
+                      <h2>Detail User</h2>
+                      <p>Informasi lengkap & aktivitas user</p>
+                    </div>
+                    <div className="admin-user-detail__actions">
+                      <button type="button" className="admin-user-detail__danger">
+                        <FiUserX aria-hidden="true" />
+                        Nonaktifkan user
+                      </button>
+                      <button type="button" onClick={closeUserDetail}>
+                        <FiArrowLeft aria-hidden="true" />
+                        Kembali
+                      </button>
+                    </div>
+                  </div>
+
+                  {userDetailError && <p className="admin-dashboard-alert">{userDetailError}</p>}
+
+                  {isUserDetailLoading && (
+                    <article className="admin-panel admin-user-detail__loading">
+                      Memuat detail user...
+                    </article>
+                  )}
+
+                  {!isUserDetailLoading && detailUser && (
+                    <>
+                      <article className="admin-panel admin-user-detail__profile-card">
+                        <div className="admin-user-detail__identity">
+                          <div className="admin-user-detail__avatar">
+                            {detailUser.profileImageUrl ? (
+                              <img src={detailUser.profileImageUrl} alt={detailUser.username} />
+                            ) : (
+                              <span>{(detailUser.username || "U").charAt(0).toUpperCase()}</span>
+                            )}
+                            <small>{detailUser.roleLabel}</small>
+                          </div>
+                          <div className="admin-user-detail__meta">
+                            <h3>{detailUser.username}</h3>
+                            <p>{detailUser.email}</p>
+                            <div>
+                              <span>
+                                <FiCalendar aria-hidden="true" />
+                                Bergabung sejak {detailUser.joinedAt}
+                              </span>
+                              <span>
+                                <FiClock aria-hidden="true" />
+                                Login terakhir: -
+                              </span>
+                              <span>
+                                <FiMapPin aria-hidden="true" />
+                                {detailUser.location || "-"}
+                              </span>
+                            </div>
+                            <span className="admin-user-status admin-user-status--active">
+                              {detailUser.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="admin-user-detail__profile-actions">
+                          <button type="button">
+                            <FiEdit3 aria-hidden="true" />
+                            Edit User
+                          </button>
+                          <button type="button">
+                            <FiKey aria-hidden="true" />
+                            Reset Password
+                          </button>
+                        </div>
+                      </article>
+
+                      <section className="admin-user-detail__stats" aria-label="Statistik user">
+                        <article>
+                          <strong>{formatChartNumber(detailStats.totalWatchlist)}</strong>
+                          <span>Total Watchlist</span>
+                        </article>
+                        <article>
+                          <strong>{formatChartNumber(detailStats.reviewsCreated)}</strong>
+                          <span>Review Dibuat</span>
+                        </article>
+                        <article>
+                          <strong>{formatChartNumber(detailStats.watchedMovies)}</strong>
+                          <span>Film Ditandai Ditonton</span>
+                        </article>
+                        <article>
+                          <strong>
+                            <FaStar aria-hidden="true" />
+                            {Number(detailStats.averageRating || 0).toFixed(1)}
+                          </strong>
+                          <span>Rata-rata Rating</span>
+                        </article>
+                      </section>
+
+                      <section className="admin-user-detail__grid">
+                        <article className="admin-panel admin-user-detail__panel">
+                          <h3>Aktivitas Terbaru</h3>
+                          <div className="admin-user-detail__timeline">
+                            {detailActivities.map((activity, index) => (
+                              <div key={`${activity.title}-${index}`}>
+                                <span />
+                                <div>
+                                  <strong>{activity.title}</strong>
+                                  <small>{activity.time}</small>
+                                </div>
+                              </div>
+                            ))}
+                            {!detailActivities.length && (
+                              <p className="admin-empty-state">Belum ada aktivitas user.</p>
+                            )}
+                          </div>
+                        </article>
+
+                        <article className="admin-panel admin-user-detail__panel">
+                          <h3>Review Terbaru ({detailStats.reviewsCreated || 0})</h3>
+                          <div className="admin-user-detail__review-list">
+                            {detailReviews.map((review) => (
+                              <div key={`${review.mediaType}-${review.id}`}>
+                                <img src={review.poster || flixAdminLogo} alt={review.title} />
+                                <div>
+                                  <strong>{review.title}</strong>
+                                  <span>{review.year}</span>
+                                </div>
+                                <span className="admin-user-detail__stars">
+                                  {Array.from({ length: 5 }, (_, index) => (
+                                    <FaStar
+                                      key={index}
+                                      aria-hidden="true"
+                                      className={index < Number(review.rating || 0) ? "is-active" : ""}
+                                    />
+                                  ))}
+                                </span>
+                                <span className="admin-user-detail__approved">{review.status}</span>
+                              </div>
+                            ))}
+                            {!detailReviews.length && (
+                              <p className="admin-empty-state">Belum ada review terbaru.</p>
+                            )}
+                          </div>
+                        </article>
+
+                        <article className="admin-panel admin-user-detail__panel">
+                          <h3>Watchlist User ({detailStats.totalWatchlist || 0} Film)</h3>
+                          <div className="admin-user-detail__simple-list">
+                            {detailWatchlist.map((item) => (
+                              <div key={`${item.mediaType}-${item.id}`}>
+                                <img src={item.poster || flixAdminLogo} alt={item.title} />
+                                <div>
+                                  <strong>{item.title}</strong>
+                                  <span>{item.year}</span>
+                                </div>
+                                <small>{item.savedAt}</small>
+                              </div>
+                            ))}
+                            {!detailWatchlist.length && (
+                              <p className="admin-empty-state">
+                                Watchlist user belum tersedia di backend.
+                              </p>
+                            )}
+                          </div>
+                        </article>
+
+                        <article className="admin-panel admin-user-detail__panel">
+                          <h3>Postingan Terbaru ({detailStats.postsCreated || 0} Post)</h3>
+                          <div className="admin-user-detail__post-list">
+                            {detailPosts.map((post) => (
+                              <div key={post.id}>
+                                <strong>{post.title}</strong>
+                                <p>{post.content}</p>
+                                <div>
+                                  <span>{post.date}</span>
+                                  <span><FiEye aria-hidden="true" /> {post.viewCount}</span>
+                                  <span><FiHeart aria-hidden="true" /> {post.likeCount}</span>
+                                  <span><FiMessageSquare aria-hidden="true" /> {post.replyCount}</span>
+                                </div>
+                              </div>
+                            ))}
+                            {!detailPosts.length && (
+                              <p className="admin-empty-state">Belum ada postingan terbaru.</p>
+                            )}
+                          </div>
+                        </article>
+                      </section>
+                    </>
+                  )}
+                </section>
+              )}
+
+              {activeUserPanel === "list" && (
+                <>
+
+              <section className="admin-user-summary" aria-label="Ringkasan user">
+                <article className="admin-user-summary__card">
+                  <FiUsers aria-hidden="true" />
+                  <div>
+                    <strong>{isLoading ? "..." : formatChartNumber(adminUsersSummary.total)}</strong>
+                    <span>Total User</span>
+                  </div>
+                </article>
+                <article className="admin-user-summary__card">
+                  <FiShield aria-hidden="true" />
+                  <div>
+                    <strong>{isLoading ? "..." : formatChartNumber(adminUsersSummary.admin)}</strong>
+                    <span>Admin</span>
+                  </div>
+                </article>
+                <article className="admin-user-summary__card">
+                  <FiUserCheck aria-hidden="true" />
+                  <div>
+                    <strong>{isLoading ? "..." : formatChartNumber(adminUsersSummary.moderator)}</strong>
+                    <span>Moderator</span>
+                  </div>
+                </article>
+                <article className="admin-user-summary__card">
+                  <FiUserPlus aria-hidden="true" />
+                  <div>
+                    <strong>{isLoading ? "..." : formatChartNumber(adminUsersSummary.registeredUser)}</strong>
+                    <span>User Biasa</span>
+                  </div>
+                </article>
+              </section>
+
+              <article className="admin-panel admin-user-card">
+                <div className="admin-user-card__header">
+                  <div>
+                    <h2>Semua User</h2>
+                    <p>Admin dan moderator ditampilkan terlebih dahulu, lalu user biasa.</p>
+                  </div>
+                  <button type="button" className="admin-manage-film__filter">
+                    <FiFilter aria-hidden="true" />
+                    Filter
+                  </button>
+                </div>
+
+                <div className="admin-user-table" role="table" aria-label="Daftar user admin">
+                  <div className="admin-user-table__row admin-user-table__row--head" role="row">
+                    <span role="columnheader">No</span>
+                    <span role="columnheader">User</span>
+                    <span role="columnheader">Email</span>
+                    <span role="columnheader">Role</span>
+                    <span role="columnheader">Bergabung</span>
+                    <span role="columnheader">Status</span>
+                    <span role="columnheader">Aksi</span>
+                  </div>
+
+                  {visibleAdminUsers.map((item, index) => (
+                    <div className="admin-user-table__row" role="row" key={item.id}>
+                      <span className="admin-user-table__no" role="cell">
+                        {(currentUserPage - 1) * userRowsPerPage + index + 1}
+                      </span>
+                      <div className="admin-user-table__profile" role="cell">
+                        {item.profileImageUrl ? (
+                          <img src={item.profileImageUrl} alt={item.username} />
+                        ) : (
+                          <span>{(item.username || "U").charAt(0).toUpperCase()}</span>
+                        )}
+                        <strong>{item.username}</strong>
+                      </div>
+                      <span className="admin-user-table__email" role="cell">{item.email}</span>
+                      <span role="cell">
+                        <span className={`admin-role-pill admin-role-pill--${item.role}`}>
+                          {item.roleLabel}
+                        </span>
+                      </span>
+                      <span role="cell">{item.joinedAt}</span>
+                      <span role="cell">
+                        <span
+                          className={`admin-user-status${
+                            item.status === "Aktif" ? " admin-user-status--active" : ""
+                          }`}
+                        >
+                          {item.status}
+                        </span>
+                      </span>
+                      <span role="cell">
+                        <button
+                          type="button"
+                          className="admin-user-table__detail-button"
+                          onClick={() => loadAdminUserDetail(item.id)}
+                        >
+                          Detail
+                        </button>
+                      </span>
+                    </div>
+                  ))}
+
+                  {!visibleAdminUsers.length && (
+                    <div className="admin-user-table__empty">
+                      {isLoading ? "Memuat data user..." : "Belum ada user yang bisa ditampilkan."}
+                    </div>
+                  )}
+                </div>
+
+                <div className="admin-manage-pagination" aria-label="Pagination user">
+                  <button
+                    type="button"
+                    aria-label="Halaman user sebelumnya"
+                    disabled={currentUserPage === 1}
+                    onClick={() => setUserPage((page) => Math.max(1, page - 1))}
+                  >
+                    &lt;
+                  </button>
+                  {userPaginationItems.map((item, index) =>
+                    typeof item === "string" ? (
+                      <span key={`${item}-${index}`} className="admin-manage-pagination__ellipsis">
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        key={item}
+                        className={currentUserPage === item ? "admin-manage-pagination__active" : ""}
+                        onClick={() => setUserPage(item)}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Halaman user berikutnya"
+                    disabled={currentUserPage === totalUserPages}
+                    onClick={() => setUserPage((page) => Math.min(totalUserPages, page + 1))}
+                  >
+                    &gt;
+                  </button>
+                </div>
+              </article>
+                </>
               )}
             </section>
           ) : (
