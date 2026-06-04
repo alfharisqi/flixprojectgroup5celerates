@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   FaBookmark,
+  FaChevronRight,
   FaFacebookF,
   FaRegBookmark,
   FaSearch,
@@ -132,6 +133,14 @@ const getShortOverview = (overview) => {
 
   return `${cleanOverview.slice(0, 147).trim()}...`;
 };
+
+const getGenreSeed = (value) =>
+  String(value)
+    .split("")
+    .reduce((total, character) => total + character.charCodeAt(0), 0);
+
+const formatGenreCount = (count) =>
+  new Intl.NumberFormat("id-ID").format(Number(count || 0));
 
 const mapTmdbMediaItem = (movie, mediaType = "movie") => ({
   id: movie.id,
@@ -292,6 +301,7 @@ function GenrePage() {
   const [pendingWatchlistItem, setPendingWatchlistItem] = useState(null);
   const [genres, setGenres] = useState(fallbackGenres.map(normalizeGenre));
   const [genreImages, setGenreImages] = useState({});
+  const [genreCounts, setGenreCounts] = useState({});
   const [selectedGenre, setSelectedGenre] = useState(null);
   const [selectedMedia, setSelectedMedia] = useState(queryMedia);
   const [movies, setMovies] = useState([]);
@@ -395,17 +405,19 @@ function GenrePage() {
   }, [queryMedia]);
 
   useEffect(() => {
-    const genresWithoutImage = genres.filter((genre) => !genreImages[genre.id]);
+    const genresWithoutData = genres.filter(
+      (genre) => !genreImages[genre.id] || genreCounts[genre.id] === undefined,
+    );
 
-    if (genresWithoutImage.length === 0) {
+    if (genresWithoutData.length === 0) {
       return undefined;
     }
 
     let shouldIgnore = false;
 
     const loadGenreImages = async () => {
-      const imageEntries = await Promise.all(
-        genresWithoutImage.map(async (genre) => {
+      const genrePayloads = await Promise.all(
+        genresWithoutData.map(async (genre) => {
           try {
             const response = await fetch(buildDiscoverUrl(genre.query, queryMedia));
 
@@ -414,24 +426,54 @@ function GenrePage() {
             }
 
             const data = await response.json();
-            const referenceMovie = (data.results || []).find(
-              (movie) => movie.backdrop_url || movie.poster_url,
-            );
+            const candidates = (data.results || [])
+              .flatMap((movie) => [movie.poster_url, movie.backdrop_url])
+              .filter(Boolean);
 
-            return [
-              genre.id,
-              referenceMovie?.backdrop_url || referenceMovie?.poster_url || fallbackGenreImage,
-            ];
+            return {
+              genreId: genre.id,
+              candidates,
+              totalResults: data.total_results,
+            };
           } catch {
-            return [genre.id, fallbackGenreImage];
+            return {
+              genreId: genre.id,
+              candidates: [fallbackGenreImage],
+              totalResults: 0,
+            };
           }
         }),
       );
 
       if (!shouldIgnore) {
+        const usedImages = new Set(Object.values(genreImages));
+        const imageEntries = genrePayloads.map(({ genreId, candidates }) => {
+          const uniqueCandidates = [...new Set(candidates.length ? candidates : [fallbackGenreImage])];
+          const startIndex = getGenreSeed(genreId) % uniqueCandidates.length;
+          const orderedCandidates = [
+            ...uniqueCandidates.slice(startIndex),
+            ...uniqueCandidates.slice(0, startIndex),
+          ];
+          const image =
+            orderedCandidates.find((candidate) => !usedImages.has(candidate)) ||
+            orderedCandidates[0] ||
+            fallbackGenreImage;
+
+          usedImages.add(image);
+          return [genreId, image];
+        });
+        const countEntries = genrePayloads.map(({ genreId, totalResults }) => [
+          genreId,
+          Number(totalResults || 0),
+        ]);
+
         setGenreImages((currentImages) => ({
           ...currentImages,
           ...Object.fromEntries(imageEntries),
+        }));
+        setGenreCounts((currentCounts) => ({
+          ...currentCounts,
+          ...Object.fromEntries(countEntries),
         }));
       }
     };
@@ -441,7 +483,7 @@ function GenrePage() {
     return () => {
       shouldIgnore = true;
     };
-  }, [genreImages, genres, queryMedia]);
+  }, [genreCounts, genreImages, genres, queryMedia]);
 
   useEffect(() => {
     if (!selectedGenre) {
@@ -600,9 +642,16 @@ function GenrePage() {
                 "--genre-card-image": `url(${genreImages[genre.id] || fallbackGenreImage})`,
               }}
             >
-              <span>{genre.type === "regional" ? "Regional" : "Genre"}</span>
-              <strong>{genre.name}</strong>
-              <small>{genre.description}</small>
+              <span className="genre-chip-card__stack genre-chip-card__stack--back" aria-hidden="true" />
+              <span className="genre-chip-card__stack genre-chip-card__stack--middle" aria-hidden="true" />
+              <span className="genre-chip-card__front" aria-hidden="true" />
+              <span className="genre-chip-card__arrow" aria-hidden="true">
+                <FaChevronRight />
+              </span>
+              <span className="genre-chip-card__content">
+                <strong>{genre.name}</strong>
+                <small>{formatGenreCount(genreCounts[genre.id])} Film Baru</small>
+              </span>
             </button>
           ))}
         </div>
