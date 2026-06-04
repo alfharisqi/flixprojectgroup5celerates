@@ -418,6 +418,116 @@ const mapReviewMediaRows = async (rows) =>
     }),
   );
 
+const mapAdminReviewRows = async (rows) =>
+  Promise.all(
+    rows.map(async (row, index) => {
+      const mediaType = row.media_type === "tv" ? "tv" : "movie";
+      const mediaId = Number(row.tmdb_id || row.metadata_tmdb_id || 0);
+      const detail = await fetchTmdbMedia(mediaType, mediaId).catch(() => null);
+      const title =
+        detail?.title ||
+        detail?.name ||
+        row.media_title ||
+        `${mediaType === "tv" ? "Series" : "Film"} #${mediaId || "-"}`;
+
+      return {
+        no: index + 1,
+        id: `${mediaType}-${row.id_review || row.id_notification || index}`,
+        reviewId: Number(row.id_review || 0),
+        notificationId: Number(row.id_notification || 0),
+        mediaType,
+        mediaId,
+        title,
+        content: row.content || row.metadata_content || "Review belum memiliki isi.",
+        rating: row.rating === null || row.rating === undefined ? null : Number(row.rating),
+        status: row.status || "Menunggu",
+        date: formatDate(row.created_at),
+        createdAt: row.created_at,
+        user: {
+          id: Number(row.id_user || row.actor_user_id || 0),
+          name: row.username || row.actor_username || "User FLIX",
+          profileImageUrl: row.profile_image_url || row.actor_profile_image_url || null,
+        },
+      };
+    }),
+  );
+
+const getAdminIncomingReviewRows = async () =>
+  safeRows(`
+    WITH reviews AS (
+      SELECT
+        id_review,
+        'movie' AS media_type,
+        tmdb_movie_id AS tmdb_id,
+        id_user,
+        content,
+        rating,
+        created_at
+      FROM flix.movie_reviews
+      WHERE parent_review_id IS NULL
+
+      UNION ALL
+
+      SELECT
+        id_review,
+        'tv' AS media_type,
+        tmdb_series_id AS tmdb_id,
+        id_user,
+        content,
+        rating,
+        created_at
+      FROM flix.tv_series_reviews
+      WHERE parent_review_id IS NULL
+    )
+    SELECT
+      reviews.*,
+      users.username,
+      users.profile_image_url
+    FROM reviews
+    JOIN flix.users users ON reviews.id_user = users.id_user
+    ORDER BY reviews.created_at DESC, reviews.id_review DESC
+    LIMIT 100
+  `);
+
+const getAdminReportedReviewRows = async () =>
+  safeRows(`
+    SELECT
+      notifications.id_notification,
+      notifications.actor_user_id,
+      notifications.metadata->>'review_id' AS id_review,
+      COALESCE(
+        notifications.metadata->>'media_type',
+        notifications.metadata->>'review_media_type',
+        CASE
+          WHEN notifications.metadata ? 'tmdb_series_id' THEN 'tv'
+          ELSE 'movie'
+        END
+      ) AS media_type,
+      COALESCE(
+        notifications.metadata->>'tmdb_id',
+        notifications.metadata->>'tmdb_movie_id',
+        notifications.metadata->>'tmdb_series_id'
+      ) AS metadata_tmdb_id,
+      notifications.metadata->>'media_title' AS media_title,
+      notifications.metadata->>'content' AS metadata_content,
+      notifications.created_at,
+      actor.username AS actor_username,
+      actor.profile_image_url AS actor_profile_image_url
+    FROM flix.notifications notifications
+    LEFT JOIN flix.users actor ON notifications.actor_user_id = actor.id_user
+    WHERE notifications.notification_type ILIKE '%report%'
+      AND (
+        notifications.notification_type ILIKE '%review%'
+        OR notifications.metadata ? 'review_id'
+        OR notifications.metadata ? 'id_review'
+        OR notifications.metadata ? 'tmdb_id'
+        OR notifications.metadata ? 'tmdb_movie_id'
+        OR notifications.metadata ? 'tmdb_series_id'
+      )
+    ORDER BY notifications.created_at DESC
+    LIMIT 100
+  `);
+
 const getAdminUserDetailRows = async (userId) => {
   const [
     userRows,
@@ -633,6 +743,48 @@ export const getAdminMovies = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Gagal mengambil daftar film admin",
+      error: error.message,
+    });
+  }
+};
+
+export const getAdminReviews = async (req, res) => {
+  try {
+    const [incomingRows, reportedRows] = await Promise.all([
+      getAdminIncomingReviewRows(),
+      getAdminReportedReviewRows(),
+    ]);
+
+    const [incoming, reported] = await Promise.all([
+      mapAdminReviewRows(incomingRows),
+      mapAdminReviewRows(
+        reportedRows.map((row) => ({
+          ...row,
+          tmdb_id: row.metadata_tmdb_id,
+          content: row.metadata_content || "Review dilaporkan oleh user.",
+          status: "Dilaporkan",
+        })),
+      ),
+    ]);
+
+    const blocked = [];
+
+    return res.json({
+      message: "Moderasi review admin berhasil dimuat",
+      summary: {
+        incoming: incoming.length,
+        reported: reported.length,
+        blocked: blocked.length,
+      },
+      reviews: {
+        incoming,
+        reported,
+        blocked,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal mengambil moderasi review admin",
       error: error.message,
     });
   }

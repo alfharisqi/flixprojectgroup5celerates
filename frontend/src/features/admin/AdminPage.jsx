@@ -71,6 +71,71 @@ const fallbackUsersSummary = {
   registeredUser: 0
 };
 
+const dummyReportedReviews = [
+  {
+    id: "dummy-report-1",
+    user: { name: "Alfha Risqi W." },
+    title: "Oppenheimer",
+    content: "Film ini sampah...",
+    reason: "Bahasa Kasar",
+    status: "Disetujui",
+    date: "12 Apr 2026"
+  },
+  {
+    id: "dummy-report-2",
+    user: { name: "Alfha Risqi W." },
+    title: "Oppenheimer",
+    content: "Film ini sampah...",
+    reason: "Bahasa Kasar",
+    status: "Pending",
+    date: "12 Apr 2026"
+  },
+  {
+    id: "dummy-report-3",
+    user: { name: "Alfha Risqi W." },
+    title: "Oppenheimer",
+    content: "Film ini sampah...",
+    reason: "Bahasa Kasar",
+    status: "Disetujui",
+    date: "12 Apr 2026"
+  },
+  {
+    id: "dummy-report-4",
+    user: { name: "Alfha Risqi W." },
+    title: "Oppenheimer",
+    content: "Film ini sampah...",
+    reason: "Bahasa Kasar",
+    status: "Ditolak",
+    date: "12 Apr 2026"
+  },
+  {
+    id: "dummy-report-5",
+    user: { name: "Alfha Risqi W." },
+    title: "Oppenheimer",
+    content: "Film ini sampah...",
+    reason: "Bahasa Kasar",
+    status: "Ditolak",
+    date: "12 Apr 2026"
+  }
+];
+
+const fallbackReviews = {
+  summary: {
+    incoming: 0,
+    reported: dummyReportedReviews.length,
+    blocked: 0
+  },
+  incoming: [],
+  reported: dummyReportedReviews,
+  blocked: []
+};
+
+const reviewTabs = [
+  { id: "incoming", label: "Review Masuk", countKey: "incoming" },
+  { id: "reported", label: "Report Review", countKey: "reported" },
+  { id: "blocked", label: "Review Terblokir", countKey: "blocked" }
+];
+
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: FiGrid },
   { id: "movies", label: "Kelola Film", icon: FiFilm },
@@ -197,9 +262,11 @@ function AdminPage() {
   const [managedMoviesTotal, setManagedMoviesTotal] = useState(0);
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminUsersSummary, setAdminUsersSummary] = useState(fallbackUsersSummary);
+  const [adminReviews, setAdminReviews] = useState(fallbackReviews);
   const [activeAdminPage, setActiveAdminPage] = useState("dashboard");
   const [activeMoviePanel, setActiveMoviePanel] = useState("list");
   const [activeUserPanel, setActiveUserPanel] = useState("list");
+  const [activeReviewTab, setActiveReviewTab] = useState("incoming");
   const [selectedUserDetail, setSelectedUserDetail] = useState(null);
   const [isUserDetailLoading, setIsUserDetailLoading] = useState(false);
   const [addMovieForm, setAddMovieForm] = useState(defaultAddMovieForm);
@@ -209,10 +276,12 @@ function AdminPage() {
   const [tableLimit, setTableLimit] = useState(10);
   const [filmPage, setFilmPage] = useState(1);
   const [userPage, setUserPage] = useState(1);
+  const [reviewPage, setReviewPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState("");
   const [moviesError, setMoviesError] = useState("");
   const [usersError, setUsersError] = useState("");
+  const [reviewsError, setReviewsError] = useState("");
   const [userDetailError, setUserDetailError] = useState("");
 
   const user = useMemo(getStoredUser, []);
@@ -231,7 +300,7 @@ function AdminPage() {
 
     const loadAdminData = async () => {
       try {
-        const [dashboardResponse, moviesResponse, usersResponse] = await Promise.all([
+        const [dashboardResponse, moviesResponse, usersResponse, reviewsResponse] = await Promise.all([
           fetch(`${API_URL}/api/admin/dashboard`, {
             headers: {
               Authorization: `Bearer ${token}`
@@ -246,6 +315,11 @@ function AdminPage() {
             headers: {
               Authorization: `Bearer ${token}`
             }
+          }),
+          fetch(`${API_URL}/api/admin/reviews`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
           })
         ]);
 
@@ -256,6 +330,7 @@ function AdminPage() {
         const dashboardData = dashboardResponse.ok ? await dashboardResponse.json() : null;
         const moviesData = moviesResponse.ok ? await moviesResponse.json() : null;
         const usersData = usersResponse.ok ? await usersResponse.json() : null;
+        const reviewsData = reviewsResponse.ok ? await reviewsResponse.json() : null;
 
         setDashboard(normalizeDashboard(dashboardData?.dashboard || dashboardData));
         setDashboardError(dashboardResponse.ok ? "" : "Dashboard belum bisa mengambil data backend.");
@@ -267,6 +342,26 @@ function AdminPage() {
         setAdminUsers(Array.isArray(usersData?.users) ? usersData.users : []);
         setAdminUsersSummary(usersData?.summary || fallbackUsersSummary);
         setUsersError(usersResponse.ok ? "" : "Daftar user admin belum bisa mengambil data backend.");
+
+        const incomingReviews = Array.isArray(reviewsData?.reviews?.incoming)
+          ? reviewsData.reviews.incoming
+          : [];
+        const reportedReviews = dummyReportedReviews;
+        const blockedReviews = Array.isArray(reviewsData?.reviews?.blocked)
+          ? reviewsData.reviews.blocked
+          : [];
+
+        setAdminReviews({
+          summary: {
+            incoming: Number(reviewsData?.summary?.incoming || incomingReviews.length),
+            reported: reportedReviews.length,
+            blocked: Number(reviewsData?.summary?.blocked || blockedReviews.length)
+          },
+          incoming: incomingReviews,
+          reported: reportedReviews,
+          blocked: blockedReviews
+        });
+        setReviewsError(reviewsResponse.ok ? "" : "Moderasi review belum bisa mengambil data backend.");
       } catch {
         if (isMounted) {
           setDashboard(fallbackDashboard);
@@ -277,6 +372,8 @@ function AdminPage() {
           setAdminUsers([]);
           setAdminUsersSummary(fallbackUsersSummary);
           setUsersError("Daftar user admin belum bisa mengambil data backend.");
+          setAdminReviews(fallbackReviews);
+          setReviewsError("Moderasi review belum bisa mengambil data backend.");
         }
       } finally {
         if (isMounted) {
@@ -307,12 +404,19 @@ function AdminPage() {
         ? "Edit Film"
         : activeAdminPage === "users" && activeUserPanel === "detail"
           ? "Detail User"
+          : activeAdminPage === "reviews"
+            ? "Moderasi Review"
           : activeNavItem.label;
 
   useEffect(() => {
     setFilmPage(1);
     setUserPage(1);
+    setReviewPage(1);
   }, [normalizedSearch, activeAdminPage]);
+
+  useEffect(() => {
+    setReviewPage(1);
+  }, [activeReviewTab]);
 
   useEffect(() => {
     localStorage.setItem(adminMovieStorageKey, JSON.stringify(localAdminMovies));
@@ -399,6 +503,28 @@ function AdminPage() {
   const detailReviews = selectedUserDetail?.reviews || [];
   const detailPosts = selectedUserDetail?.posts || [];
   const detailWatchlist = selectedUserDetail?.watchlist || [];
+  const activeReviewRows = Array.isArray(adminReviews[activeReviewTab])
+    ? adminReviews[activeReviewTab]
+    : [];
+  const filteredAdminReviews = useMemo(() => {
+    if (!normalizedSearch) {
+      return activeReviewRows;
+    }
+
+    return activeReviewRows.filter((item) =>
+      `${item.user?.name} ${item.title} ${item.content} ${item.reason} ${item.date} ${item.status}`
+        .toLowerCase()
+        .includes(normalizedSearch)
+    );
+  }, [activeReviewRows, normalizedSearch]);
+  const reviewRowsPerPage = 8;
+  const totalReviewPages = Math.max(1, Math.ceil(filteredAdminReviews.length / reviewRowsPerPage));
+  const currentReviewPage = Math.min(reviewPage, totalReviewPages);
+  const visibleAdminReviews = filteredAdminReviews.slice(
+    (currentReviewPage - 1) * reviewRowsPerPage,
+    currentReviewPage * reviewRowsPerPage
+  );
+  const reviewPaginationItems = getPaginationItems(currentReviewPage, totalReviewPages);
 
   const chartItems = useMemo(() => {
     const values = dashboard.chart.map((item) => Number(item.value || 0));
@@ -658,6 +784,8 @@ function AdminPage() {
                       ? "Cari film..."
                       : activeAdminPage === "users"
                         ? "Cari user..."
+                        : activeAdminPage === "reviews"
+                          ? "Cari review..."
                         : "Cari..."
                   }
                   value={searchQuery}
@@ -1040,6 +1168,190 @@ function AdminPage() {
                 </div>
               </article>
               )}
+            </section>
+          ) : activeAdminPage === "reviews" ? (
+            <section className="admin-review-management" aria-label="Moderasi review">
+              {reviewsError && <p className="admin-dashboard-alert">{reviewsError}</p>}
+
+              <article className="admin-panel admin-review-card">
+                <div className="admin-review-card__header">
+                  <div>
+                    <h2>Moderasi Review</h2>
+                    <p>
+                      {formatChartNumber(adminReviews.summary?.incoming || 0)} review menunggu persetujuan
+                    </p>
+                  </div>
+
+                  <button type="button" className="admin-manage-film__filter">
+                    <FiFilter aria-hidden="true" />
+                    Filter
+                  </button>
+                </div>
+
+                <div className="admin-review-tabs" role="tablist" aria-label="Filter moderasi review">
+                  {reviewTabs.map((tab) => (
+                    <button
+                      type="button"
+                      key={tab.id}
+                      className={activeReviewTab === tab.id ? "admin-review-tabs__item--active" : ""}
+                      role="tab"
+                      aria-selected={activeReviewTab === tab.id}
+                      onClick={() => setActiveReviewTab(tab.id)}
+                    >
+                      <span>{tab.label}</span>
+                      <small>{formatChartNumber(adminReviews.summary?.[tab.countKey] || 0)}</small>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="admin-review-table" role="table" aria-label="Daftar moderasi review">
+                  {activeReviewTab === "reported" ? (
+                    <>
+                      <div
+                        className="admin-review-table__row admin-review-table__row--head admin-review-table__row--report"
+                        role="row"
+                      >
+                        <span role="columnheader">No</span>
+                        <span role="columnheader">User Pelapor</span>
+                        <span role="columnheader">Film</span>
+                        <span role="columnheader">Review</span>
+                        <span role="columnheader">Alasan Laporan</span>
+                        <span role="columnheader">Status</span>
+                        <span role="columnheader">Tanggal</span>
+                      </div>
+
+                      {visibleAdminReviews.map((review, index) => (
+                        <div
+                          className="admin-review-table__row admin-review-table__row--report"
+                          role="row"
+                          key={review.id}
+                        >
+                          <span className="admin-review-table__no" role="cell">
+                            {(currentReviewPage - 1) * reviewRowsPerPage + index + 1}
+                          </span>
+                          <div className="admin-review-table__user" role="cell">
+                            {review.user?.profileImageUrl ? (
+                              <img src={review.user.profileImageUrl} alt={review.user.name} />
+                            ) : (
+                              <span>{(review.user?.name || "U").charAt(0).toUpperCase()}</span>
+                            )}
+                            <strong>{review.user?.name || "User FLIX"}</strong>
+                          </div>
+                          <strong className="admin-review-table__film" role="cell">
+                            {review.title}
+                          </strong>
+                          <div className="admin-review-table__content" role="cell">
+                            <p>{review.content}</p>
+                          </div>
+                          <span className="admin-review-table__reason" role="cell">
+                            {review.reason || "Konten bermasalah"}
+                          </span>
+                          <span role="cell">
+                            <span
+                              className={`admin-review-status admin-review-status--${String(
+                                review.status || "pending"
+                              ).toLowerCase()}`}
+                            >
+                              {review.status || "Pending"}
+                            </span>
+                          </span>
+                          <span className="admin-review-table__date" role="cell">
+                            {review.date}
+                          </span>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      <div className="admin-review-table__row admin-review-table__row--head" role="row">
+                        <span role="columnheader">No</span>
+                        <span role="columnheader">User</span>
+                        <span role="columnheader">Film</span>
+                        <span role="columnheader">Review</span>
+                        <span role="columnheader">Tanggal</span>
+                      </div>
+
+                      {visibleAdminReviews.map((review, index) => (
+                        <div className="admin-review-table__row" role="row" key={review.id}>
+                          <span className="admin-review-table__no" role="cell">
+                            {(currentReviewPage - 1) * reviewRowsPerPage + index + 1}
+                          </span>
+                          <div className="admin-review-table__user" role="cell">
+                            {review.user?.profileImageUrl ? (
+                              <img src={review.user.profileImageUrl} alt={review.user.name} />
+                            ) : (
+                              <span>{(review.user?.name || "U").charAt(0).toUpperCase()}</span>
+                            )}
+                            <strong>{review.user?.name || "User FLIX"}</strong>
+                          </div>
+                          <strong className="admin-review-table__film" role="cell">
+                            {review.title}
+                          </strong>
+                          <div className="admin-review-table__content" role="cell">
+                            <p>{review.content}</p>
+                            {review.rating ? (
+                              <small>
+                                <FaStar aria-hidden="true" />
+                                {Number(review.rating).toFixed(1)}
+                              </small>
+                            ) : (
+                              <small>{review.status}</small>
+                            )}
+                          </div>
+                          <span className="admin-review-table__date" role="cell">
+                            {review.date}
+                          </span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+
+                  {!visibleAdminReviews.length && (
+                    <div
+                      className={`admin-review-table__empty${
+                        activeReviewTab === "reported" ? " admin-review-table__empty--report" : ""
+                      }`}
+                    >
+                      {isLoading ? "Memuat data review..." : "Belum ada review pada tab ini."}
+                    </div>
+                  )}
+                </div>
+
+                <div className="admin-manage-pagination" aria-label="Pagination review">
+                  <button
+                    type="button"
+                    aria-label="Halaman review sebelumnya"
+                    disabled={currentReviewPage === 1}
+                    onClick={() => setReviewPage((page) => Math.max(1, page - 1))}
+                  >
+                    &lt;
+                  </button>
+                  {reviewPaginationItems.map((item, index) =>
+                    typeof item === "string" ? (
+                      <span key={`${item}-${index}`} className="admin-manage-pagination__ellipsis">
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        key={item}
+                        className={currentReviewPage === item ? "admin-manage-pagination__active" : ""}
+                        onClick={() => setReviewPage(item)}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Halaman review berikutnya"
+                    disabled={currentReviewPage === totalReviewPages}
+                    onClick={() => setReviewPage((page) => Math.min(totalReviewPages, page + 1))}
+                  >
+                    &gt;
+                  </button>
+                </div>
+              </article>
             </section>
           ) : activeAdminPage === "users" ? (
             <section className="admin-user-management" aria-label="Kelola user">

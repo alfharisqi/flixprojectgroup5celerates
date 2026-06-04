@@ -3,6 +3,7 @@ import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 import {
   getAdminDashboard,
   getAdminMovies,
+  getAdminReviews,
   getAdminUserDetail,
   getAdminUsers
 } from "../controllers/adminController.js";
@@ -21,6 +22,13 @@ router.get(
   verifyToken,
   allowRoles("admin"),
   getAdminMovies
+);
+
+router.get(
+  "/reviews",
+  verifyToken,
+  allowRoles("admin"),
+  getAdminReviews
 );
 
 router.get(
