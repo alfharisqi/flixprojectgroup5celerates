@@ -1,6 +1,6 @@
 import express from "express";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
-import { getAdminDashboard } from "../controllers/adminController.js";
+import { getAdminDashboard, getAdminMovies } from "../controllers/adminController.js";
 
 const router = express.Router();
 
@@ -9,6 +9,13 @@ router.get(
   verifyToken,
   allowRoles("admin"),
   getAdminDashboard
+);
+
+router.get(
+  "/movies",
+  verifyToken,
+  allowRoles("admin"),
+  getAdminMovies
 );
 
 export default router;

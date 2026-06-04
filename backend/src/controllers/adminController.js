@@ -94,6 +94,7 @@ const enrichMediaRows = async (rows) =>
         genre: genres.length ? genres.slice(0, 2).join(", ") : "-",
         rating: rating ? rating.toFixed(1) : "-",
         watchlist: formatNumber(row.interaction_count),
+        reviewCount: formatNumber(row.interaction_count),
         status: "Aktif",
         poster,
       };
@@ -232,7 +233,7 @@ const getRecentActivities = async () => {
       icon: "community",
     },
     {
-      title: "Total report masuk",
+      title: "Report masuk terakhir",
       time: latestReport?.created_at
         ? `${formatNumber(reportCount)} laporan - ${getRelativeTime(latestReport.created_at)}`
         : `${formatNumber(reportCount)} laporan`,
@@ -273,6 +274,44 @@ const getTopMediaRows = async () =>
     FROM media_activity
     ORDER BY interaction_count DESC, tmdb_id ASC
     LIMIT 10
+  `);
+
+const getManagedMediaRows = async () =>
+  safeRows(`
+    WITH media_activity AS (
+      SELECT
+        'movie' AS media_type,
+        tmdb_movie_id AS tmdb_id,
+        COUNT(*)::INTEGER AS interaction_count,
+        ROUND(AVG(rating)::numeric, 1) AS average_rating,
+        MAX(created_at) AS latest_activity
+      FROM flix.movie_reviews
+      WHERE parent_review_id IS NULL
+      GROUP BY tmdb_movie_id
+
+      UNION ALL
+
+      SELECT
+        'tv' AS media_type,
+        tmdb_series_id AS tmdb_id,
+        COUNT(*)::INTEGER AS interaction_count,
+        ROUND(AVG(rating)::numeric, 1) AS average_rating,
+        MAX(created_at) AS latest_activity
+      FROM flix.tv_series_reviews
+      WHERE parent_review_id IS NULL
+      GROUP BY tmdb_series_id
+    )
+    SELECT
+      ROW_NUMBER() OVER (
+        ORDER BY latest_activity DESC NULLS LAST, interaction_count DESC, tmdb_id ASC
+      ) AS row_number,
+      media_type,
+      tmdb_id,
+      interaction_count,
+      average_rating
+    FROM media_activity
+    ORDER BY latest_activity DESC NULLS LAST, interaction_count DESC, tmdb_id ASC
+    LIMIT 80
   `);
 
 export const getAdminDashboard = async (req, res) => {
@@ -345,6 +384,24 @@ export const getAdminDashboard = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Gagal mengambil dashboard admin",
+      error: error.message,
+    });
+  }
+};
+
+export const getAdminMovies = async (req, res) => {
+  try {
+    const managedRows = await getManagedMediaRows();
+    const movies = await enrichMediaRows(managedRows);
+
+    return res.json({
+      message: "Daftar film admin berhasil dimuat",
+      total: movies.length,
+      movies,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal mengambil daftar film admin",
       error: error.message,
     });
   }
