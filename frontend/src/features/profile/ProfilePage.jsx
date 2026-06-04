@@ -1178,33 +1178,52 @@ function ProfilePage() {
 
       <section className="profile-content">
         <div className="profile-main-column">
+          {(() => {
+            const profileTabs = [
+              {
+                key: "reviews",
+                label: "Review Saya",
+                count: activity.stats?.review_count || visibleReviews.length,
+              },
+              {
+                key: "posts",
+                label: "Postingan Saya",
+                count: activity.stats?.post_count || activity.posts.length,
+              },
+              {
+                key: "friends",
+                label: "Friendlist",
+                count: friends.length + friendRequests.length,
+              },
+            ];
+
+            return (
           <div className="profile-tabs">
+            <div className="profile-tabs__list" role="tablist" aria-label="Menu profil">
+              {profileTabs.map((tab) => (
+                <button
+                  className={activeTab === tab.key ? "is-active" : ""}
+                  key={tab.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                >
+                  {tab.label}
+                  <span>{tab.count}</span>
+                </button>
+              ))}
+            </div>
             <button
-              className={activeTab === "reviews" ? "is-active" : ""}
+              className="profile-tabs__watchlist"
               type="button"
-              onClick={() => setActiveTab("reviews")}
+              onClick={() => navigate("/watchlist")}
             >
-              Review Saya ({activity.stats?.review_count || visibleReviews.length})
-            </button>
-            <button
-              className={activeTab === "posts" ? "is-active" : ""}
-              type="button"
-              onClick={() => setActiveTab("posts")}
-            >
-              Postingan Saya ({activity.stats?.post_count || activity.posts.length})
-            </button>
-            <button
-              className={activeTab === "friends" ? "is-active" : ""}
-              type="button"
-              onClick={() => setActiveTab("friends")}
-            >
-              Friendlist ({friends.length}
-              {friendRequests.length > 0 ? ` + ${friendRequests.length} request` : ""})
-            </button>
-            <button type="button" onClick={() => navigate("/watchlist")}>
               Lihat Watchlist
             </button>
           </div>
+            );
+          })()}
 
           {activeTab === "reviews" ? (
             <div className="profile-review-list">
