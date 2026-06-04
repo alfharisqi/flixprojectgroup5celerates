@@ -1,6 +1,7 @@
 import express from "express";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 import {
+  getAdminCommunity,
   getAdminDashboard,
   getAdminMovies,
   getAdminReviews,
@@ -29,6 +30,13 @@ router.get(
   verifyToken,
   allowRoles("admin"),
   getAdminReviews
+);
+
+router.get(
+  "/community",
+  verifyToken,
+  allowRoles("admin"),
+  getAdminCommunity
 );
 
 router.get(

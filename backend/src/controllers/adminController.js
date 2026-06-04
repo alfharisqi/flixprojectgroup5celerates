@@ -528,6 +528,70 @@ const getAdminReportedReviewRows = async () =>
     LIMIT 100
   `);
 
+const mapAdminCommunityRows = (rows) =>
+  rows.map((row) => ({
+    id: Number(row.id_post),
+    author: row.username || "User FLIX",
+    profileImageUrl: row.profile_image_url || null,
+    time: getRelativeTime(row.created_at),
+    date: formatDate(row.created_at),
+    title: row.title || "",
+    content: row.content || "",
+    status: "Aktif",
+    metrics: {
+      views: Number(row.view_count || 0),
+      replies: Number(row.reply_count || 0),
+      shares: Number(row.share_count || 0),
+      likes: Number(row.like_count || 0),
+      reactions: Number(row.reaction_count || 0),
+    },
+  }));
+
+const getAdminCommunityRows = async () =>
+  safeRows(`
+    SELECT
+      p.id_post,
+      p.title,
+      p.content,
+      p.created_at,
+      u.username,
+      u.profile_image_url,
+      COALESCE(v.view_count, 0)::INTEGER AS view_count,
+      COALESCE(c.reply_count, 0)::INTEGER AS reply_count,
+      COALESCE(s.share_count, 0)::INTEGER AS share_count,
+      COALESCE(l.like_count, 0)::INTEGER AS like_count,
+      COALESCE(r.reaction_count, 0)::INTEGER AS reaction_count
+    FROM flix.posts p
+    JOIN flix.users u ON p.id_user = u.id_user
+    LEFT JOIN (
+      SELECT id_post, COUNT(*) AS view_count
+      FROM flix.post_views
+      GROUP BY id_post
+    ) v ON p.id_post = v.id_post
+    LEFT JOIN (
+      SELECT id_post, COUNT(*) AS reply_count
+      FROM flix.comments
+      GROUP BY id_post
+    ) c ON p.id_post = c.id_post
+    LEFT JOIN (
+      SELECT id_post, COUNT(*) AS share_count
+      FROM flix.post_shares
+      GROUP BY id_post
+    ) s ON p.id_post = s.id_post
+    LEFT JOIN (
+      SELECT id_post, COUNT(*) AS like_count
+      FROM flix.post_likes
+      GROUP BY id_post
+    ) l ON p.id_post = l.id_post
+    LEFT JOIN (
+      SELECT id_post, COUNT(*) AS reaction_count
+      FROM flix.post_reactions
+      GROUP BY id_post
+    ) r ON p.id_post = r.id_post
+    ORDER BY p.created_at DESC, p.id_post DESC
+    LIMIT 100
+  `);
+
 const getAdminUserDetailRows = async (userId) => {
   const [
     userRows,
@@ -785,6 +849,44 @@ export const getAdminReviews = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Gagal mengambil moderasi review admin",
+      error: error.message,
+    });
+  }
+};
+
+export const getAdminCommunity = async (req, res) => {
+  try {
+    const [postRows, totalPostRows, totalReplyRows] = await Promise.all([
+      getAdminCommunityRows(),
+      safeRows(`
+        SELECT COUNT(*)::INTEGER AS count
+        FROM flix.posts
+      `),
+      safeRows(`
+        SELECT COUNT(*)::INTEGER AS count
+        FROM flix.comments
+      `),
+    ]);
+
+    const posts = mapAdminCommunityRows(postRows);
+
+    return res.json({
+      message: "Kelola community admin berhasil dimuat",
+      summary: {
+        totalPost: Number(totalPostRows[0]?.count || posts.length),
+        totalReply: Number(totalReplyRows[0]?.count || 0),
+        reported: 0,
+        blocked: 0,
+      },
+      posts: {
+        all: posts,
+        reported: [],
+        blocked: [],
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal mengambil kelola community admin",
       error: error.message,
     });
   }

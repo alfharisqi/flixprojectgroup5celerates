@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   FiArrowLeft,
+  FiAlertTriangle,
   FiBell,
   FiCalendar,
   FiCheck,
+  FiCheckCircle,
   FiChevronDown,
   FiClock,
   FiEdit3,
@@ -22,7 +24,9 @@ import {
   FiPlus,
   FiSearch,
   FiSettings,
+  FiShare2,
   FiShield,
+  FiTrash2,
   FiUploadCloud,
   FiUserCheck,
   FiUserX,
@@ -70,6 +74,73 @@ const fallbackUsersSummary = {
   moderator: 0,
   registeredUser: 0
 };
+
+const dummyCommunityReportedPosts = [
+  {
+    id: "community-report-1",
+    author: "Dina Fardina",
+    time: "12 minutes ago",
+    content:
+      "Buat yang belum nonton, ini bukan film aksi biasa. Ini film tentang dilema moral seorang ilmuwan yang menciptakan sesuatu yang menghancurkan dunia. Cillian Murphy benar-benar luar biasa.",
+    status: "Dilaporkan",
+    reportReason: "Alasan laporan: konten mengandung spoiler besar",
+    reportedAt: "Dilaporkan oleh 2 user - 12:30 WIB",
+    metrics: { views: 320, replies: 120, shares: 148 }
+  },
+  {
+    id: "community-report-2",
+    author: "Dina Fardina",
+    time: "12 minutes ago",
+    content:
+      "Buat yang belum nonton, ini bukan film aksi biasa. Ini film tentang dilema moral seorang ilmuwan yang menciptakan sesuatu yang menghancurkan dunia. Cillian Murphy benar-benar luar biasa.",
+    status: "Dilaporkan",
+    reportReason: "Alasan laporan: spam/konten promosi",
+    reportedAt: "Dilaporkan oleh 4 user - 13:05 WIB",
+    metrics: { views: 320, replies: 120, shares: 148 }
+  },
+  {
+    id: "community-report-3",
+    author: "Dina Fardina",
+    time: "12 minutes ago",
+    content:
+      "Buat yang belum nonton, ini bukan film aksi biasa. Ini film tentang dilema moral seorang ilmuwan yang menciptakan sesuatu yang menghancurkan dunia. Cillian Murphy benar-benar luar biasa.",
+    status: "Dilaporkan",
+    reportReason: "Alasan laporan: bahasa kasar",
+    reportedAt: "Dilaporkan oleh 1 user - 14:12 WIB",
+    metrics: { views: 320, replies: 120, shares: 148 }
+  }
+];
+
+const dummyCommunityBlockedPosts = [
+  {
+    id: "community-blocked-1",
+    author: "Dina Fardina",
+    time: "12 minutes ago",
+    content: "Postingan ini disembunyikan karena melanggar aturan komunitas.",
+    status: "Terblokir",
+    reportReason: "Alasan diblokir: spam/konten promosi",
+    reportedAt: "Diblokir oleh admin - 20:09 WIB",
+    metrics: { views: 0, replies: 0, shares: 0 }
+  }
+];
+
+const fallbackCommunity = {
+  summary: {
+    totalPost: 0,
+    totalReply: 0,
+    reported: dummyCommunityReportedPosts.length,
+    blocked: dummyCommunityBlockedPosts.length
+  },
+  all: [],
+  reported: dummyCommunityReportedPosts,
+  blocked: dummyCommunityBlockedPosts
+};
+
+const communityTabs = [
+  { id: "all", label: "Semua Post", countKey: "totalPost" },
+  { id: "reported", label: "Dilaporkan", countKey: "reported" },
+  { id: "blocked", label: "Terblokir", countKey: "blocked" }
+];
 
 const dummyReportedReviews = [
   {
@@ -263,10 +334,12 @@ function AdminPage() {
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminUsersSummary, setAdminUsersSummary] = useState(fallbackUsersSummary);
   const [adminReviews, setAdminReviews] = useState(fallbackReviews);
+  const [adminCommunity, setAdminCommunity] = useState(fallbackCommunity);
   const [activeAdminPage, setActiveAdminPage] = useState("dashboard");
   const [activeMoviePanel, setActiveMoviePanel] = useState("list");
   const [activeUserPanel, setActiveUserPanel] = useState("list");
   const [activeReviewTab, setActiveReviewTab] = useState("incoming");
+  const [activeCommunityTab, setActiveCommunityTab] = useState("all");
   const [selectedUserDetail, setSelectedUserDetail] = useState(null);
   const [isUserDetailLoading, setIsUserDetailLoading] = useState(false);
   const [addMovieForm, setAddMovieForm] = useState(defaultAddMovieForm);
@@ -277,11 +350,13 @@ function AdminPage() {
   const [filmPage, setFilmPage] = useState(1);
   const [userPage, setUserPage] = useState(1);
   const [reviewPage, setReviewPage] = useState(1);
+  const [communityPage, setCommunityPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState("");
   const [moviesError, setMoviesError] = useState("");
   const [usersError, setUsersError] = useState("");
   const [reviewsError, setReviewsError] = useState("");
+  const [communityError, setCommunityError] = useState("");
   const [userDetailError, setUserDetailError] = useState("");
 
   const user = useMemo(getStoredUser, []);
@@ -300,7 +375,7 @@ function AdminPage() {
 
     const loadAdminData = async () => {
       try {
-        const [dashboardResponse, moviesResponse, usersResponse, reviewsResponse] = await Promise.all([
+        const [dashboardResponse, moviesResponse, usersResponse, reviewsResponse, communityResponse] = await Promise.all([
           fetch(`${API_URL}/api/admin/dashboard`, {
             headers: {
               Authorization: `Bearer ${token}`
@@ -320,6 +395,11 @@ function AdminPage() {
             headers: {
               Authorization: `Bearer ${token}`
             }
+          }),
+          fetch(`${API_URL}/api/admin/community`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
           })
         ]);
 
@@ -331,6 +411,7 @@ function AdminPage() {
         const moviesData = moviesResponse.ok ? await moviesResponse.json() : null;
         const usersData = usersResponse.ok ? await usersResponse.json() : null;
         const reviewsData = reviewsResponse.ok ? await reviewsResponse.json() : null;
+        const communityData = communityResponse.ok ? await communityResponse.json() : null;
 
         setDashboard(normalizeDashboard(dashboardData?.dashboard || dashboardData));
         setDashboardError(dashboardResponse.ok ? "" : "Dashboard belum bisa mengambil data backend.");
@@ -362,6 +443,25 @@ function AdminPage() {
           blocked: blockedReviews
         });
         setReviewsError(reviewsResponse.ok ? "" : "Moderasi review belum bisa mengambil data backend.");
+
+        const communityAllPosts = Array.isArray(communityData?.posts?.all)
+          ? communityData.posts.all
+          : [];
+        const communityReportedPosts = dummyCommunityReportedPosts;
+        const communityBlockedPosts = dummyCommunityBlockedPosts;
+
+        setAdminCommunity({
+          summary: {
+            totalPost: Number(communityData?.summary?.totalPost || communityAllPosts.length),
+            totalReply: Number(communityData?.summary?.totalReply || 0),
+            reported: communityReportedPosts.length,
+            blocked: communityBlockedPosts.length
+          },
+          all: communityAllPosts,
+          reported: communityReportedPosts,
+          blocked: communityBlockedPosts
+        });
+        setCommunityError(communityResponse.ok ? "" : "Kelola community belum bisa mengambil data backend.");
       } catch {
         if (isMounted) {
           setDashboard(fallbackDashboard);
@@ -374,6 +474,8 @@ function AdminPage() {
           setUsersError("Daftar user admin belum bisa mengambil data backend.");
           setAdminReviews(fallbackReviews);
           setReviewsError("Moderasi review belum bisa mengambil data backend.");
+          setAdminCommunity(fallbackCommunity);
+          setCommunityError("Kelola community belum bisa mengambil data backend.");
         }
       } finally {
         if (isMounted) {
@@ -406,17 +508,24 @@ function AdminPage() {
           ? "Detail User"
           : activeAdminPage === "reviews"
             ? "Moderasi Review"
+            : activeAdminPage === "community"
+              ? "Kelola Community"
           : activeNavItem.label;
 
   useEffect(() => {
     setFilmPage(1);
     setUserPage(1);
     setReviewPage(1);
+    setCommunityPage(1);
   }, [normalizedSearch, activeAdminPage]);
 
   useEffect(() => {
     setReviewPage(1);
   }, [activeReviewTab]);
+
+  useEffect(() => {
+    setCommunityPage(1);
+  }, [activeCommunityTab]);
 
   useEffect(() => {
     localStorage.setItem(adminMovieStorageKey, JSON.stringify(localAdminMovies));
@@ -525,6 +634,34 @@ function AdminPage() {
     currentReviewPage * reviewRowsPerPage
   );
   const reviewPaginationItems = getPaginationItems(currentReviewPage, totalReviewPages);
+  const activeCommunityRows = Array.isArray(adminCommunity[activeCommunityTab])
+    ? adminCommunity[activeCommunityTab]
+    : [];
+  const filteredCommunityPosts = useMemo(() => {
+    if (!normalizedSearch) {
+      return activeCommunityRows;
+    }
+
+    return activeCommunityRows.filter((item) =>
+      `${item.author} ${item.title} ${item.content} ${item.reportReason} ${item.status}`
+        .toLowerCase()
+        .includes(normalizedSearch)
+    );
+  }, [activeCommunityRows, normalizedSearch]);
+  const communityRowsPerPage = 6;
+  const totalCommunityPages = Math.max(1, Math.ceil(filteredCommunityPosts.length / communityRowsPerPage));
+  const currentCommunityPage = Math.min(communityPage, totalCommunityPages);
+  const visibleCommunityPosts = filteredCommunityPosts.slice(
+    (currentCommunityPage - 1) * communityRowsPerPage,
+    currentCommunityPage * communityRowsPerPage
+  );
+  const communityPaginationItems = getPaginationItems(currentCommunityPage, totalCommunityPages);
+  const communitySummaryCards = [
+    { value: adminCommunity.summary?.totalPost || 0, label: "Total Post" },
+    { value: adminCommunity.summary?.totalReply || 0, label: "Total Reply" },
+    { value: adminCommunity.summary?.reported || 0, label: "Post dilaporkan" },
+    { value: adminCommunity.summary?.blocked || 0, label: "Post Terblokir" }
+  ];
 
   const chartItems = useMemo(() => {
     const values = dashboard.chart.map((item) => Number(item.value || 0));
@@ -568,6 +705,10 @@ function AdminPage() {
       setActiveUserPanel("list");
       setSelectedUserDetail(null);
       setUserDetailError("");
+    }
+
+    if (itemId === "community") {
+      setActiveCommunityTab("all");
     }
   };
 
@@ -786,6 +927,8 @@ function AdminPage() {
                         ? "Cari user..."
                         : activeAdminPage === "reviews"
                           ? "Cari review..."
+                          : activeAdminPage === "community"
+                            ? "Cari post..."
                         : "Cari..."
                   }
                   value={searchQuery}
@@ -1347,6 +1490,153 @@ function AdminPage() {
                     aria-label="Halaman review berikutnya"
                     disabled={currentReviewPage === totalReviewPages}
                     onClick={() => setReviewPage((page) => Math.min(totalReviewPages, page + 1))}
+                  >
+                    &gt;
+                  </button>
+                </div>
+              </article>
+            </section>
+          ) : activeAdminPage === "community" ? (
+            <section className="admin-community-management" aria-label="Kelola post community">
+              <section className="admin-community-summary" aria-label="Ringkasan community">
+                {communitySummaryCards.map((stat) => (
+                  <article className="admin-community-summary__card" key={stat.label}>
+                    <strong>{isLoading ? "..." : formatChartNumber(stat.value)}</strong>
+                    <span>{stat.label}</span>
+                  </article>
+                ))}
+              </section>
+
+              {communityError && <p className="admin-dashboard-alert">{communityError}</p>}
+
+              <article className="admin-panel admin-community-card">
+                <div className="admin-community-card__header">
+                  <div>
+                    <h2>Kelola Post Community</h2>
+                    <p>Moderasi semua postingan dari pengguna</p>
+                  </div>
+                </div>
+
+                <div className="admin-community-tabs" role="tablist" aria-label="Filter post community">
+                  {communityTabs.map((tab) => (
+                    <button
+                      type="button"
+                      key={tab.id}
+                      className={activeCommunityTab === tab.id ? "admin-community-tabs__item--active" : ""}
+                      role="tab"
+                      aria-selected={activeCommunityTab === tab.id}
+                      onClick={() => setActiveCommunityTab(tab.id)}
+                    >
+                      <span>{tab.label}</span>
+                      <small>{formatChartNumber(adminCommunity.summary?.[tab.countKey] || 0)}</small>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="admin-community-list">
+                  {visibleCommunityPosts.map((post) => (
+                    <article
+                      className={`admin-community-post${
+                        post.status === "Terblokir" ? " admin-community-post--blocked" : ""
+                      }`}
+                      key={post.id}
+                    >
+                      <div className="admin-community-post__top">
+                        <div className="admin-community-post__author">
+                          {post.profileImageUrl ? (
+                            <img src={post.profileImageUrl} alt={post.author} />
+                          ) : (
+                            <span>{(post.author || "U").charAt(0).toUpperCase()}</span>
+                          )}
+                          <div>
+                            <strong>{post.author || "User FLIX"}</strong>
+                            <small>{post.time || post.date || "-"}</small>
+                          </div>
+                        </div>
+
+                        <div className="admin-community-post__actions">
+                          <button type="button" aria-label="Lihat post">
+                            <FiEye aria-hidden="true" />
+                          </button>
+                          <button type="button" aria-label="Blokir post">
+                            <FiTrash2 aria-hidden="true" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="admin-community-post__content">
+                        {post.content || "Post belum memiliki isi."}
+                      </p>
+
+                      {post.reportReason && (
+                        <div className="admin-community-post__report">
+                          <FiAlertTriangle aria-hidden="true" />
+                          <div>
+                            <strong>{post.reportReason}</strong>
+                            <span>{post.reportedAt}</span>
+                          </div>
+                          {post.status !== "Terblokir" && (
+                            <button type="button" aria-label="Setujui laporan">
+                              <FiCheckCircle aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="admin-community-post__metrics">
+                        <span>
+                          <FiEye aria-hidden="true" />
+                          {formatChartNumber(post.metrics?.views || 0)}
+                        </span>
+                        <span>
+                          <FiMessageSquare aria-hidden="true" />
+                          {formatChartNumber(post.metrics?.replies || 0)}
+                        </span>
+                        <span>
+                          <FiShare2 aria-hidden="true" />
+                          {formatChartNumber(post.metrics?.shares || 0)}
+                        </span>
+                      </div>
+                    </article>
+                  ))}
+
+                  {!visibleCommunityPosts.length && (
+                    <p className="admin-empty-state">
+                      {isLoading ? "Memuat post community..." : "Belum ada post pada tab ini."}
+                    </p>
+                  )}
+                </div>
+
+                <div className="admin-manage-pagination" aria-label="Pagination community">
+                  <button
+                    type="button"
+                    aria-label="Halaman community sebelumnya"
+                    disabled={currentCommunityPage === 1}
+                    onClick={() => setCommunityPage((page) => Math.max(1, page - 1))}
+                  >
+                    &lt;
+                  </button>
+                  {communityPaginationItems.map((item, index) =>
+                    typeof item === "string" ? (
+                      <span key={`${item}-${index}`} className="admin-manage-pagination__ellipsis">
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        key={item}
+                        className={currentCommunityPage === item ? "admin-manage-pagination__active" : ""}
+                        onClick={() => setCommunityPage(item)}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Halaman community berikutnya"
+                    disabled={currentCommunityPage === totalCommunityPages}
+                    onClick={() => setCommunityPage((page) => Math.min(totalCommunityPages, page + 1))}
                   >
                     &gt;
                   </button>
