@@ -150,6 +150,36 @@
   white-space: nowrap;
 }
 
+.genre-filter-button {
+  min-height: 40px;
+  border: 1px solid rgba(242, 7, 18, 0.9);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+  color: #d8d8d8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 18px;
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 400;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.genre-filter-button svg {
+  font-size: 14px;
+}
+
+.genre-filter-button:hover,
+.genre-filter-button:focus-visible {
+  border-color: #f20712;
+  background: rgba(242, 7, 18, 0.16);
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
 .genre-chip-grid {
   width: min(1382.99px, 100%);
   display: grid;

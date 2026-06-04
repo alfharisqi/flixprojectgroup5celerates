@@ -4,13 +4,14 @@ import {
   FaBookmark,
   FaChevronRight,
   FaFacebookF,
+  FaFilter,
   FaRegBookmark,
-  FaSearch,
   FaStar,
   FaTwitter,
   FaYoutube,
 } from "react-icons/fa";
 import SiteNavbar from "@/components/layout/SiteNavbar";
+import FilterPopup from "@/components/ui/FilterPopup";
 import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
 import { requireLogin } from "@/utils/authPrompt";
 import "./GenrePage.css";
@@ -142,6 +143,72 @@ const getGenreSeed = (value) =>
 const formatGenreCount = (count) =>
   new Intl.NumberFormat("id-ID").format(Number(count || 0));
 
+const platformFilterOptions = [
+  { value: "all", label: "Semua" },
+  { value: "netflix", label: "Netflix" },
+  { value: "disney", label: "Disney+" },
+  { value: "prime", label: "Prime Video" },
+  { value: "vidio", label: "Vidio" },
+  { value: "viu", label: "Viu" },
+  { value: "wetv", label: "WeTV" },
+  { value: "hbo", label: "HBO Max" },
+  { value: "apple", label: "Apple TV" },
+  { value: "catchplay", label: "Catchplay" },
+];
+
+const platformMatchers = {
+  netflix: ["netflix"],
+  disney: ["disney", "hotstar"],
+  prime: ["prime video", "amazon"],
+  vidio: ["vidio"],
+  viu: ["viu"],
+  wetv: ["wetv", "we tv"],
+  hbo: ["hbo", "max"],
+  apple: ["apple tv"],
+  catchplay: ["catchplay"],
+};
+
+const mediaFilterOptions = [
+  { value: "all", label: "Semua" },
+  { value: "tv", label: "TV Series" },
+  { value: "movie", label: "Film" },
+];
+
+const categoryFilterOptions = [
+  { value: "all", label: "Semua" },
+  { value: "adult", label: "Dewasa" },
+  { value: "children", label: "Anak-anak" },
+  { value: "teen", label: "Remaja" },
+];
+
+const genreSortOptions = [
+  { value: "latest", label: "Terbaru" },
+  { value: "za", label: "Z - A" },
+  { value: "az", label: "A - Z" },
+  { value: "rating", label: "Rating Tertinggi" },
+];
+
+const defaultFilterValues = {
+  genre: "all",
+  media: "all",
+  category: "all",
+  platform: "all",
+  year: "all",
+  sort: "latest",
+};
+
+const getYearFilterOptions = () => {
+  const currentYear = new Date().getFullYear();
+
+  return [
+    { value: "all", label: "Semua" },
+    ...Array.from({ length: 8 }, (_, index) => {
+      const year = String(currentYear - index);
+      return { value: year, label: year };
+    }),
+  ];
+};
+
 const mapTmdbMediaItem = (movie, mediaType = "movie") => ({
   id: movie.id,
   title:
@@ -159,6 +226,186 @@ const mapTmdbMediaItem = (movie, mediaType = "movie") => ({
   media_type: mediaType,
 });
 
+const getProviderNames = (watchProviders = {}) => {
+  const providers = [
+    ...(watchProviders.all || []),
+    ...(watchProviders.flatrate || []),
+    ...(watchProviders.free || []),
+    ...(watchProviders.ads || []),
+    ...(watchProviders.rent || []),
+    ...(watchProviders.buy || []),
+  ];
+
+  return [...new Set(providers.map((provider) => provider.provider_name || ""))]
+    .map((providerName) => providerName.toLowerCase())
+    .filter(Boolean);
+};
+
+const matchesPlatformFilter = (watchProviders, selectedPlatform) => {
+  if (selectedPlatform === "all") {
+    return true;
+  }
+
+  const keywords = platformMatchers[selectedPlatform] || [selectedPlatform];
+
+  return getProviderNames(watchProviders).some((providerName) =>
+    keywords.some((keyword) => providerName.includes(keyword)),
+  );
+};
+
+const categoryGenreGroups = {
+  adult: {
+    movie: ["18", "27", "28", "36", "53", "80", "9648", "10752"],
+    tv: ["18", "80", "9648", "10768"],
+  },
+  children: {
+    movie: ["16", "10751"],
+    tv: ["16", "10751", "10762"],
+  },
+  teen: {
+    movie: ["12", "14", "35", "878", "10749"],
+    tv: ["35", "10759", "10765", "10766"],
+  },
+};
+
+const movieToTvGenreMap = {
+  12: "10759",
+  14: "10765",
+  16: "16",
+  18: "18",
+  27: "9648",
+  28: "10759",
+  35: "35",
+  36: "18",
+  37: "37",
+  53: "9648",
+  80: "80",
+  99: "99",
+  878: "10765",
+  9648: "9648",
+  10402: "18",
+  10749: "18",
+  10751: "10751",
+  10752: "10768",
+};
+
+const tvToMovieGenreMap = {
+  16: "16",
+  18: "18",
+  35: "35",
+  37: "37",
+  80: "80",
+  99: "99",
+  9648: "9648",
+  10751: "10751",
+  10759: "28",
+  10762: "10751",
+  10765: "878",
+  10766: "18",
+  10768: "10752",
+};
+
+const getDiscoverQueryForMedia = (genre, mediaType) => {
+  if (!genre?.query?.genre || genre.type !== "genre") {
+    return genre?.query || {};
+  }
+
+  const genreId = String(genre.query.genre);
+  const mappedGenre =
+    mediaType === "tv"
+      ? movieToTvGenreMap[genreId] || genreId
+      : tvToMovieGenreMap[genreId] || genreId;
+
+  return {
+    ...genre.query,
+    genre: mappedGenre,
+  };
+};
+
+const matchesCategoryFilter = (mediaItem, category) => {
+  if (category === "all") {
+    return true;
+  }
+
+  const mediaType = getMediaType(mediaItem.media_type);
+  const categoryGenres = categoryGenreGroups[category]?.[mediaType] || [];
+  const itemGenreIds = (mediaItem.genre_ids || []).map((genreId) =>
+    String(genreId),
+  );
+
+  return categoryGenres.some((genreId) => itemGenreIds.includes(genreId));
+};
+
+const getRatingSortScore = (rating) => {
+  const score = Number(rating);
+  return Number.isFinite(score) ? score : 0;
+};
+
+const sortMediaList = (mediaList, sortKey) => {
+  const sortedMedia = [...mediaList];
+
+  if (sortKey === "az") {
+    return sortedMedia.sort((a, b) => a.title.localeCompare(b.title));
+  }
+
+  if (sortKey === "za") {
+    return sortedMedia.sort((a, b) => b.title.localeCompare(a.title));
+  }
+
+  if (sortKey === "rating") {
+    return sortedMedia.sort(
+      (a, b) => getRatingSortScore(b.rating) - getRatingSortScore(a.rating),
+    );
+  }
+
+  if (sortKey === "latest") {
+    return sortedMedia.sort((a, b) => Number(b.year || 0) - Number(a.year || 0));
+  }
+
+  return sortedMedia;
+};
+
+const getProviderCacheKey = (mediaType, mediaId) =>
+  `${getMediaType(mediaType)}:${mediaId}`;
+
+const getFilterMediaTypes = (mediaFilter) =>
+  mediaFilter === "all" ? ["movie", "tv"] : [getMediaType(mediaFilter)];
+
+const applyRecommendationFilters = (
+  mediaList,
+  filters,
+  providersByMediaId,
+  mediaType,
+) => {
+  const shouldFilterByGenreId =
+    filters.genre !== "all" && Number.isInteger(Number(filters.genre));
+
+  const filteredMedia = mediaList.filter((mediaItem) => {
+    const itemMediaType = getMediaType(mediaItem.media_type || mediaType);
+    const mediaId = getProviderCacheKey(itemMediaType, mediaItem.id);
+    const matchesMedia = filters.media === "all" || itemMediaType === filters.media;
+    const matchesGenre =
+      !shouldFilterByGenreId ||
+      (mediaItem.genre_ids || [])
+        .map((genreId) => String(genreId))
+        .includes(String(filters.genre));
+    const matchesCategory = matchesCategoryFilter(mediaItem, filters.category);
+    const matchesYear = filters.year === "all" || String(mediaItem.year) === filters.year;
+    const hasLoadedProvider = Object.prototype.hasOwnProperty.call(
+      providersByMediaId,
+      mediaId,
+    );
+    const matchesPlatform =
+      filters.platform === "all" ||
+      !hasLoadedProvider ||
+      matchesPlatformFilter(providersByMediaId[mediaId], filters.platform);
+
+    return matchesMedia && matchesGenre && matchesCategory && matchesYear && matchesPlatform;
+  });
+
+  return sortMediaList(filteredMedia, filters.sort);
+};
+
 const normalizeGenre = (genre) => ({
   ...genre,
   id: genre.id,
@@ -171,7 +418,7 @@ const normalizeGenre = (genre) => ({
     "Rekomendasi film pilihan berdasarkan kategori ini.",
 });
 
-const buildDiscoverUrl = (query = {}, mediaType = "movie") => {
+const buildDiscoverUrl = (query = {}, mediaType = "movie", extraParams = {}) => {
   const params = new URLSearchParams({
     sort_by: "popularity.desc",
     language: "id-ID",
@@ -180,6 +427,11 @@ const buildDiscoverUrl = (query = {}, mediaType = "movie") => {
 
   Object.entries(query).forEach(([key, value]) => {
     if (value) {
+      params.set(key, value);
+    }
+  });
+  Object.entries(extraParams).forEach(([key, value]) => {
+    if (value && value !== "all") {
       params.set(key, value);
     }
   });
@@ -193,11 +445,13 @@ const uniqueById = (movies) => {
   const seen = new Set();
 
   return movies.filter((movie) => {
-    if (!movie.id || seen.has(movie.id) || !movie.poster) {
+    const movieKey = `${movie.media_type || "movie"}:${movie.id}`;
+
+    if (!movie.id || seen.has(movieKey) || !movie.poster) {
       return false;
     }
 
-    seen.add(movie.id);
+    seen.add(movieKey);
     return true;
   });
 };
@@ -286,7 +540,8 @@ function GenreMovieCard({
 function GenrePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const queryMedia = getMediaType(searchParams.get("media"));
+  const queryMediaParam = searchParams.get("media");
+  const queryMedia = getMediaType(queryMediaParam);
   const queryGenreId = searchParams.get("genre");
   const queryGenreName = searchParams.get("name");
   const user = useMemo(() => getStoredUser(), []);
@@ -305,6 +560,9 @@ function GenrePage() {
   const [selectedGenre, setSelectedGenre] = useState(null);
   const [selectedMedia, setSelectedMedia] = useState(queryMedia);
   const [movies, setMovies] = useState([]);
+  const [providersByMediaId, setProvidersByMediaId] = useState({});
+  const [filterValues, setFilterValues] = useState(defaultFilterValues);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [genreLoading, setGenreLoading] = useState(false);
   const [moviesLoading, setMoviesLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -327,8 +585,39 @@ function GenrePage() {
     () => new Set(seriesWatchlist.map((series) => String(series.id))),
     [seriesWatchlist],
   );
-  const selectedMediaLabel = selectedMedia === "tv" ? "TV Series" : "Film";
-  const selectedMediaCountLabel = selectedMedia === "tv" ? "series" : "film";
+  const yearFilterOptions = useMemo(() => getYearFilterOptions(), []);
+  const genreRecommendationFilterSections = useMemo(
+    () => [
+      { key: "media", title: "Tipe", options: mediaFilterOptions },
+      { key: "category", title: "Kategori", options: categoryFilterOptions },
+      { key: "platform", title: "Platform", options: platformFilterOptions },
+      { key: "year", title: "Tahun", options: yearFilterOptions },
+      { key: "sort", title: "Urutkan Berdasarkan", options: genreSortOptions },
+    ],
+    [yearFilterOptions],
+  );
+  const filteredMovies = useMemo(
+    () =>
+      applyRecommendationFilters(
+        movies,
+        filterValues,
+        providersByMediaId,
+        selectedMedia,
+      ),
+    [filterValues, movies, providersByMediaId, selectedMedia],
+  );
+  const selectedMediaLabel =
+    filterValues.media === "all"
+      ? "Film & TV Series"
+      : filterValues.media === "tv"
+        ? "TV Series"
+        : "Film";
+  const selectedMediaCountLabel =
+    filterValues.media === "all"
+      ? "judul"
+      : filterValues.media === "tv"
+        ? "series"
+        : "film";
 
   useEffect(() => {
     localStorage.setItem(movieWatchlistKey, JSON.stringify(movieWatchlist));
@@ -351,16 +640,22 @@ function GenrePage() {
           genre.name.toLowerCase() === queryGenreName.toLowerCase(),
       );
 
-    setSelectedMedia(queryMedia);
-    setSelectedGenre(
+    const nextGenre =
       matchingGenre ||
-        normalizeGenre({
-          id: queryGenreId || queryGenreName,
-          name: queryGenreName || "Genre",
-          query: queryGenreId ? { genre: queryGenreId } : {},
-        }),
-    );
-  }, [genres, queryGenreId, queryGenreName, queryMedia]);
+      normalizeGenre({
+        id: queryGenreId || queryGenreName,
+        name: queryGenreName || "Genre",
+        query: queryGenreId ? { genre: queryGenreId } : {},
+      });
+
+    setSelectedMedia(queryMedia);
+    setSelectedGenre(nextGenre);
+    setFilterValues((currentValues) => ({
+      ...currentValues,
+      genre: String(nextGenre.id),
+      media: queryMediaParam ? queryMedia : currentValues.media,
+    }));
+  }, [genres, queryGenreId, queryGenreName, queryMedia, queryMediaParam]);
 
   useEffect(() => {
     const loadGenres = async () => {
@@ -497,23 +792,46 @@ function GenrePage() {
       try {
         setMoviesLoading(true);
         setErrorMessage("");
-        const response = await fetch(buildDiscoverUrl(selectedGenre.query, selectedMedia));
+        const mediaTypes = getFilterMediaTypes(filterValues.media);
+        const extraParams =
+          filterValues.year === "all" ? {} : { year: filterValues.year };
+        const mediaResponses = await Promise.all(
+          mediaTypes.map(async (mediaType) => {
+            const response = await fetch(
+              buildDiscoverUrl(
+                getDiscoverQueryForMedia(selectedGenre, mediaType),
+                mediaType,
+                extraParams,
+              ),
+            );
 
-        if (!response.ok) {
-          throw new Error("Gagal mengambil rekomendasi film");
-        }
+            if (!response.ok) {
+              throw new Error("Gagal mengambil rekomendasi film");
+            }
 
-        const data = await response.json();
+            const data = await response.json();
+            return { data, mediaType };
+          }),
+        );
         const mappedMovies = uniqueById(
-          (data.results || []).map((item) => mapTmdbMediaItem(item, selectedMedia)),
+          mediaResponses.flatMap(({ data, mediaType }) =>
+            (data.results || []).map((item) => mapTmdbMediaItem(item, mediaType)),
+          ),
         );
 
         if (!shouldIgnore) {
-          setMovies(mappedMovies.length > 0 ? mappedMovies.slice(0, 15) : []);
+          setMovies(mappedMovies.length > 0 ? mappedMovies.slice(0, 20) : []);
         }
       } catch {
         if (!shouldIgnore) {
-          setMovies(fallbackMovies);
+          const fallbackMediaType =
+            getFilterMediaTypes(filterValues.media)[0] || selectedMedia;
+          setMovies(
+            fallbackMovies.map((movie) => ({
+              ...movie,
+              media_type: fallbackMediaType,
+            })),
+          );
           setErrorMessage("Gagal mengambil data terbaru, menampilkan fallback sementara.");
         }
       } finally {
@@ -528,7 +846,66 @@ function GenrePage() {
     return () => {
       shouldIgnore = true;
     };
-  }, [selectedGenre, selectedMedia]);
+  }, [filterValues.media, filterValues.year, selectedGenre, selectedMedia]);
+
+  useEffect(() => {
+    const missingProviderItems = movies
+      .map((movie) => ({
+        id: String(movie.id),
+        mediaType: getMediaType(movie.media_type || selectedMedia),
+      }))
+      .filter(
+        ({ id, mediaType }) =>
+          Number.isInteger(Number(id)) &&
+          !Object.prototype.hasOwnProperty.call(
+            providersByMediaId,
+            getProviderCacheKey(mediaType, id),
+          ),
+      );
+
+    if (missingProviderItems.length === 0) {
+      return undefined;
+    }
+
+    let shouldIgnore = false;
+
+    const loadWatchProviders = async () => {
+      const providerEntries = await Promise.all(
+        missingProviderItems.map(async ({ id, mediaType }) => {
+          const endpoint = mediaType === "tv" ? "tv-series" : "movies";
+          const providerKey = getProviderCacheKey(mediaType, id);
+
+          try {
+            const response = await fetch(
+              `${apiUrl}/api/${endpoint}/${id}/watch-providers`,
+            );
+
+            if (!response.ok) {
+              throw new Error("Gagal mengambil provider");
+            }
+
+            const data = await response.json();
+            return [providerKey, data];
+          } catch {
+            return [providerKey, { all: [] }];
+          }
+        }),
+      );
+
+      if (!shouldIgnore) {
+        setProvidersByMediaId((currentProviders) => ({
+          ...currentProviders,
+          ...Object.fromEntries(providerEntries),
+        }));
+      }
+    };
+
+    loadWatchProviders();
+
+    return () => {
+      shouldIgnore = true;
+    };
+  }, [movies, providersByMediaId, selectedMedia]);
 
   const openMovie = (movieId, mediaType = selectedMedia) => {
     if (Number.isInteger(Number(movieId))) {
@@ -541,11 +918,50 @@ function GenrePage() {
 
     setSelectedMedia(mediaType);
     setSelectedGenre(genre);
+    setFilterValues((currentValues) => ({
+      ...currentValues,
+      genre: String(genre.id),
+    }));
     setSearchParams({
       media: mediaType,
       genre: String(genre.id),
       name: genre.name,
     });
+  };
+
+  const handleFilterChange = (nextValues) => {
+    const nextGenreValue = nextValues.genre;
+    const nextMediaValue = nextValues.media;
+
+    if (nextMediaValue !== filterValues.media && nextMediaValue !== "all") {
+      const nextMedia = getMediaType(nextMediaValue);
+      setSelectedMedia(nextMedia);
+
+      if (selectedGenre) {
+        setSearchParams({
+          media: nextMedia,
+          genre: String(selectedGenre.id),
+          name: selectedGenre.name,
+        });
+      }
+    }
+
+    if (nextGenreValue !== filterValues.genre && nextGenreValue !== "all") {
+      const nextGenre = genres.find(
+        (genre) => String(genre.id) === String(nextGenreValue),
+      );
+
+      if (nextGenre) {
+        setSelectedGenre(nextGenre);
+        setSearchParams({
+          media: nextMediaValue === "all" ? selectedMedia : getMediaType(nextMediaValue),
+          genre: String(nextGenre.id),
+          name: nextGenre.name,
+        });
+      }
+    }
+
+    setFilterValues(nextValues);
   };
 
   const isMediaSaved = (mediaItem) => {
@@ -668,10 +1084,14 @@ function GenrePage() {
             </h2>
           </div>
           {selectedGenre && (
-            <span>
-              <FaSearch />
-              {moviesLoading ? "Mencari..." : `${movies.length} ${selectedMediaCountLabel}`}
-            </span>
+            <button
+              className="genre-filter-button"
+              type="button"
+              onClick={() => setIsFilterOpen(true)}
+            >
+              <FaFilter />
+              Filter
+            </button>
           )}
         </div>
 
@@ -691,6 +1111,11 @@ function GenrePage() {
                 Memuat rekomendasi {selectedMediaCountLabel}...
               </p>
             )}
+            {!moviesLoading && movies.length > 0 && filteredMovies.length === 0 && (
+              <p className="genre-status">
+                Tidak ada {selectedMediaCountLabel} yang cocok dengan filter ini.
+              </p>
+            )}
             {!moviesLoading && movies.length === 0 && (
               <p className="genre-status">
                 {selectedMediaLabel} untuk genre ini belum ditemukan.
@@ -698,7 +1123,7 @@ function GenrePage() {
             )}
 
             <div className="genre-movie-grid">
-              {movies.map((movie) => (
+              {filteredMovies.map((movie) => (
                 <GenreMovieCard
                   key={movie.id}
                   movie={movie}
@@ -736,6 +1161,15 @@ function GenrePage() {
         mediaLabel={pendingWatchlistItem?.mediaLabel || "Film"}
         onCancel={() => setPendingWatchlistItem(null)}
         onConfirm={confirmSaveToWatchlist}
+      />
+
+      <FilterPopup
+        open={isFilterOpen}
+        title={`Filter ${selectedMediaLabel}`}
+        values={filterValues}
+        sections={genreRecommendationFilterSections}
+        onChange={handleFilterChange}
+        onClose={() => setIsFilterOpen(false)}
       />
     </main>
   );

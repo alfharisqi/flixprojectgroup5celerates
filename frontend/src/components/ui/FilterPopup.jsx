@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Fragment, useEffect } from "react";
 import { FaRegTimesCircle } from "react-icons/fa";
 import "./FilterPopup.css";
 
@@ -29,6 +29,7 @@ function FilterPopup({
   genreOptions,
   platformOptions,
   sortOptions,
+  sections,
   onChange,
   onClose,
 }) {
@@ -63,6 +64,13 @@ function FilterPopup({
       [key]: value,
     });
   };
+  const filterSections =
+    sections ||
+    [
+      { key: "genre", title: "Genre", options: genreOptions },
+      { key: "platform", title: "Platform", options: platformOptions },
+      { key: "sort", title: "Urutkan Berdasarkan", options: sortOptions },
+    ].filter((section) => section.options?.length > 0);
 
   return (
     <div
@@ -90,30 +98,17 @@ function FilterPopup({
 
           <div className="filter-popup__divider" />
 
-          <FilterSection
-            title="Genre"
-            options={genreOptions}
-            value={values.genre}
-            onSelect={(value) => updateFilter("genre", value)}
-          />
-
-          <div className="filter-popup__divider" />
-
-          <FilterSection
-            title="Platform"
-            options={platformOptions}
-            value={values.platform}
-            onSelect={(value) => updateFilter("platform", value)}
-          />
-
-          <div className="filter-popup__divider" />
-
-          <FilterSection
-            title="Urutkan Berdasarkan"
-            options={sortOptions}
-            value={values.sort}
-            onSelect={(value) => updateFilter("sort", value)}
-          />
+          {filterSections.map((section, index) => (
+            <Fragment key={section.key}>
+              {index > 0 && <div className="filter-popup__divider" />}
+              <FilterSection
+                title={section.title}
+                options={section.options}
+                value={values[section.key]}
+                onSelect={(value) => updateFilter(section.key, value)}
+              />
+            </Fragment>
+          ))}
         </div>
       </div>
     </div>
