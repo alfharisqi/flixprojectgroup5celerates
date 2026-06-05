@@ -10,10 +10,12 @@ import {
   FaFacebookF,
   FaEnvelope,
   FaRegCommentDots,
+  FaSearch,
   FaStar,
   FaTimes,
   FaTrash,
   FaTwitter,
+  FaUserPlus,
   FaYoutube,
 } from "react-icons/fa";
 import SiteNavbar from "@/components/layout/SiteNavbar";
@@ -106,6 +108,13 @@ const getReviewApiUrl = (review) =>
   review.media_type === "tv"
     ? `${apiUrl}/api/tv-series-reviews/${review.id_review}`
     : `${apiUrl}/api/movie-reviews/${review.id_review}`;
+
+const getFriendSearchButtonLabel = (status) => {
+  if (status === "accepted") return "Teman";
+  if (status === "pending_sent") return "Terkirim";
+  if (status === "pending_received") return "Menunggu kamu";
+  return "Add";
+};
 
 const getInitial = (name = "User") => name.trim().slice(0, 1).toUpperCase() || "U";
 
@@ -326,6 +335,39 @@ function ProfileFriendRequestItem({ request, disabled, onAccept, onDecline }) {
   );
 }
 
+function ProfileFriendSearchResult({ user, disabled, onAdd }) {
+  const avatarUrl = resolveMediaUrl(user.profile_image_url);
+  const status = user.friendship_status;
+  const canAdd = !status;
+
+  return (
+    <article className="profile-friend-search-result">
+      <span className={avatarUrl ? "profile-friend-avatar has-image" : "profile-friend-avatar"}>
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={user.username || "User FLIX"} />
+        ) : (
+          getInitial(user.username || user.email)
+        )}
+      </span>
+
+      <div>
+        <h3>{user.username || "User FLIX"}</h3>
+        <p>{user.email || "User FLIX"}</p>
+      </div>
+
+      <button
+        type="button"
+        className={canAdd ? "" : "is-disabled-state"}
+        onClick={() => onAdd(user)}
+        disabled={disabled || !canAdd}
+      >
+        {canAdd && <FaUserPlus />}
+        {getFriendSearchButtonLabel(status)}
+      </button>
+    </article>
+  );
+}
+
 function EditProfileModal({ open, form, saving, onClose, onChange, onSubmit }) {
   if (!open) {
     return null;
@@ -522,6 +564,11 @@ function ProfilePage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [reviewSaving, setReviewSaving] = useState(false);
   const [friendActionSaving, setFriendActionSaving] = useState(false);
+  const [friendSearchQuery, setFriendSearchQuery] = useState("");
+  const [friendSearchResults, setFriendSearchResults] = useState([]);
+  const [friendSearchLoading, setFriendSearchLoading] = useState(false);
+  const [friendSearchMessage, setFriendSearchMessage] = useState("");
+  const [friendSearchSavingId, setFriendSearchSavingId] = useState(null);
   const [editingReview, setEditingReview] = useState(null);
   const [reviewToDelete, setReviewToDelete] = useState(null);
   const [form, setForm] = useState({
@@ -780,6 +827,51 @@ function ProfilePage() {
     };
   }, [activity.reviews, reviewDetails]);
 
+  useEffect(() => {
+    const query = friendSearchQuery.trim();
+
+    if (!token || activeTab !== "friends" || query.length < 2) {
+      setFriendSearchResults([]);
+      setFriendSearchLoading(false);
+      setFriendSearchMessage("");
+      return undefined;
+    }
+
+    let shouldIgnore = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        setFriendSearchLoading(true);
+        setFriendSearchMessage("");
+        const response = await axios.get(`${apiUrl}/api/friends/search`, {
+          params: { query },
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!shouldIgnore) {
+          const results = response.data || [];
+          setFriendSearchResults(results);
+          setFriendSearchMessage(
+            results.length === 0 ? "User tidak ditemukan." : "",
+          );
+        }
+      } catch (error) {
+        if (!shouldIgnore) {
+          setFriendSearchResults([]);
+          setFriendSearchMessage(error.response?.data?.message || "Gagal mencari teman");
+        }
+      } finally {
+        if (!shouldIgnore) {
+          setFriendSearchLoading(false);
+        }
+      }
+    }, 350);
+
+    return () => {
+      shouldIgnore = true;
+      window.clearTimeout(timer);
+    };
+  }, [activeTab, friendSearchQuery, token]);
+
   const handleFormChange = (event) => {
     setForm((currentForm) => ({
       ...currentForm,
@@ -1033,6 +1125,38 @@ function ProfilePage() {
     }
   };
 
+  const handleAddFriendFromSearch = async (user) => {
+    if (!user?.id_user) {
+      return;
+    }
+
+    try {
+      setFriendSearchSavingId(user.id_user);
+      setFriendSearchMessage("");
+      const response = await axios.post(
+        `${apiUrl}/api/friends/${user.id_user}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      const nextStatus = response.data?.status || "pending_sent";
+      setFriendSearchResults((currentResults) =>
+        currentResults.map((result) =>
+          Number(result.id_user) === Number(user.id_user)
+            ? { ...result, friendship_status: nextStatus }
+            : result,
+        ),
+      );
+      setFriendSearchMessage(response.data?.message || "Permintaan pertemanan dikirim.");
+    } catch (error) {
+      setFriendSearchMessage(error.response?.data?.message || "Gagal menambahkan teman");
+    } finally {
+      setFriendSearchSavingId(null);
+    }
+  };
+
   const handleMessageFriend = (friend) => {
     openChatThread(
       createChatThreadFromUser({
@@ -1261,14 +1385,57 @@ function ProfilePage() {
             </div>
           ) : (
             <div className="profile-friend-list">
-              <section className="profile-friend-requests">
+              <section className="profile-friend-search">
                 <div className="profile-friend-section-header">
-                  <h2>Permintaan Pertemanan</h2>
-                  <span>{friendRequests.length}</span>
+                  <h2>Cari Teman Baru</h2>
                 </div>
 
-                {friendRequests.length > 0 ? (
-                  friendRequests.map((request) => (
+                <label className="profile-friend-search-bar">
+                  <FaSearch aria-hidden="true" />
+                  <input
+                    type="search"
+                    value={friendSearchQuery}
+                    onChange={(event) => setFriendSearchQuery(event.target.value)}
+                    placeholder="Cari nama atau email teman..."
+                  />
+                </label>
+
+                {(friendSearchQuery.trim().length >= 2 ||
+                  friendSearchResults.length > 0 ||
+                  friendSearchLoading ||
+                  friendSearchMessage) && (
+                  <div className="profile-friend-search-panel">
+                    {friendSearchLoading ? (
+                      <p className="profile-friend-muted">Mencari teman...</p>
+                    ) : friendSearchResults.length > 0 ? (
+                      friendSearchResults.map((user) => (
+                        <ProfileFriendSearchResult
+                          key={user.id_user}
+                          user={user}
+                          disabled={friendSearchSavingId === user.id_user}
+                          onAdd={handleAddFriendFromSearch}
+                        />
+                      ))
+                    ) : (
+                      friendSearchMessage && (
+                        <p className="profile-friend-muted">{friendSearchMessage}</p>
+                      )
+                    )}
+                    {friendSearchMessage && friendSearchResults.length > 0 && (
+                      <p className="profile-friend-search-message">{friendSearchMessage}</p>
+                    )}
+                  </div>
+                )}
+              </section>
+
+              {friendRequests.length > 0 && (
+                <section className="profile-friend-requests">
+                  <div className="profile-friend-section-header">
+                    <h2>Permintaan Pertemanan</h2>
+                    <span>{friendRequests.length}</span>
+                  </div>
+
+                  {friendRequests.map((request) => (
                     <ProfileFriendRequestItem
                       key={request.id_friend}
                       request={request}
@@ -1276,13 +1443,9 @@ function ProfilePage() {
                       onAccept={handleAcceptFriendRequest}
                       onDecline={handleDeclineFriendRequest}
                     />
-                  ))
-                ) : (
-                  <p className="profile-friend-muted">
-                    Belum ada permintaan pertemanan baru.
-                  </p>
-                )}
-              </section>
+                  ))}
+                </section>
+              )}
 
               <section className="profile-friends-section">
                 <div className="profile-friend-section-header">

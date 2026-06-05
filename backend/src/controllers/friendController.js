@@ -88,6 +88,56 @@ export const getPendingFriendRequests = async (req, res) => {
   }
 };
 
+export const searchUsersForFriend = async (req, res) => {
+  try {
+    const userId = req.user.id_user;
+    const query = String(req.query.query || "").trim();
+
+    if (query.length < 2) {
+      return res.json([]);
+    }
+
+    const result = await pool.query(
+      `SELECT
+          uf.id_friend,
+          u.id_user,
+          u.username,
+          u.email,
+          u.profile_image_url,
+          CASE
+            WHEN uf.status = 'accepted' THEN 'accepted'
+            WHEN uf.status = 'pending' AND uf.requester_user_id = $1 THEN 'pending_sent'
+            WHEN uf.status = 'pending' AND uf.addressee_user_id = $1 THEN 'pending_received'
+            ELSE NULL
+          END AS friendship_status
+       FROM flix.users u
+       LEFT JOIN flix.user_friends uf
+         ON (
+           (uf.requester_user_id = $1 AND uf.addressee_user_id = u.id_user)
+           OR
+           (uf.addressee_user_id = $1 AND uf.requester_user_id = u.id_user)
+         )
+       WHERE u.id_user <> $1
+         AND (
+           u.username ILIKE $2
+           OR u.email ILIKE $2
+         )
+       ORDER BY
+         CASE WHEN LOWER(u.username) LIKE LOWER($3) THEN 0 ELSE 1 END,
+         u.username ASC
+       LIMIT 8`,
+      [userId, `%${query}%`, `${query}%`],
+    );
+
+    return res.json(result.rows);
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal mencari user",
+      error: error.message,
+    });
+  }
+};
+
 export const addFriend = async (req, res) => {
   try {
     const requesterId = req.user.id_user;
