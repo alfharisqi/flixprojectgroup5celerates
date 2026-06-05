@@ -36,6 +36,7 @@ const fallbackBackdropUrl =
 
 const fallbackMovies = Array.from({ length: 10 }, (_, index) => ({
   id: `fallback-${index + 1}`,
+  media_type: "movie",
   title: "Cargo",
   year: "2023",
   rating: "4.9",
@@ -63,17 +64,17 @@ const defaultGenreLookup = {
   10751: "Keluarga",
 };
 
-const movieFilterGenreOptions = [
+const mediaFilterOptions = [
   { value: "all", label: "Semua" },
-  { value: "18", label: "Drama" },
-  { value: "53", label: "Thriller" },
-  { value: "16", label: "Animasi" },
-  { value: "35", label: "Komedi" },
-  { value: "12", label: "Adventure" },
-  { value: "14", label: "Fantasy" },
-  { value: "27", label: "Horror" },
-  { value: "28", label: "Aksi" },
-  { value: "10749", label: "Romantis" },
+  { value: "tv", label: "TV Series" },
+  { value: "movie", label: "Film" },
+];
+
+const categoryFilterOptions = [
+  { value: "all", label: "Semua" },
+  { value: "adult", label: "Dewasa" },
+  { value: "children", label: "Anak-anak" },
+  { value: "teen", label: "Remaja" },
 ];
 
 const platformFilterOptions = [
@@ -109,9 +110,60 @@ const movieSortOptions = [
 ];
 
 const defaultFilterValues = {
-  genre: "all",
+  media: "movie",
+  category: "all",
   platform: "all",
+  year: "all",
   sort: "latest",
+};
+
+const getYearFilterOptions = () => {
+  const currentYear = new Date().getFullYear();
+
+  return [
+    { value: "all", label: "Semua" },
+    ...Array.from({ length: 8 }, (_, index) => {
+      const year = String(currentYear - index);
+      return { value: year, label: year };
+    }),
+  ];
+};
+
+const getMediaType = (mediaType) => (mediaType === "tv" ? "tv" : "movie");
+
+const getFilterMediaTypes = (mediaFilter) =>
+  mediaFilter === "all" ? ["movie", "tv"] : [getMediaType(mediaFilter)];
+
+const getProviderCacheKey = (mediaType, mediaId) =>
+  `${getMediaType(mediaType)}:${mediaId}`;
+
+const categoryGenreGroups = {
+  adult: {
+    movie: ["18", "27", "28", "36", "53", "80", "9648", "10752"],
+    tv: ["18", "80", "9648", "10768"],
+  },
+  children: {
+    movie: ["16", "10751"],
+    tv: ["16", "10751", "10762"],
+  },
+  teen: {
+    movie: ["12", "14", "35", "878", "10749"],
+    tv: ["35", "10759", "10765", "10766"],
+  },
+};
+
+const matchesCategoryFilter = (mediaItem, category) => {
+  if (category === "all") {
+    return true;
+  }
+
+  const mediaType = getMediaType(mediaItem.media_type);
+  const categoryGenres = categoryGenreGroups[category]?.[mediaType] || [];
+  const itemGenreIds = (mediaItem.genre_ids || []).map((genreId) =>
+    String(genreId),
+  );
+
+  return categoryGenres.some((genreId) => itemGenreIds.includes(genreId));
 };
 
 const providerIconMatchers = [
@@ -280,25 +332,26 @@ const sortMovieList = (movies, sortKey) => {
     );
   }
 
-  return sortedMovies;
+  return sortedMovies.sort((a, b) => Number(b.year || 0) - Number(a.year || 0));
 };
 
 const applyMovieFilters = (movies, filters, providersByMovieId) => {
   const filteredMovies = movies.filter((movie) => {
-    const movieId = String(movie.id);
-    const matchesGenre =
-      filters.genre === "all" ||
-      (movie.genre_ids || []).map((genreId) => String(genreId)).includes(filters.genre);
+    const mediaType = getMediaType(movie.media_type);
+    const providerKey = getProviderCacheKey(mediaType, movie.id);
+    const matchesMedia = filters.media === "all" || mediaType === filters.media;
+    const matchesCategory = matchesCategoryFilter(movie, filters.category);
+    const matchesYear = filters.year === "all" || String(movie.year) === filters.year;
     const hasLoadedProvider = Object.prototype.hasOwnProperty.call(
       providersByMovieId,
-      movieId,
+      providerKey,
     );
     const matchesPlatform =
       filters.platform === "all" ||
       !hasLoadedProvider ||
-      matchesPlatformFilter(providersByMovieId[movieId], filters.platform);
+      matchesPlatformFilter(providersByMovieId[providerKey], filters.platform);
 
-    return matchesGenre && matchesPlatform;
+    return matchesMedia && matchesCategory && matchesYear && matchesPlatform;
   });
 
   return sortMovieList(filteredMovies, filters.sort);
@@ -306,6 +359,7 @@ const applyMovieFilters = (movies, filters, providersByMovieId) => {
 
 const mapTmdbMovie = (movie) => ({
   id: movie.id,
+  media_type: "movie",
   title: movie.title || movie.original_title || "Untitled",
   year: getMovieYear(movie.release_date),
   rating: getMovieRating(movie.vote_average),
@@ -317,15 +371,31 @@ const mapTmdbMovie = (movie) => ({
   genre_ids: movie.genre_ids || [],
 });
 
+const mapTmdbSeries = (series) => ({
+  id: series.id,
+  media_type: "tv",
+  title: series.title || series.name || series.original_name || "Untitled",
+  year: getMovieYear(series.first_air_date),
+  rating: getMovieRating(series.vote_average),
+  poster: series.poster_url,
+  backdrop: series.backdrop_url || series.poster_url,
+  overview: getShortOverview(series.overview),
+  releaseLabel: formatReleaseDate(series.first_air_date),
+  providers: [],
+  genre_ids: series.genre_ids || [],
+});
+
 const uniqueById = (movies) => {
   const seen = new Set();
 
   return movies.filter((movie) => {
-    if (!movie.id || seen.has(movie.id) || !movie.poster) {
+    const mediaKey = `${movie.media_type || "movie"}:${movie.id}`;
+
+    if (!movie.id || seen.has(mediaKey) || !movie.poster) {
       return false;
     }
 
-    seen.add(movie.id);
+    seen.add(mediaKey);
     return true;
   });
 };
@@ -339,6 +409,8 @@ const getStoredUser = () => {
 };
 
 const getWatchlistKey = (user) => `flix_movie_watchlist_${user?.id_user || "guest"}`;
+const getSeriesWatchlistKey = (user) =>
+  `flix_tv_watchlist_${user?.id_user || "guest"}`;
 
 const readWatchlist = (key) => {
   try {
@@ -357,13 +429,14 @@ function MovieCard({
   genreLookup = defaultGenreLookup,
   removeMode = false,
 }) {
+  const mediaType = getMediaType(movie.media_type);
   const movieGenres = (movie.genre_ids || [])
     .map((genreId) => genreLookup[genreId])
     .filter(Boolean)
     .slice(0, 2);
 
   return (
-    <article className="movies-card" onClick={() => onOpen(movie.id)}>
+    <article className="movies-card" onClick={() => onOpen(movie.id, mediaType)}>
       <div className="movies-card-poster">
         <img src={movie.poster} alt={movie.title} />
         <button
@@ -381,7 +454,10 @@ function MovieCard({
         </button>
         <div className="movies-card-overlay" aria-hidden="true">
           <div className="movies-card-genres">
-            {(movieGenres.length > 0 ? movieGenres : ["Film"]).map((genre) => (
+            {(movieGenres.length > 0
+              ? movieGenres
+              : [mediaType === "tv" ? "TV Series" : "Film"]
+            ).map((genre) => (
               <span key={genre}>{genre}</span>
             ))}
           </div>
@@ -405,7 +481,11 @@ function MoviesPage() {
   const navigate = useNavigate();
   const user = useMemo(() => getStoredUser(), []);
   const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
+  const seriesWatchlistKey = useMemo(() => getSeriesWatchlistKey(user), [user]);
   const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const [seriesWatchlist, setSeriesWatchlist] = useState(() =>
+    readWatchlist(seriesWatchlistKey),
+  );
   const [pendingWatchlistMovie, setPendingWatchlistMovie] = useState(null);
   const [trendingMovies, setTrendingMovies] = useState(fallbackMovies.slice(0, 3));
   const [allMovies, setAllMovies] = useState(fallbackMovies);
@@ -419,9 +499,24 @@ function MoviesPage() {
   const [genreLookup, setGenreLookup] = useState(defaultGenreLookup);
   const [loading, setLoading] = useState(true);
 
+  const yearFilterOptions = useMemo(() => getYearFilterOptions(), []);
+  const movieFilterSections = useMemo(
+    () => [
+      { key: "media", title: "Tipe", options: mediaFilterOptions },
+      { key: "category", title: "Kategori", options: categoryFilterOptions },
+      { key: "platform", title: "Platform", options: platformFilterOptions },
+      { key: "year", title: "Tahun", options: yearFilterOptions },
+      { key: "sort", title: "Urutkan Berdasarkan", options: movieSortOptions },
+    ],
+    [yearFilterOptions],
+  );
   const savedMovieIds = useMemo(
     () => new Set(watchlist.map((movie) => String(movie.id))),
     [watchlist],
+  );
+  const savedSeriesIds = useMemo(
+    () => new Set(seriesWatchlist.map((series) => String(series.id))),
+    [seriesWatchlist],
   );
 
   const heroMovies = trendingMovies.slice(0, 4);
@@ -446,17 +541,28 @@ function MoviesPage() {
   }, [watchlist, watchlistKey]);
 
   useEffect(() => {
+    localStorage.setItem(seriesWatchlistKey, JSON.stringify(seriesWatchlist));
+  }, [seriesWatchlist, seriesWatchlistKey]);
+
+  useEffect(() => {
     const loadGenres = async () => {
       try {
-        const response = await fetch(`${apiUrl}/api/movies/genres?language=id-ID`);
+        const [movieResponse, seriesResponse] = await Promise.all([
+          fetch(`${apiUrl}/api/movies/genres?language=id-ID`),
+          fetch(`${apiUrl}/api/tv-series/genres?language=id-ID`),
+        ]);
 
-        if (!response.ok) {
+        if (!movieResponse.ok && !seriesResponse.ok) {
           return;
         }
 
-        const data = await response.json();
+        const movieData = movieResponse.ok ? await movieResponse.json() : { genres: [] };
+        const seriesData = seriesResponse.ok ? await seriesResponse.json() : { genres: [] };
         const genres = Object.fromEntries(
-          (data.genres || []).map((genre) => [genre.id, genre.name]),
+          [...(movieData.genres || []), ...(seriesData.genres || [])].map((genre) => [
+            genre.id,
+            genre.name,
+          ]),
         );
 
         setGenreLookup({
@@ -475,39 +581,59 @@ function MoviesPage() {
     const loadMovies = async () => {
       try {
         setLoading(true);
-        const [trendingResponse, latestResponse] = await Promise.all([
+        const mediaTypes = getFilterMediaTypes(filterValues.media);
+        const yearParam =
+          filterValues.year === "all" ? "" : `&year=${encodeURIComponent(filterValues.year)}`;
+        const latestRequests = mediaTypes.map(async (mediaType) => {
+          const endpoint = mediaType === "tv" ? "tv-series" : "movies";
+          const sortBy =
+            mediaType === "tv" ? "first_air_date.desc" : "primary_release_date.desc";
+          const response = await fetch(
+            `${apiUrl}/api/${endpoint}/discover?sort_by=${sortBy}&language=id-ID&page=1${yearParam}`,
+          );
+          const data = response.ok ? await response.json() : { results: [] };
+
+          return { data, mediaType };
+        });
+        const [trendingResponse, ...latestResponses] = await Promise.all([
           fetch(`${apiUrl}/api/movies/trending?time_window=week&language=id-ID`),
-          fetch(
-            `${apiUrl}/api/movies/discover?sort_by=primary_release_date.desc&language=id-ID&page=1`,
-          ),
+          ...latestRequests,
         ]);
 
         const trendingData = trendingResponse.ok
           ? await trendingResponse.json()
           : { results: [] };
-        const latestData = latestResponse.ok ? await latestResponse.json() : { results: [] };
         const mappedTrending = uniqueById(
           (trendingData.results || []).map(mapTmdbMovie),
         );
-        const mappedLatest = uniqueById((latestData.results || []).map(mapTmdbMovie));
+        const mappedLatest = uniqueById(
+          latestResponses.flatMap(({ data, mediaType }) =>
+            (data.results || []).map((item) =>
+              mediaType === "tv" ? mapTmdbSeries(item) : mapTmdbMovie(item),
+            ),
+          ),
+        );
 
         if (mappedTrending.length > 0) {
           setTrendingMovies(mappedTrending.slice(0, 3));
         }
 
-        if (mappedLatest.length > 0) {
-          setAllMovies(mappedLatest.slice(0, 10));
-        }
+        setAllMovies(mappedLatest.slice(0, 20));
       } catch {
         setTrendingMovies(fallbackMovies.slice(0, 3));
-        setAllMovies(fallbackMovies);
+        setAllMovies(
+          fallbackMovies.map((movie) => ({
+            ...movie,
+            media_type: getFilterMediaTypes(filterValues.media)[0] || "movie",
+          })),
+        );
       } finally {
         setLoading(false);
       }
     };
 
     loadMovies();
-  }, []);
+  }, [filterValues.media, filterValues.year]);
 
   useEffect(() => {
     if (heroMovies.length <= 1) {
@@ -522,15 +648,21 @@ function MoviesPage() {
   }, [heroMovies.length]);
 
   useEffect(() => {
-    const missingMovieIds = allMovies
-      .map((movie) => String(movie.id))
+    const missingMovieItems = allMovies
+      .map((movie) => ({
+        id: String(movie.id),
+        mediaType: getMediaType(movie.media_type),
+      }))
       .filter(
-        (movieId) =>
-          Number.isInteger(Number(movieId)) &&
-          !Object.prototype.hasOwnProperty.call(providersByMovieId, movieId),
+        ({ id, mediaType }) =>
+          Number.isInteger(Number(id)) &&
+          !Object.prototype.hasOwnProperty.call(
+            providersByMovieId,
+            getProviderCacheKey(mediaType, id),
+          ),
       );
 
-    if (missingMovieIds.length === 0) {
+    if (missingMovieItems.length === 0) {
       return undefined;
     }
 
@@ -538,18 +670,23 @@ function MoviesPage() {
 
     const loadMovieProviders = async () => {
       const providerEntries = await Promise.all(
-        missingMovieIds.map(async (movieId) => {
+        missingMovieItems.map(async ({ id, mediaType }) => {
+          const endpoint = mediaType === "tv" ? "tv-series" : "movies";
+          const providerKey = getProviderCacheKey(mediaType, id);
+
           try {
-            const response = await fetch(`${apiUrl}/api/movies/${movieId}/watch-providers`);
+            const response = await fetch(
+              `${apiUrl}/api/${endpoint}/${id}/watch-providers`,
+            );
 
             if (!response.ok) {
-              throw new Error("Gagal mengambil provider film");
+              throw new Error("Gagal mengambil provider");
             }
 
             const data = await response.json();
-            return [movieId, data];
+            return [providerKey, data];
           } catch {
-            return [movieId, { all: [] }];
+            return [providerKey, { all: [] }];
           }
         }),
       );
@@ -612,44 +749,58 @@ function MoviesPage() {
     };
   }, [activeHeroMovie?.id, heroProvidersByMovieId]);
 
-  const openMovie = (movieId) => {
+  const openMovie = (movieId, mediaType = "movie") => {
     if (Number.isInteger(Number(movieId))) {
-      navigate(`/movie/${movieId}`);
+      navigate(getMediaType(mediaType) === "tv" ? `/tv-series/${movieId}` : `/movie/${movieId}`);
     }
   };
 
-  const saveMovieToWatchlist = (movie) => {
-    setWatchlist((currentWatchlist) => {
-      const movieId = String(movie.id);
+  const isMediaSaved = (mediaItem) => {
+    const mediaId = String(mediaItem.id);
 
-      if (currentWatchlist.some((savedMovie) => String(savedMovie.id) === movieId)) {
+    return getMediaType(mediaItem.media_type) === "tv"
+      ? savedSeriesIds.has(mediaId)
+      : savedMovieIds.has(mediaId);
+  };
+
+  const saveMediaToWatchlist = (mediaItem) => {
+    const mediaType = getMediaType(mediaItem.media_type);
+    const listSetter = mediaType === "tv" ? setSeriesWatchlist : setWatchlist;
+
+    listSetter((currentWatchlist) => {
+      const mediaId = String(mediaItem.id);
+
+      if (currentWatchlist.some((savedItem) => String(savedItem.id) === mediaId)) {
         return currentWatchlist;
       }
 
-      return [movie, ...currentWatchlist].slice(0, 20);
+      return [{ ...mediaItem, media_type: mediaType }, ...currentWatchlist].slice(0, 20);
     });
   };
 
-  const toggleWatchlist = (movie) => {
+  const toggleWatchlist = (mediaItem) => {
     if (!requireLogin()) {
       return;
     }
 
-    const movieId = String(movie.id);
+    const mediaType = getMediaType(mediaItem.media_type);
+    const mediaId = String(mediaItem.id);
 
-    if (savedMovieIds.has(movieId)) {
-      setWatchlist((currentWatchlist) =>
-        currentWatchlist.filter((savedMovie) => String(savedMovie.id) !== movieId),
+    if (isMediaSaved(mediaItem)) {
+      const listSetter = mediaType === "tv" ? setSeriesWatchlist : setWatchlist;
+
+      listSetter((currentWatchlist) =>
+        currentWatchlist.filter((savedItem) => String(savedItem.id) !== mediaId),
       );
       return;
     }
 
-    setPendingWatchlistMovie(movie);
+    setPendingWatchlistMovie({ ...mediaItem, media_type: mediaType });
   };
 
   const confirmSaveToWatchlist = () => {
     if (pendingWatchlistMovie) {
-      saveMovieToWatchlist(pendingWatchlistMovie);
+      saveMediaToWatchlist(pendingWatchlistMovie);
     }
 
     setPendingWatchlistMovie(null);
@@ -904,9 +1055,9 @@ function MoviesPage() {
         <div className="movies-grid">
           {filteredAllMovies.map((movie) => (
             <MovieCard
-              key={movie.id}
+              key={`${movie.media_type || "movie"}-${movie.id}`}
               movie={movie}
-              isSaved={savedMovieIds.has(String(movie.id))}
+              isSaved={isMediaSaved(movie)}
               onOpen={openMovie}
               onToggleWatchlist={toggleWatchlist}
               genreLookup={genreLookup}
@@ -935,9 +1086,7 @@ function MoviesPage() {
         open={isFilterOpen}
         title="Filter Film"
         values={filterValues}
-        genreOptions={movieFilterGenreOptions}
-        platformOptions={platformFilterOptions}
-        sortOptions={movieSortOptions}
+        sections={movieFilterSections}
         onChange={setFilterValues}
         onClose={() => setIsFilterOpen(false)}
       />
@@ -945,7 +1094,7 @@ function MoviesPage() {
       <WatchlistConfirmModal
         open={Boolean(pendingWatchlistMovie)}
         item={pendingWatchlistMovie}
-        mediaLabel="Film"
+        mediaLabel={pendingWatchlistMovie?.media_type === "tv" ? "Series" : "Film"}
         onCancel={() => setPendingWatchlistMovie(null)}
         onConfirm={confirmSaveToWatchlist}
       />
