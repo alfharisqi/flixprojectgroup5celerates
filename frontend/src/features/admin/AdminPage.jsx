@@ -914,10 +914,9 @@ function AdminPage() {
       </aside>
 
       <section className="admin-main">
-        <div className="admin-content">
+        <header className="admin-topbar">
           <div className="admin-content-head">
             <div>
-              <span className="admin-content-head__eyebrow">Admin FLIX</span>
               <h1>{adminPageTitle}</h1>
             </div>
 
@@ -947,7 +946,9 @@ function AdminPage() {
               </button>
             </div>
           </div>
+        </header>
 
+        <div className="admin-content">
           {activeAdminPage === "movies" ? (
             <section className="admin-manage-film" aria-label="Kelola film">
               {moviesError && <p className="admin-dashboard-alert">{moviesError}</p>}
