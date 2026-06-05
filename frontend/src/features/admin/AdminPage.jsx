@@ -260,8 +260,6 @@ function normalizeDashboard(data) {
 const formatChartNumber = (value) =>
   new Intl.NumberFormat("id-ID").format(Number(value || 0));
 
-const adminMovieStorageKey = "flix_admin_managed_movies";
-
 const defaultAddMovieForm = {
   title: "",
   year: "",
@@ -308,14 +306,35 @@ const moodOptions = [
   "Menegangkan"
 ];
 
-const getStoredAdminMovies = () => {
-  try {
-    const storedMovies = JSON.parse(localStorage.getItem(adminMovieStorageKey));
-    return Array.isArray(storedMovies) ? storedMovies : [];
-  } catch {
-    return [];
+const normalizeMovieOptionArray = (value, fallback = []) => {
+  if (Array.isArray(value)) {
+    return value.length ? value : fallback;
   }
+
+  if (typeof value === "string") {
+    const values = value.split(",").map((item) => item.trim()).filter(Boolean);
+    return values.length ? values : fallback;
+  }
+
+  return fallback;
 };
+
+const mapMovieToAdminForm = (movie) => ({
+  title: movie?.title || "",
+  year: movie?.year && movie.year !== "-" ? String(movie.year) : "",
+  duration: movie?.duration || "",
+  director: movie?.director || "",
+  synopsis: movie?.synopsis || "",
+  cast: movie?.cast || "",
+  posterUrl: movie?.poster || "",
+  posterDataUrl: "",
+  trailerUrl: movie?.trailerUrl || "",
+  rating: movie?.rating && movie.rating !== "-" ? String(movie.rating) : "",
+  country: movie?.country || "",
+  genres: normalizeMovieOptionArray(movie?.genres || movie?.genre, ["Drama"]),
+  platforms: normalizeMovieOptionArray(movie?.platforms, ["Netflix"]),
+  moods: normalizeMovieOptionArray(movie?.moods, ["Santai"])
+});
 
 const getPaginationItems = (currentPage, totalPages) => {
   if (totalPages <= 5) {
@@ -337,7 +356,6 @@ function AdminPage() {
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(fallbackDashboard);
   const [managedMovies, setManagedMovies] = useState([]);
-  const [localAdminMovies, setLocalAdminMovies] = useState(getStoredAdminMovies);
   const [managedMoviesTotal, setManagedMoviesTotal] = useState(0);
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminUsersSummary, setAdminUsersSummary] = useState(fallbackUsersSummary);
@@ -352,6 +370,8 @@ function AdminPage() {
   const [isUserDetailLoading, setIsUserDetailLoading] = useState(false);
   const [addMovieForm, setAddMovieForm] = useState(defaultAddMovieForm);
   const [addMovieFeedback, setAddMovieFeedback] = useState("");
+  const [isSavingMovie, setIsSavingMovie] = useState(false);
+  const [selectedEditingMovie, setSelectedEditingMovie] = useState(null);
   const [nightMode, setNightMode] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [tableLimit, setTableLimit] = useState(10);
@@ -599,10 +619,6 @@ function AdminPage() {
     setCommunityPage(1);
   }, [activeCommunityTab]);
 
-  useEffect(() => {
-    localStorage.setItem(adminMovieStorageKey, JSON.stringify(localAdminMovies));
-  }, [localAdminMovies]);
-
   const filteredActivities = useMemo(() => {
     if (!normalizedSearch) {
       return dashboard.activities;
@@ -628,21 +644,16 @@ function AdminPage() {
   const visibleWatchlistMovies = filteredWatchlistMovies.slice(0, tableLimit);
 
   const filteredManagedMovies = useMemo(() => {
-    const sourceMovies = [
-      ...localAdminMovies,
-      ...(managedMovies.length ? managedMovies : dashboard.watchlistMovies)
-    ];
-
     if (!normalizedSearch) {
-      return sourceMovies;
+      return managedMovies;
     }
 
-    return sourceMovies.filter((movie) =>
+    return managedMovies.filter((movie) =>
       `${movie.title} ${movie.year} ${movie.genre} ${movie.status} ${movie.mediaType}`
         .toLowerCase()
         .includes(normalizedSearch)
     );
-  }, [dashboard.watchlistMovies, localAdminMovies, managedMovies, normalizedSearch]);
+  }, [managedMovies, normalizedSearch]);
 
   const filmRowsPerPage = 8;
   const totalFilmPages = Math.max(1, Math.ceil(filteredManagedMovies.length / filmRowsPerPage));
@@ -651,12 +662,11 @@ function AdminPage() {
     (currentFilmPage - 1) * filmRowsPerPage,
     currentFilmPage * filmRowsPerPage
   );
-  const backendFilmTotal =
-    managedMoviesTotal ||
-    (managedMovies.length ? managedMovies.length : dashboard.watchlistMovies.length);
-  const filmTotalLabel = localAdminMovies.length + backendFilmTotal;
+  const filmTotalLabel = managedMoviesTotal || managedMovies.length;
   const paginationItems = getPaginationItems(currentFilmPage, totalFilmPages);
   const addMoviePosterPreview = addMovieForm.posterDataUrl || addMovieForm.posterUrl;
+  const isEditingMovie = activeMoviePanel === "edit" && Boolean(selectedEditingMovie);
+  const isMovieFormPanel = activeMoviePanel === "add" || isEditingMovie;
 
   const filteredAdminUsers = useMemo(() => {
     if (!normalizedSearch) {
@@ -757,6 +767,9 @@ function AdminPage() {
 
     if (itemId === "movies") {
       setActiveMoviePanel("list");
+      setSelectedEditingMovie(null);
+      setAddMovieForm(defaultAddMovieForm);
+      setAddMovieFeedback("");
     }
 
     if (itemId === "users") {
@@ -849,36 +862,101 @@ function AdminPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleSaveAdminMovie = (status) => {
+  const openAddMovieForm = () => {
+    setSelectedEditingMovie(null);
+    setAddMovieForm(defaultAddMovieForm);
+    setAddMovieFeedback("");
+    setActiveMoviePanel("add");
+  };
+
+  const openEditMovieList = () => {
+    setSelectedEditingMovie(null);
+    setAddMovieForm(defaultAddMovieForm);
+    setAddMovieFeedback("");
+    setActiveMoviePanel("edit");
+  };
+
+  const openEditMovieForm = (movie) => {
+    setSelectedEditingMovie(movie);
+    setAddMovieForm(mapMovieToAdminForm(movie));
+    setAddMovieFeedback("");
+    setActiveMoviePanel("edit");
+  };
+
+  const handleSaveAdminMovie = async (status) => {
     if (!addMovieForm.title.trim()) {
       setAddMovieFeedback("Judul film wajib diisi sebelum disimpan.");
       return;
     }
 
-    const savedMovie = {
-      id: `local-${Date.now()}`,
-      mediaType: "movie",
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setAddMovieFeedback("Sesi admin tidak tersedia. Silakan login ulang.");
+      return;
+    }
+
+    const payload = {
       title: addMovieForm.title.trim(),
       year: addMovieForm.year.trim() || "-",
-      genre: addMovieForm.genres.slice(0, 2).join(", ") || "-",
       rating: addMovieForm.rating.trim() || "-",
-      watchlist: "0",
-      reviewCount: "0",
       status,
-      poster: addMoviePosterPreview || null,
+      posterUrl: addMoviePosterPreview || "",
+      trailerUrl: addMovieForm.trailerUrl.trim(),
       duration: addMovieForm.duration.trim(),
       director: addMovieForm.director.trim(),
       synopsis: addMovieForm.synopsis.trim(),
       cast: addMovieForm.cast.trim(),
       country: addMovieForm.country.trim(),
+      genres: addMovieForm.genres,
       platforms: addMovieForm.platforms,
       moods: addMovieForm.moods
     };
 
-    setLocalAdminMovies((currentMovies) => [savedMovie, ...currentMovies]);
-    setAddMovieForm(defaultAddMovieForm);
-    setAddMovieFeedback(status === "Draf" ? "Draf film tersimpan sementara." : "Film tersimpan sementara.");
-    setActiveMoviePanel("list");
+    setIsSavingMovie(true);
+    setAddMovieFeedback("");
+
+    try {
+      const isEditRequest = Boolean(selectedEditingMovie?.id);
+      const response = await fetch(
+        isEditRequest ? `${API_URL}/api/admin/movies/${selectedEditingMovie.id}` : `${API_URL}/api/admin/movies`,
+        {
+          method: isEditRequest ? "PUT" : "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.movie) {
+        setAddMovieFeedback(data?.message || "Film belum bisa disimpan.");
+        return;
+      }
+
+      if (isEditRequest) {
+        setManagedMovies((currentMovies) =>
+          currentMovies.map((movie) => (Number(movie.id) === Number(data.movie.id) ? data.movie : movie))
+        );
+      } else {
+        setManagedMovies((currentMovies) => [data.movie, ...currentMovies]);
+        setManagedMoviesTotal((currentTotal) => Number(currentTotal || managedMovies.length) + 1);
+      }
+
+      setFilmPage(1);
+      setAddMovieForm(defaultAddMovieForm);
+      setSelectedEditingMovie(null);
+      setAddMovieFeedback(data.message || (status === "Draft" ? "Draft film berhasil disimpan." : "Film berhasil dipublish."));
+      setActiveMoviePanel("list");
+      setMoviesError("");
+    } catch {
+      setAddMovieFeedback("Film belum bisa disimpan karena koneksi backend bermasalah.");
+    } finally {
+      setIsSavingMovie(false);
+    }
   };
 
   return (
@@ -917,7 +995,7 @@ function AdminPage() {
                     <button
                       type="button"
                       className={activeMoviePanel === "add" ? "admin-nav__submenu-item--active" : ""}
-                      onClick={() => setActiveMoviePanel("add")}
+                      onClick={openAddMovieForm}
                     >
                       <FiPlus aria-hidden="true" />
                       <span>Tambah Film</span>
@@ -925,7 +1003,7 @@ function AdminPage() {
                     <button
                       type="button"
                       className={activeMoviePanel === "edit" ? "admin-nav__submenu-item--active" : ""}
-                      onClick={() => setActiveMoviePanel("edit")}
+                      onClick={openEditMovieList}
                     >
                       <FiEdit3 aria-hidden="true" />
                       <span>Edit Film</span>
@@ -1005,25 +1083,30 @@ function AdminPage() {
             <section className="admin-manage-film" aria-label="Kelola film">
               {moviesError && <p className="admin-dashboard-alert">{moviesError}</p>}
 
-              {activeMoviePanel === "add" && (
-                <section className="admin-add-movie" aria-label="Tambah film baru">
+              {isMovieFormPanel && (
+                <section className="admin-add-movie" aria-label={isEditingMovie ? "Edit film" : "Tambah film baru"}>
                   <div className="admin-add-movie__head">
                     <div>
-                      <h2>Tambah Film Baru</h2>
-                      <p>Isi semua informasi film yang ingin ditambahkan.</p>
+                      <h2>{isEditingMovie ? "Edit Film" : "Tambah Film Baru"}</h2>
+                      <p>
+                        {isEditingMovie
+                          ? "Ubah informasi film lalu simpan sebagai draft atau publish."
+                          : "Isi semua informasi film yang ingin ditambahkan."}
+                      </p>
                     </div>
 
                     <div className="admin-add-movie__actions">
-                      <button type="button" onClick={() => handleSaveAdminMovie("Draf")}>
-                        Draf
+                      <button type="button" disabled={isSavingMovie} onClick={() => handleSaveAdminMovie("Draft")}>
+                        {isSavingMovie ? "Menyimpan..." : "Draf"}
                       </button>
                       <button
                         type="button"
                         className="admin-add-movie__save"
-                        onClick={() => handleSaveAdminMovie("Aktif")}
+                        disabled={isSavingMovie}
+                        onClick={() => handleSaveAdminMovie("Published")}
                       >
                         <FiCheck aria-hidden="true" />
-                        Simpan Film
+                        {isSavingMovie ? "Menyimpan..." : "Simpan Film"}
                       </button>
                     </div>
                   </div>
@@ -1231,7 +1314,7 @@ function AdminPage() {
                 </section>
               )}
 
-              {activeMoviePanel === "edit" && (
+              {activeMoviePanel === "edit" && !selectedEditingMovie && (
                 <article className="admin-panel admin-manage-film__card admin-edit-film__card">
                   <div className="admin-manage-film__header">
                     <div>
@@ -1250,7 +1333,7 @@ function AdminPage() {
                             <span>{movie.year} - {movie.genre}</span>
                           </div>
                         </div>
-                        <button type="button">
+                        <button type="button" onClick={() => openEditMovieForm(movie)}>
                           <FiEdit3 aria-hidden="true" />
                           Edit
                         </button>
@@ -1271,14 +1354,14 @@ function AdminPage() {
                 <div className="admin-manage-film__header">
                   <div>
                     <h2>Semua Film</h2>
-                    <p>Total {isLoading ? "..." : formatChartNumber(filmTotalLabel)} Film terdaftar</p>
+                    <p>Total {isLoading ? "..." : formatChartNumber(filmTotalLabel)} Film manual terdaftar</p>
                   </div>
 
                   <div className="admin-manage-film__actions">
                     <button
                       type="button"
                       className="admin-manage-film__add"
-                      onClick={() => setActiveMoviePanel("add")}
+                      onClick={openAddMovieForm}
                     >
                       <FiPlus aria-hidden="true" />
                       Tambah Film
@@ -1329,7 +1412,7 @@ function AdminPage() {
 
                   {!visibleManagedMovies.length && (
                     <div className="admin-manage-table__empty">
-                      {isLoading ? "Memuat data film..." : "Belum ada film yang bisa dikelola."}
+                      {isLoading ? "Memuat data film..." : "Belum ada film manual yang ditambahkan."}
                     </div>
                   )}
                 </div>

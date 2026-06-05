@@ -191,6 +191,93 @@ const enrichMediaRows = async (rows) =>
     }),
   );
 
+const normalizeTextArray = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+
+  return [];
+};
+
+const normalizeMovieStatus = (status) =>
+  ["draf", "draft"].includes(String(status || "Published").trim().toLowerCase())
+    ? "Draft"
+    : "Published";
+
+const normalizeMovieRating = (rating) => {
+  if (rating === null || rating === undefined || rating === "") {
+    return null;
+  }
+
+  const parsedRating = Number(String(rating).replace(",", "."));
+
+  if (!Number.isFinite(parsedRating)) {
+    return null;
+  }
+
+  return Math.min(10, Math.max(0, parsedRating));
+};
+
+const mapAdminMovieRow = (row) => {
+  const genres = Array.isArray(row.genres) ? row.genres.filter(Boolean) : [];
+  const rating = normalizeMovieRating(row.rating);
+
+  return {
+    no: Number(row.row_number || 0),
+    id: Number(row.id_admin_movie),
+    mediaType: "movie",
+    title: row.title,
+    year: row.release_year || "-",
+    genre: genres.length ? genres.slice(0, 2).join(", ") : "-",
+    genres,
+    rating: rating === null ? "-" : rating.toFixed(1),
+    watchlist: formatNumber(row.watchlist_count || 0),
+    reviewCount: "0",
+    status: normalizeMovieStatus(row.status),
+    poster: row.poster_url || null,
+    duration: row.duration || "",
+    director: row.director || "",
+    synopsis: row.synopsis || "",
+    cast: Array.isArray(row.cast_members) ? row.cast_members.join(", ") : "",
+    country: row.country || "",
+    platforms: Array.isArray(row.platforms) ? row.platforms : [],
+    moods: Array.isArray(row.moods) ? row.moods : [],
+    trailerUrl: row.trailer_url || "",
+    createdAt: row.created_at || null,
+  };
+};
+
+const getAdminMoviePayload = (body = {}) => {
+  const title = String(body?.title || "").trim();
+
+  if (!title) {
+    return {
+      error: "Judul film wajib diisi",
+    };
+  }
+
+  return {
+    title,
+    releaseYear: String(body?.year || body?.releaseYear || "").trim() || null,
+    duration: String(body?.duration || "").trim() || null,
+    director: String(body?.director || "").trim() || null,
+    synopsis: String(body?.synopsis || "").trim() || null,
+    castMembers: normalizeTextArray(body?.cast || body?.castMembers),
+    posterUrl: String(body?.posterUrl || body?.poster || "").trim() || null,
+    trailerUrl: String(body?.trailerUrl || "").trim() || null,
+    rating: normalizeMovieRating(body?.rating),
+    country: String(body?.country || "").trim() || null,
+    genres: normalizeTextArray(body?.genres),
+    platforms: normalizeTextArray(body?.platforms),
+    moods: normalizeTextArray(body?.moods),
+    status: normalizeMovieStatus(body?.status),
+  };
+};
+
 const getRelativeTime = (dateValue) => {
   const date = new Date(dateValue);
 
@@ -372,40 +459,28 @@ const getTopMediaRows = async () =>
 
 const getManagedMediaRows = async () =>
   safeRows(`
-    WITH media_activity AS (
-      SELECT
-        'movie' AS media_type,
-        tmdb_movie_id AS tmdb_id,
-        COUNT(*)::INTEGER AS interaction_count,
-        ROUND(AVG(rating)::numeric, 1) AS average_rating,
-        MAX(created_at) AS latest_activity
-      FROM flix.movie_reviews
-      WHERE parent_review_id IS NULL
-      GROUP BY tmdb_movie_id
-
-      UNION ALL
-
-      SELECT
-        'tv' AS media_type,
-        tmdb_series_id AS tmdb_id,
-        COUNT(*)::INTEGER AS interaction_count,
-        ROUND(AVG(rating)::numeric, 1) AS average_rating,
-        MAX(created_at) AS latest_activity
-      FROM flix.tv_series_reviews
-      WHERE parent_review_id IS NULL
-      GROUP BY tmdb_series_id
-    )
     SELECT
-      ROW_NUMBER() OVER (
-        ORDER BY latest_activity DESC NULLS LAST, interaction_count DESC, tmdb_id ASC
-      ) AS row_number,
-      media_type,
-      tmdb_id,
-      interaction_count,
-      average_rating
-    FROM media_activity
-    ORDER BY latest_activity DESC NULLS LAST, interaction_count DESC, tmdb_id ASC
-    LIMIT 80
+      ROW_NUMBER() OVER (ORDER BY created_at DESC, id_admin_movie DESC) AS row_number,
+      id_admin_movie,
+      title,
+      release_year,
+      duration,
+      director,
+      synopsis,
+      cast_members,
+      poster_url,
+      trailer_url,
+      rating,
+      country,
+      genres,
+      platforms,
+      moods,
+      status,
+      0::INTEGER AS watchlist_count,
+      created_at
+    FROM flix.admin_movies
+    ORDER BY created_at DESC, id_admin_movie DESC
+    LIMIT 120
   `);
 
 const normalizeUserRole = (roleName) => {
@@ -999,7 +1074,7 @@ export const getAdminDashboard = async (req, res) => {
 export const getAdminMovies = async (req, res) => {
   try {
     const managedRows = await getManagedMediaRows();
-    const movies = await enrichMediaRows(managedRows);
+    const movies = managedRows.map(mapAdminMovieRow);
 
     return res.json({
       message: "Daftar film admin berhasil dimuat",
@@ -1009,6 +1084,185 @@ export const getAdminMovies = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Gagal mengambil daftar film admin",
+      error: error.message,
+    });
+  }
+};
+
+export const createAdminMovie = async (req, res) => {
+  try {
+    const moviePayload = getAdminMoviePayload(req.body);
+
+    if (moviePayload.error) {
+      return res.status(400).json({
+        message: moviePayload.error,
+      });
+    }
+
+    const result = await pool.query(
+      `
+        INSERT INTO flix.admin_movies (
+          created_by_user_id,
+          title,
+          release_year,
+          duration,
+          director,
+          synopsis,
+          cast_members,
+          poster_url,
+          trailer_url,
+          rating,
+          country,
+          genres,
+          platforms,
+          moods,
+          status
+        )
+        VALUES (
+          $1, $2, $3, $4, $5, $6, $7,
+          $8, $9, $10, $11, $12, $13, $14, $15
+        )
+        RETURNING
+          1 AS row_number,
+          id_admin_movie,
+          title,
+          release_year,
+          duration,
+          director,
+          synopsis,
+          cast_members,
+          poster_url,
+          trailer_url,
+          rating,
+          country,
+          genres,
+          platforms,
+          moods,
+          status,
+          0::INTEGER AS watchlist_count,
+          created_at
+      `,
+      [
+        req.user?.id_user || null,
+        moviePayload.title,
+        moviePayload.releaseYear,
+        moviePayload.duration,
+        moviePayload.director,
+        moviePayload.synopsis,
+        moviePayload.castMembers,
+        moviePayload.posterUrl,
+        moviePayload.trailerUrl,
+        moviePayload.rating,
+        moviePayload.country,
+        moviePayload.genres,
+        moviePayload.platforms,
+        moviePayload.moods,
+        moviePayload.status,
+      ],
+    );
+
+    return res.status(201).json({
+      message: moviePayload.status === "Draft" ? "Draft film berhasil disimpan" : "Film berhasil dipublish",
+      movie: mapAdminMovieRow(result.rows[0]),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal menambahkan film admin",
+      error: error.message,
+    });
+  }
+};
+
+export const updateAdminMovie = async (req, res) => {
+  try {
+    const movieId = Number(req.params.id);
+
+    if (!Number.isInteger(movieId) || movieId <= 0) {
+      return res.status(400).json({
+        message: "ID film tidak valid",
+      });
+    }
+
+    const moviePayload = getAdminMoviePayload(req.body);
+
+    if (moviePayload.error) {
+      return res.status(400).json({
+        message: moviePayload.error,
+      });
+    }
+
+    const result = await pool.query(
+      `
+        UPDATE flix.admin_movies
+        SET
+          title = $1,
+          release_year = $2,
+          duration = $3,
+          director = $4,
+          synopsis = $5,
+          cast_members = $6,
+          poster_url = $7,
+          trailer_url = $8,
+          rating = $9,
+          country = $10,
+          genres = $11,
+          platforms = $12,
+          moods = $13,
+          status = $14,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id_admin_movie = $15
+        RETURNING
+          1 AS row_number,
+          id_admin_movie,
+          title,
+          release_year,
+          duration,
+          director,
+          synopsis,
+          cast_members,
+          poster_url,
+          trailer_url,
+          rating,
+          country,
+          genres,
+          platforms,
+          moods,
+          status,
+          0::INTEGER AS watchlist_count,
+          created_at
+      `,
+      [
+        moviePayload.title,
+        moviePayload.releaseYear,
+        moviePayload.duration,
+        moviePayload.director,
+        moviePayload.synopsis,
+        moviePayload.castMembers,
+        moviePayload.posterUrl,
+        moviePayload.trailerUrl,
+        moviePayload.rating,
+        moviePayload.country,
+        moviePayload.genres,
+        moviePayload.platforms,
+        moviePayload.moods,
+        moviePayload.status,
+        movieId,
+      ],
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).json({
+        message: "Film tidak ditemukan",
+      });
+    }
+
+    return res.json({
+      message: moviePayload.status === "Draft" ? "Perubahan film disimpan sebagai draft" : "Perubahan film berhasil dipublish",
+      movie: mapAdminMovieRow(result.rows[0]),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal mengubah film admin",
       error: error.message,
     });
   }

@@ -37,6 +37,7 @@ import { initializeMovieReviewsTable } from "./config/initMovieReviews.js";
 import { initializeTvSeriesReviewsTable } from "./config/initTvSeriesReviews.js";
 import { initializeUserProfileMediaColumns } from "./config/initUserProfileMedia.js";
 import { initializeReportsTable } from "./config/initReports.js";
+import { initializeAdminMoviesTable } from "./config/initAdminMovies.js";
 
 dotenv.config();
 
@@ -46,7 +47,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "5mb" }));
 app.use("/api/profile", profileRoutes);
 
 app.get("/", (req, res) => {
@@ -98,6 +99,7 @@ Promise.all([
   initializeChatsTable(),
   initializeNotificationsTable(),
   initializeFriendsTable(),
+  initializeAdminMoviesTable(),
 ])
   .then(() => initializeReportsTable())
   .then(() => {

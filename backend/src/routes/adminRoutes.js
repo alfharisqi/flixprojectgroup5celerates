@@ -1,12 +1,14 @@
 import express from "express";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 import {
+  createAdminMovie,
   getAdminCommunity,
   getAdminDashboard,
   getAdminMovies,
   getAdminReviews,
   getAdminUserDetail,
-  getAdminUsers
+  getAdminUsers,
+  updateAdminMovie
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -23,6 +25,20 @@ router.get(
   verifyToken,
   allowRoles("admin"),
   getAdminMovies
+);
+
+router.post(
+  "/movies",
+  verifyToken,
+  allowRoles("admin"),
+  createAdminMovie
+);
+
+router.put(
+  "/movies/:id",
+  verifyToken,
+  allowRoles("admin"),
+  updateAdminMovie
 );
 
 router.get(
