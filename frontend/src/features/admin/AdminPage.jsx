@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   FiArrowLeft,
@@ -20,7 +20,6 @@ import {
   FiMapPin,
   FiMessageSquare,
   FiMoon,
-  FiMoreVertical,
   FiPlus,
   FiSearch,
   FiSettings,
@@ -42,6 +41,15 @@ import reviewIcon from "@/assets/icon/review-icon.png";
 import "./AdminPage.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const currentAdminYear = new Date().getFullYear();
+const chartActivityOptions = [
+  { id: "login", label: "Login" },
+  { id: "review", label: "Review" },
+  { id: "community", label: "Community" },
+  { id: "report", label: "Report" }
+];
+const chartYearOptions = Array.from({ length: 6 }, (_, index) => currentAdminYear - index);
+const tableLimitOptions = [5, 10, 20];
 
 const fallbackDashboard = {
   stats: [
@@ -358,10 +366,25 @@ function AdminPage() {
   const [reviewsError, setReviewsError] = useState("");
   const [communityError, setCommunityError] = useState("");
   const [userDetailError, setUserDetailError] = useState("");
+  const [selectedChartActivity, setSelectedChartActivity] = useState("login");
+  const [selectedChartYear, setSelectedChartYear] = useState(currentAdminYear);
+  const [openChartFilter, setOpenChartFilter] = useState(null);
+  const [isTableLimitOpen, setIsTableLimitOpen] = useState(false);
+  const didSkipInitialChartFetch = useRef(false);
 
   const user = useMemo(getStoredUser, []);
   const adminName = user?.username || user?.name || "Marsyanda F";
   const avatarLetter = (adminName || "A").charAt(0).toUpperCase();
+  const selectedChartActivityLabel =
+    chartActivityOptions.find((option) => option.id === selectedChartActivity)?.label || "Login";
+  const dashboardUrl = useMemo(() => {
+    const params = new URLSearchParams({
+      activity: selectedChartActivity,
+      year: String(selectedChartYear)
+    });
+
+    return `${API_URL}/api/admin/dashboard?${params.toString()}`;
+  }, [selectedChartActivity, selectedChartYear]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -376,7 +399,7 @@ function AdminPage() {
     const loadAdminData = async () => {
       try {
         const [dashboardResponse, moviesResponse, usersResponse, reviewsResponse, communityResponse] = await Promise.all([
-          fetch(`${API_URL}/api/admin/dashboard`, {
+          fetch(dashboardUrl, {
             headers: {
               Authorization: `Bearer ${token}`
             }
@@ -496,6 +519,49 @@ function AdminPage() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!didSkipInitialChartFetch.current) {
+      didSkipInitialChartFetch.current = true;
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadDashboardChart = async () => {
+      try {
+        const response = await fetch(dashboardUrl, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        const dashboardData = response.ok ? await response.json() : null;
+
+        if (!isMounted) {
+          return;
+        }
+
+        setDashboard(normalizeDashboard(dashboardData?.dashboard || dashboardData));
+        setDashboardError(response.ok ? "" : "Dashboard belum bisa mengambil data backend.");
+      } catch {
+        if (isMounted) {
+          setDashboardError("Dashboard belum bisa mengambil data backend.");
+        }
+      }
+    };
+
+    loadDashboardChart();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [dashboardUrl]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -685,20 +751,6 @@ function AdminPage() {
       };
     });
   }, [dashboard.chart]);
-
-  const cycleTableLimit = () => {
-    setTableLimit((currentLimit) => {
-      if (currentLimit === 5) {
-        return 10;
-      }
-
-      if (currentLimit === 10) {
-        return 20;
-      }
-
-      return 5;
-    });
-  };
 
   const handleAdminNavClick = (itemId) => {
     setActiveAdminPage(itemId);
@@ -2005,14 +2057,73 @@ function AdminPage() {
                   <div className="admin-panel__header admin-panel__header--stacked">
                     <h2>Aktivitas Pengguna</h2>
                     <div className="admin-filter-row">
-                      <button type="button">
-                        Login
-                        <FiChevronDown aria-hidden="true" />
-                      </button>
-                      <button type="button">
-                        2026
-                        <FiChevronDown aria-hidden="true" />
-                      </button>
+                      <div className="admin-filter-row__item">
+                        <button
+                          type="button"
+                          className="admin-filter-row__trigger"
+                          aria-expanded={openChartFilter === "activity"}
+                          onClick={() =>
+                            setOpenChartFilter((currentFilter) =>
+                              currentFilter === "activity" ? null : "activity"
+                            )
+                          }
+                        >
+                          {selectedChartActivityLabel}
+                          <FiChevronDown aria-hidden="true" />
+                        </button>
+                        {openChartFilter === "activity" && (
+                          <div className="admin-filter-row__menu" role="menu">
+                            {chartActivityOptions.map((option) => (
+                              <button
+                                type="button"
+                                key={option.id}
+                                className={selectedChartActivity === option.id ? "is-active" : ""}
+                                role="menuitem"
+                                onClick={() => {
+                                  setSelectedChartActivity(option.id);
+                                  setOpenChartFilter(null);
+                                }}
+                              >
+                                {option.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="admin-filter-row__item">
+                        <button
+                          type="button"
+                          className="admin-filter-row__trigger"
+                          aria-expanded={openChartFilter === "year"}
+                          onClick={() =>
+                            setOpenChartFilter((currentFilter) =>
+                              currentFilter === "year" ? null : "year"
+                            )
+                          }
+                        >
+                          {selectedChartYear}
+                          <FiChevronDown aria-hidden="true" />
+                        </button>
+                        {openChartFilter === "year" && (
+                          <div className="admin-filter-row__menu admin-filter-row__menu--year" role="menu">
+                            {chartYearOptions.map((year) => (
+                              <button
+                                type="button"
+                                key={year}
+                                className={selectedChartYear === year ? "is-active" : ""}
+                                role="menuitem"
+                                onClick={() => {
+                                  setSelectedChartYear(year);
+                                  setOpenChartFilter(null);
+                                }}
+                              >
+                                {year}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -2052,9 +2163,6 @@ function AdminPage() {
                             <strong>{activity.title}</strong>
                             <span>{activity.time}</span>
                           </div>
-                          <button type="button" aria-label={`Menu ${activity.title}`}>
-                            <FiMoreVertical aria-hidden="true" />
-                          </button>
                         </div>
                       );
                     })}
@@ -2069,21 +2177,46 @@ function AdminPage() {
 
               <article className="admin-panel admin-table-panel">
                 <div className="admin-table-title">
-                  <h2>Film dan Series Paling Banyak Direview</h2>
-                  <button type="button" className="admin-table-limit" onClick={cycleTableLimit}>
-                    {tableLimit}
-                    <FiChevronDown aria-hidden="true" />
-                  </button>
+                  <h2>Film Paling Banyak Simpan di Watchlist</h2>
+                  <div className="admin-table-limit-filter">
+                    <button
+                      type="button"
+                      className="admin-table-limit"
+                      aria-haspopup="menu"
+                      aria-expanded={isTableLimitOpen}
+                      onClick={() => setIsTableLimitOpen((isOpen) => !isOpen)}
+                    >
+                      {tableLimit}
+                      <FiChevronDown aria-hidden="true" />
+                    </button>
+                    {isTableLimitOpen && (
+                      <div className="admin-table-limit-filter__menu" role="menu" aria-label="Jumlah film yang tampil">
+                        {tableLimitOptions.map((limit) => (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            key={limit}
+                            className={tableLimit === limit ? "is-active" : ""}
+                            onClick={() => {
+                              setTableLimit(limit);
+                              setIsTableLimitOpen(false);
+                            }}
+                          >
+                            {limit}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="admin-table" role="table" aria-label="Film dan series paling banyak direview">
+                <div className="admin-table admin-table--watchlist" role="table" aria-label="Film paling banyak simpan di watchlist">
                   <div className="admin-table__row admin-table__row--head" role="row">
                     <span role="columnheader">No</span>
-                    <span role="columnheader">Konten</span>
+                    <span role="columnheader">Film</span>
                     <span role="columnheader">Genre</span>
                     <span role="columnheader">Rating</span>
-                    <span role="columnheader">Review</span>
-                    <span role="columnheader">Status</span>
+                    <span role="columnheader">Watchlist</span>
                   </div>
 
                   {visibleWatchlistMovies.map((movie) => (
@@ -2104,14 +2237,11 @@ function AdminPage() {
                         {movie.rating}
                       </span>
                       <span role="cell">{movie.watchlist}</span>
-                      <span role="cell">
-                        <span className="admin-status-pill">{movie.status}</span>
-                      </span>
                     </div>
                   ))}
                   {!visibleWatchlistMovies.length && (
                     <div className="admin-table__empty">
-                      {isLoading ? "Memuat data konten..." : "Belum ada data review film atau series."}
+                      {isLoading ? "Memuat data film..." : "Belum ada data watchlist film."}
                     </div>
                   )}
                 </div>

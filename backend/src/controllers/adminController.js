@@ -5,6 +5,42 @@ const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w92";
 
 const monthLabels = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
+const chartActivityOptions = {
+  login: {
+    label: "Login",
+    sourceQuery: `
+      SELECT created_at
+      FROM flix.users
+    `,
+  },
+  review: {
+    label: "Review",
+    sourceQuery: `
+      SELECT created_at
+      FROM flix.movie_reviews
+      WHERE parent_review_id IS NULL
+      UNION ALL
+      SELECT created_at
+      FROM flix.tv_series_reviews
+      WHERE parent_review_id IS NULL
+    `,
+  },
+  community: {
+    label: "Community",
+    sourceQuery: `
+      SELECT created_at
+      FROM flix.posts
+    `,
+  },
+  report: {
+    label: "Report",
+    sourceQuery: `
+      SELECT created_at
+      FROM flix.reports
+    `,
+  },
+};
+
 const formatNumber = (value) =>
   new Intl.NumberFormat("id-ID").format(Number(value || 0));
 
@@ -184,36 +220,42 @@ const getRelativeTime = (dateValue) => {
   return `${diffDays} hari yang lalu`;
 };
 
-const getChartData = async () => {
+const getEmptyYearChart = () =>
+  monthLabels.map((month) => ({
+    month,
+    value: 0,
+  }));
+
+const getChartData = async ({ activity = "login", year = new Date().getFullYear() } = {}) => {
+  const selectedActivity = chartActivityOptions[activity] ? activity : "login";
+  const selectedYear = Number.parseInt(year, 10);
+  const chartYear = Number.isInteger(selectedYear)
+    ? Math.min(Math.max(selectedYear, 2000), new Date().getFullYear() + 1)
+    : new Date().getFullYear();
+  const { sourceQuery } = chartActivityOptions[selectedActivity];
   const rows = await safeRows(`
     WITH months AS (
       SELECT generate_series(
-        date_trunc('month', CURRENT_DATE) - interval '11 months',
-        date_trunc('month', CURRENT_DATE),
+        make_date($1::INTEGER, 1, 1),
+        make_date($1::INTEGER, 12, 1),
         interval '1 month'
       ) AS month_start
+    ),
+    events AS (
+      ${sourceQuery}
     )
     SELECT
       EXTRACT(MONTH FROM months.month_start)::INTEGER AS month_number,
-      COALESCE(COUNT(u.id_user), 0)::INTEGER AS value
+      COALESCE(COUNT(events.created_at), 0)::INTEGER AS value
     FROM months
-    LEFT JOIN flix.users u
-      ON date_trunc('month', u.created_at) = months.month_start
+    LEFT JOIN events
+      ON date_trunc('month', events.created_at) = months.month_start
     GROUP BY months.month_start
     ORDER BY months.month_start ASC
-  `);
+  `, [chartYear]);
 
   if (!rows.length) {
-    const now = new Date();
-
-    return Array.from({ length: 12 }, (_, index) => {
-      const month = new Date(now.getFullYear(), now.getMonth() - 11 + index, 1);
-
-      return {
-        month: monthLabels[month.getMonth()],
-        value: 0,
-      };
-    });
+    return getEmptyYearChart();
   }
 
   return rows.map((row) => ({
@@ -869,6 +911,10 @@ const getAdminUserDetailRows = async (userId) => {
 
 export const getAdminDashboard = async (req, res) => {
   try {
+    const selectedChartActivity = chartActivityOptions[req.query.activity]
+      ? req.query.activity
+      : "login";
+    const selectedChartYear = Number.parseInt(req.query.year, 10) || new Date().getFullYear();
     const [
       movieContentCount,
       tvContentCount,
@@ -901,7 +947,10 @@ export const getAdminDashboard = async (req, res) => {
         WHERE notification_type ILIKE '%report%'
           AND is_read = FALSE
       `),
-      getChartData(),
+      getChartData({
+        activity: selectedChartActivity,
+        year: selectedChartYear,
+      }),
       getRecentActivities(),
       getTopMediaRows(),
     ]);
@@ -931,6 +980,11 @@ export const getAdminDashboard = async (req, res) => {
         },
       ],
       chart,
+      chartMeta: {
+        activity: selectedChartActivity,
+        activityLabel: chartActivityOptions[selectedChartActivity].label,
+        year: selectedChartYear,
+      },
       activities,
       watchlistMovies,
     });
