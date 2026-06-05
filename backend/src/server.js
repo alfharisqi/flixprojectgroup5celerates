@@ -44,12 +44,57 @@ import { initializeContactMessagesTable } from "./config/initContactMessages.js"
 dotenv.config();
 
 const app = express();
+let databaseReadyPromise;
+let mailVerifyPromise;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const initializeDatabase = () => {
+  if (!databaseReadyPromise) {
+    databaseReadyPromise = Promise.all([
+      initializeEmailVerificationTable(),
+      initializePostViewsTable(),
+      initializePasswordResetTable(),
+      initializeMovieReviewsTable(),
+      initializeTvSeriesReviewsTable(),
+      initializeUserProfileMediaColumns(),
+      initializeChatsTable(),
+      initializeNotificationsTable(),
+      initializeFriendsTable(),
+      initializeAdminMoviesTable(),
+      initializeContactMessagesTable(),
+    ]).then(() => initializeReportsTable());
+  }
+
+  return databaseReadyPromise;
+};
+
+const verifyMailer = () => {
+  if (!mailVerifyPromise) {
+    mailVerifyPromise = transporter.verify()
+      .then(() => {
+        console.log("SMTP Mailtrap siap digunakan");
+      })
+      .catch((error) => {
+        console.error("SMTP Mailtrap gagal:", error.message);
+      });
+  }
+
+  return mailVerifyPromise;
+};
+
 app.use(cors());
 app.use(express.json({ limit: "5mb" }));
+app.use(async (req, res, next) => {
+  try {
+    await initializeDatabase();
+    next();
+  } catch (error) {
+    console.error("Gagal menyiapkan tabel database:", error.message);
+    res.status(500).json({ message: "Gagal menyiapkan database" });
+  }
+});
 app.use("/api/profile", profileRoutes);
 
 app.get("/", (req, res) => {
@@ -82,31 +127,13 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-transporter.verify()
-  .then(() => {
-    console.log("SMTP Mailtrap siap digunakan");
-  })
-  .catch((error) => {
-    console.error("SMTP Mailtrap gagal:", error.message);
-  });
-
 const PORT = process.env.PORT || 5000;
 
-Promise.all([
-  initializeEmailVerificationTable(),
-  initializePostViewsTable(),
-  initializePasswordResetTable(),
-  initializeMovieReviewsTable(),
-  initializeTvSeriesReviewsTable(),
-  initializeUserProfileMediaColumns(),
-  initializeChatsTable(),
-  initializeNotificationsTable(),
-  initializeFriendsTable(),
-  initializeAdminMoviesTable(),
-  initializeContactMessagesTable(),
-])
-  .then(() => initializeReportsTable())
-  .then(() => {
+verifyMailer();
+
+if (!process.env.VERCEL) {
+  initializeDatabase()
+    .then(() => {
     app.listen(PORT, () => {
       console.log(`Server berjalan di http://localhost:${PORT}`);
     });
@@ -115,3 +142,6 @@ Promise.all([
     console.error("Gagal menyiapkan tabel database:", error.message);
     process.exit(1);
   });
+}
+
+export default app;
