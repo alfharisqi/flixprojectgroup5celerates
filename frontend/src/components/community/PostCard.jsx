@@ -130,7 +130,13 @@ function PostCard({
                   })
                 }
                 onMessage={() => handleMessageUser?.(post)}
-                onReportUser={() => handleReportUser?.(post.id_user)}
+                onReportUser={() =>
+                  handleReportUser?.({
+                    id_user: post.id_user,
+                    username: post.username,
+                    profile_image_url: post.profile_image_url,
+                  })
+                }
               />
               <span />{" "}
               {new Date(post.created_at).toLocaleString()}

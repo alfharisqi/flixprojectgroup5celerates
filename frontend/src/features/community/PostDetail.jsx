@@ -533,8 +533,26 @@ function PostDetail() {
     );
   };
 
-  const handleReportUser = (targetUserId) => {
-    alert(`Fitur report user #${targetUserId} akan ditambahkan.`);
+  const handleReportUser = (targetUser) => {
+    if (!requireLogin()) {
+      return;
+    }
+
+    const normalizedUser =
+      typeof targetUser === "object" && targetUser !== null
+        ? targetUser
+        : { id_user: targetUser };
+
+    if (!normalizedUser.id_user) {
+      return;
+    }
+
+    setReportError("");
+    setReportTarget({
+      targetType: "user_profile",
+      targetId: normalizedUser.id_user,
+      targetLabel: `user ${normalizedUser.username || `#${normalizedUser.id_user}`}`,
+    });
   };
 
   const renderCommentTree = (allComments, items, postId, level = 0) => {
@@ -588,7 +606,13 @@ function PostDetail() {
                       })
                     }
                     onMessage={() => handleMessageUser(comment)}
-                    onReportUser={() => handleReportUser(comment.id_user)}
+                    onReportUser={() =>
+                      handleReportUser({
+                        id_user: comment.id_user,
+                        username: comment.username,
+                        profile_image_url: comment.profile_image_url,
+                      })
+                    }
                   />
                   <time dateTime={comment.created_at}>
                     {formatReplyDate(comment.created_at)}
@@ -812,7 +836,13 @@ function PostDetail() {
                     })
                   }
                   onMessage={() => handleMessageUser(post)}
-                  onReportUser={() => handleReportUser(post.id_user)}
+                  onReportUser={() =>
+                    handleReportUser({
+                      id_user: post.id_user,
+                      username: post.username,
+                      profile_image_url: post.profile_image_url,
+                    })
+                  }
                 />
                 <span aria-hidden="true" />
                 {new Date(post.created_at).toLocaleString()}

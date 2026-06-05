@@ -419,8 +419,26 @@ function Community() {
     }
   };
 
-  const handleReportUser = (targetUserId) => {
-    alert(`Fitur report user #${targetUserId} akan ditambahkan.`);
+  const handleReportUser = (targetUser) => {
+    if (!requireLogin()) {
+      return;
+    }
+
+    const normalizedUser =
+      typeof targetUser === "object" && targetUser !== null
+        ? targetUser
+        : { id_user: targetUser };
+
+    if (!normalizedUser.id_user) {
+      return;
+    }
+
+    setReportError("");
+    setReportTarget({
+      targetType: "user_profile",
+      targetId: normalizedUser.id_user,
+      targetLabel: `user ${normalizedUser.username || `#${normalizedUser.id_user}`}`,
+    });
   };
 
   const handleAddFriend = (targetUser) => {

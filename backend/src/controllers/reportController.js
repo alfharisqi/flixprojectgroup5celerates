@@ -41,6 +41,15 @@ const reportTargets = {
     targetIdColumn: "id_comment",
     ownerColumn: "id_user",
   },
+  user_profile: {
+    type: "user_profile",
+    reportColumn: "reported_user_id",
+    targetTable: "flix.users",
+    targetIdColumn: "id_user",
+    ownerColumn: "id_user",
+    targetNotFoundMessage: "User yang dilaporkan tidak ditemukan",
+    selfReportMessage: "Kamu tidak bisa melaporkan akun sendiri",
+  },
 };
 
 const targetAliases = {
@@ -55,6 +64,11 @@ const targetAliases = {
   comment: "community_reply",
   community_comment: "community_reply",
   communityReply: "community_reply",
+  user: "user_profile",
+  profile_user: "user_profile",
+  userProfile: "user_profile",
+  reported_user: "user_profile",
+  reportedUser: "user_profile",
 };
 
 const categoryValues = new Set(REPORT_CATEGORIES.map((item) => item.value));
@@ -120,13 +134,13 @@ export const createReport = async (req, res) => {
 
     if (targetResult.rows.length === 0) {
       return res.status(404).json({
-        message: "Konten yang dilaporkan tidak ditemukan",
+        message: targetConfig.targetNotFoundMessage || "Konten yang dilaporkan tidak ditemukan",
       });
     }
 
     if (Number(targetResult.rows[0].id_user) === Number(reporterUserId)) {
       return res.status(400).json({
-        message: "Kamu tidak bisa melaporkan konten sendiri",
+        message: targetConfig.selfReportMessage || "Kamu tidak bisa melaporkan konten sendiri",
       });
     }
 
