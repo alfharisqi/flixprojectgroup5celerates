@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import chatbotRoutes from "./routes/chatbotRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
 import friendRoutes from "./routes/friendRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
@@ -38,6 +39,7 @@ import { initializeTvSeriesReviewsTable } from "./config/initTvSeriesReviews.js"
 import { initializeUserProfileMediaColumns } from "./config/initUserProfileMedia.js";
 import { initializeReportsTable } from "./config/initReports.js";
 import { initializeAdminMoviesTable } from "./config/initAdminMovies.js";
+import { initializeContactMessagesTable } from "./config/initContactMessages.js";
 
 dotenv.config();
 
@@ -57,6 +59,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/chats", chatRoutes);
 app.use("/api/chatbot", chatbotRoutes);
+app.use("/api/contact-us", contactRoutes);
 app.use("/api/friends", friendRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/reports", reportRoutes);
@@ -100,6 +103,7 @@ Promise.all([
   initializeNotificationsTable(),
   initializeFriendsTable(),
   initializeAdminMoviesTable(),
+  initializeContactMessagesTable(),
 ])
   .then(() => initializeReportsTable())
   .then(() => {

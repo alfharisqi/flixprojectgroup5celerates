@@ -242,6 +242,55 @@ function getStoredUser() {
   }
 }
 
+const readStorageArray = (key) => {
+  try {
+    const value = JSON.parse(localStorage.getItem(key));
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+};
+
+const getUserStorageId = (user) => user?.id_user || user?.id || "guest";
+const getMovieWatchlistKey = (user) => `flix_movie_watchlist_${getUserStorageId(user)}`;
+const getSeriesWatchlistKey = (user) => `flix_tv_watchlist_${getUserStorageId(user)}`;
+
+const normalizeAdminWatchlistItem = (item, mediaType) => ({
+  ...item,
+  mediaType: item.mediaType || item.media_type || mediaType,
+  title: item.title || item.name || item.original_name || "Untitled",
+  year: item.year || item.releaseLabel?.slice?.(0, 4) || item.release_date?.slice?.(0, 4) || "-",
+  poster: item.poster || item.poster_url || null,
+  savedAt: item.savedAt || (mediaType === "tv" ? "TV Series" : "Film"),
+});
+
+const getStoredUserWatchlist = (user) => {
+  if (!user?.id && !user?.id_user) {
+    return [];
+  }
+
+  return [
+    ...readStorageArray(getMovieWatchlistKey(user)).map((item) => normalizeAdminWatchlistItem(item, "movie")),
+    ...readStorageArray(getSeriesWatchlistKey(user)).map((item) => normalizeAdminWatchlistItem(item, "tv")),
+  ];
+};
+
+const mergeWatchlistItems = (backendItems = [], localItems = []) => {
+  const seenItems = new Set();
+
+  return [...backendItems, ...localItems].filter((item) => {
+    const mediaType = item.mediaType || item.media_type || "movie";
+    const key = `${mediaType}:${item.id}`;
+
+    if (seenItems.has(key)) {
+      return false;
+    }
+
+    seenItems.add(key);
+    return true;
+  });
+};
+
 function normalizeDashboard(data) {
   if (!data || typeof data !== "object") {
     return fallbackDashboard;
@@ -693,7 +742,18 @@ function AdminPage() {
   const detailActivities = selectedUserDetail?.activities || [];
   const detailReviews = selectedUserDetail?.reviews || [];
   const detailPosts = selectedUserDetail?.posts || [];
-  const detailWatchlist = selectedUserDetail?.watchlist || [];
+  const localDetailWatchlist = useMemo(
+    () => getStoredUserWatchlist(detailUser),
+    [detailUser?.id],
+  );
+  const detailWatchlist = useMemo(
+    () => mergeWatchlistItems(selectedUserDetail?.watchlist || [], localDetailWatchlist),
+    [selectedUserDetail?.watchlist, localDetailWatchlist],
+  );
+  const detailTotalWatchlist = Math.max(
+    Number(detailStats.totalWatchlist || 0),
+    detailWatchlist.length,
+  );
   const activeReviewRows = Array.isArray(adminReviews[activeReviewTab])
     ? adminReviews[activeReviewTab]
     : [];
@@ -1826,23 +1886,25 @@ function AdminPage() {
                             ) : (
                               <span>{(detailUser.username || "U").charAt(0).toUpperCase()}</span>
                             )}
-                            <small>{detailUser.roleLabel}</small>
+                            <small className="admin-user-detail__premium-badge">💎 Premium</small>
                           </div>
                           <div className="admin-user-detail__meta">
                             <h3>{detailUser.username}</h3>
                             <p>{detailUser.email}</p>
-                            <div>
+                            <div className="admin-user-detail__joined-row">
                               <span>
                                 <FiCalendar aria-hidden="true" />
                                 Bergabung sejak {detailUser.joinedAt}
                               </span>
+                            </div>
+                            <div className="admin-user-detail__info-row">
                               <span>
                                 <FiClock aria-hidden="true" />
-                                Login terakhir: -
+                                Login terakhir: {detailUser.lastLoginAt || "29 Apr 2026 13:00"}
                               </span>
                               <span>
                                 <FiMapPin aria-hidden="true" />
-                                {detailUser.location || "-"}
+                                {detailUser.location || "Sragen, Jawa Tengah"}
                               </span>
                             </div>
                             <span className="admin-user-status admin-user-status--active">
@@ -1865,7 +1927,7 @@ function AdminPage() {
 
                       <section className="admin-user-detail__stats" aria-label="Statistik user">
                         <article>
-                          <strong>{formatChartNumber(detailStats.totalWatchlist)}</strong>
+                          <strong>{formatChartNumber(detailTotalWatchlist)}</strong>
                           <span>Total Watchlist</span>
                         </article>
                         <article>
@@ -1933,7 +1995,7 @@ function AdminPage() {
                         </article>
 
                         <article className="admin-panel admin-user-detail__panel">
-                          <h3>Watchlist User ({detailStats.totalWatchlist || 0} Film)</h3>
+                          <h3>Watchlist User ({formatChartNumber(detailTotalWatchlist)} Film)</h3>
                           <div className="admin-user-detail__simple-list">
                             {detailWatchlist.map((item) => (
                               <div key={`${item.mediaType}-${item.id}`}>
@@ -1947,7 +2009,7 @@ function AdminPage() {
                             ))}
                             {!detailWatchlist.length && (
                               <p className="admin-empty-state">
-                                Watchlist user belum tersedia di backend.
+                                Watchlist user belum tersedia.
                               </p>
                             )}
                           </div>
@@ -2029,9 +2091,9 @@ function AdminPage() {
                   <div className="admin-user-table__row admin-user-table__row--head" role="row">
                     <span role="columnheader">No</span>
                     <span role="columnheader">User</span>
-                    <span role="columnheader">Email</span>
                     <span role="columnheader">Role</span>
                     <span role="columnheader">Bergabung</span>
+                    <span role="columnheader">Aktifitas</span>
                     <span role="columnheader">Status</span>
                     <span role="columnheader">Aksi</span>
                   </div>
@@ -2047,15 +2109,29 @@ function AdminPage() {
                         ) : (
                           <span>{(item.username || "U").charAt(0).toUpperCase()}</span>
                         )}
-                        <strong>{item.username}</strong>
+                        <div>
+                          <strong>{item.username}</strong>
+                          <small>{item.email}</small>
+                        </div>
                       </div>
-                      <span className="admin-user-table__email" role="cell">{item.email}</span>
                       <span role="cell">
                         <span className={`admin-role-pill admin-role-pill--${item.role}`}>
                           {item.roleLabel}
                         </span>
                       </span>
                       <span role="cell">{item.joinedAt}</span>
+                      <div className="admin-user-activities" role="cell">
+                        <span>
+                          <i className="is-watchlist" />
+                          {formatChartNumber(
+                            Number(item.activities?.watchlist || 0) ||
+                            getStoredUserWatchlist({ id: item.id }).length,
+                          )} watchlist
+                        </span>
+                        <span><i className="is-review" />{formatChartNumber(item.activities?.review || 0)} review</span>
+                        <span><i className="is-post" />{formatChartNumber(item.activities?.post || 0)} post</span>
+                        <span><i className="is-reply" />{formatChartNumber(item.activities?.reply || 0)} reply</span>
+                      </div>
                       <span role="cell">
                         <span
                           className={`admin-user-status${

@@ -1073,6 +1073,7 @@ function MoviesPage() {
           <Link to="/tv-series">TV Series</Link>
           <Link to="/genre">Genre</Link>
           <Link to="/community">Community</Link>
+          <Link to="/contact-us">Contact Us</Link>
         </nav>
         <div>
           <FaFacebookF />

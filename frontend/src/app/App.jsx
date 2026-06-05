@@ -21,6 +21,7 @@ import ProfilePage from "@/features/profile/ProfilePage";
 import PostDetail from "@/features/community/PostDetail";
 import CreatePostPage from "@/features/community/CreatePostPage";
 import WatchlistPage from "@/features/watchlist/WatchlistPage";
+import ContactUsPage from "@/features/contact/ContactUsPage";
 
 function App() {
   const location = useLocation();
@@ -34,6 +35,7 @@ function App() {
     "/genre",
     "/tv-series",
     "/community",
+    "/contact-us",
     "/create-post",
     "/watchlist",
     "/profile",
@@ -68,6 +70,7 @@ function App() {
         <Route path="/movie/:id" element={<MovieDetail />} />
         <Route path="/tv-series/:id" element={<TVSeriesDetail />} />
         <Route path="/community" element={<Community />} />
+        <Route path="/contact-us" element={<ContactUsPage />} />
         <Route path="/post/:id" element={<PostDetail />} />
         <Route path="/create-post" element={<CreatePostPage />} />
         <Route path="/watchlist" element={<WatchlistPage />} />

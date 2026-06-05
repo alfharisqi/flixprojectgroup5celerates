@@ -504,9 +504,36 @@ const getAdminUserRows = async () =>
       u.email_verified,
       u.profile_image_url,
       u.created_at,
-      r.role_name
+      r.role_name,
+      0::INTEGER AS watchlist_count,
+      COALESCE(movie_reviews.review_count, 0)::INTEGER
+        + COALESCE(tv_reviews.review_count, 0)::INTEGER AS review_count,
+      COALESCE(posts.post_count, 0)::INTEGER AS post_count,
+      COALESCE(replies.reply_count, 0)::INTEGER AS reply_count
     FROM flix.users u
     JOIN flix.roles r ON u.id_role = r.id_role
+    LEFT JOIN (
+      SELECT id_user, COUNT(*)::INTEGER AS review_count
+      FROM flix.movie_reviews
+      WHERE parent_review_id IS NULL
+      GROUP BY id_user
+    ) movie_reviews ON u.id_user = movie_reviews.id_user
+    LEFT JOIN (
+      SELECT id_user, COUNT(*)::INTEGER AS review_count
+      FROM flix.tv_series_reviews
+      WHERE parent_review_id IS NULL
+      GROUP BY id_user
+    ) tv_reviews ON u.id_user = tv_reviews.id_user
+    LEFT JOIN (
+      SELECT id_user, COUNT(*)::INTEGER AS post_count
+      FROM flix.posts
+      GROUP BY id_user
+    ) posts ON u.id_user = posts.id_user
+    LEFT JOIN (
+      SELECT id_user, COUNT(*)::INTEGER AS reply_count
+      FROM flix.comments
+      GROUP BY id_user
+    ) replies ON u.id_user = replies.id_user
     ORDER BY
       CASE
         WHEN r.role_name = 'admin' THEN 1
@@ -528,6 +555,12 @@ const mapAdminUsers = (rows) =>
     status: row.email_verified === false ? "Belum Verifikasi" : "Aktif",
     joinedAt: formatDate(row.created_at),
     profileImageUrl: row.profile_image_url,
+    activities: {
+      watchlist: Number(row.watchlist_count || 0),
+      review: Number(row.review_count || 0),
+      post: Number(row.post_count || 0),
+      reply: Number(row.reply_count || 0),
+    },
   }));
 
 const mapReviewMediaRows = async (rows) =>
