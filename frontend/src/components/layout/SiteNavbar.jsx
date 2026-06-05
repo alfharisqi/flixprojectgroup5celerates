@@ -999,7 +999,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
                     </span>
                   </Link>
 
-                  <Link className="site-navbar__profile-item" to="/profile">
+                  <Link className="site-navbar__profile-item" to="/settings">
                     <img src={settingIcon} alt="" />
                     <span>Settings</span>
                   </Link>

@@ -125,6 +125,12 @@
   filter: brightness(0) invert(1);
 }
 
+.site-navbar__chat .site-navbar__icon-button img,
+.site-navbar__notification .site-navbar__icon-button img {
+  width: auto;
+  height: auto;
+}
+
 .site-navbar__icon-button--plain {
   background: transparent;
 }
@@ -826,8 +832,8 @@
 }
 
 .site-navbar__notification-icon img {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   object-fit: contain;
   filter: brightness(0) invert(1);
 }

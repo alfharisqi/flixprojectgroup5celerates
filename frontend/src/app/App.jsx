@@ -15,9 +15,11 @@ import GenrePage from "@/features/genre/GenrePage";
 import TVSeriesPage from "@/features/tv-series/TVSeriesPage";
 import TVSeriesDetail from "@/features/tv-series/TVSeriesDetail";
 import Community from "@/features/community/Community";
+import ContactUsPage from "@/features/contact/ContactUsPage";
 import AdminPage from "@/features/admin/AdminPage";
 import ModeratorPage from "@/features/admin/ModeratorPage";
 import ProfilePage from "@/features/profile/ProfilePage";
+import SettingsPage from "@/features/settings/SettingsPage";
 import PostDetail from "@/features/community/PostDetail";
 import CreatePostPage from "@/features/community/CreatePostPage";
 import WatchlistPage from "@/features/watchlist/WatchlistPage";
@@ -34,9 +36,11 @@ function App() {
     "/genre",
     "/tv-series",
     "/community",
+    "/contact-us",
     "/create-post",
     "/watchlist",
     "/profile",
+    "/settings",
     "/admin",
     "/",
   ];
@@ -68,6 +72,7 @@ function App() {
         <Route path="/movie/:id" element={<MovieDetail />} />
         <Route path="/tv-series/:id" element={<TVSeriesDetail />} />
         <Route path="/community" element={<Community />} />
+        <Route path="/contact-us" element={<ContactUsPage />} />
         <Route path="/post/:id" element={<PostDetail />} />
         <Route path="/create-post" element={<CreatePostPage />} />
         <Route path="/watchlist" element={<WatchlistPage />} />
@@ -82,6 +87,15 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["registered_user", "moderator", "admin"]}>
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute allowedRoles={["registered_user", "moderator", "admin"]}>
+              <SettingsPage />
             </ProtectedRoute>
           }
         />

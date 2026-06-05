@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
+import Cropper from "react-easy-crop";
 import {
   FaBookmark,
   FaCalendarAlt,
@@ -9,6 +10,8 @@ import {
   FaEdit,
   FaFacebookF,
   FaEnvelope,
+  FaMinus,
+  FaPlus,
   FaRegCommentDots,
   FaSearch,
   FaStar,
@@ -63,12 +66,27 @@ const tvGenreLookup = {
 };
 
 const moodDefinitions = [
-  { key: "santai", label: "Santai", icon: santaiIcon, genreIds: [35, 10751, 16] },
+  {
+    key: "santai",
+    label: "Santai",
+    icon: santaiIcon,
+    genreIds: [35, 10751, 16],
+  },
   { key: "seru", label: "Seru", icon: seruIcon, genreIds: [28, 12, 10759] },
   { key: "sedih", label: "Sedih", icon: sedihIcon, genreIds: [18] },
-  { key: "menegangkan", label: "Menegangkan", icon: menegangkanIcon, genreIds: [53, 27, 80, 9648] },
+  {
+    key: "menegangkan",
+    label: "Menegangkan",
+    icon: menegangkanIcon,
+    genreIds: [53, 27, 80, 9648],
+  },
   { key: "romantis", label: "Romantis", icon: romantisIcon, genreIds: [10749] },
-  { key: "pikiran", label: "Pikiran", icon: pikiranIcon, genreIds: [878, 10765, 9648] },
+  {
+    key: "pikiran",
+    label: "Pikiran",
+    icon: pikiranIcon,
+    genreIds: [878, 10765, 9648],
+  },
 ];
 
 const readStorageArray = (key) => {
@@ -83,7 +101,9 @@ const readStorageArray = (key) => {
 const readStorageObject = (key) => {
   try {
     const value = JSON.parse(localStorage.getItem(key));
-    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : {};
   } catch {
     return {};
   }
@@ -98,10 +118,14 @@ const getStoredUser = () => {
 };
 
 const getUserStorageId = (user) => user?.id_user || "guest";
-const getMovieWatchlistKey = (user) => `flix_movie_watchlist_${getUserStorageId(user)}`;
-const getSeriesWatchlistKey = (user) => `flix_tv_watchlist_${getUserStorageId(user)}`;
-const getWatchStatusKey = (user) => `flix_watchlist_status_${getUserStorageId(user)}`;
-const getMoodHistoryKey = (user) => `flix_mood_history_${getUserStorageId(user)}`;
+const getMovieWatchlistKey = (user) =>
+  `flix_movie_watchlist_${getUserStorageId(user)}`;
+const getSeriesWatchlistKey = (user) =>
+  `flix_tv_watchlist_${getUserStorageId(user)}`;
+const getWatchStatusKey = (user) =>
+  `flix_watchlist_status_${getUserStorageId(user)}`;
+const getMoodHistoryKey = (user) =>
+  `flix_mood_history_${getUserStorageId(user)}`;
 const getItemKey = (item) => `${item.mediaType}:${item.id}`;
 const getReviewKey = (review) => `${review.media_type}:${review.id_review}`;
 const getReviewApiUrl = (review) =>
@@ -116,7 +140,8 @@ const getFriendSearchButtonLabel = (status) => {
   return "Add";
 };
 
-const getInitial = (name = "User") => name.trim().slice(0, 1).toUpperCase() || "U";
+const getInitial = (name = "User") =>
+  name.trim().slice(0, 1).toUpperCase() || "U";
 
 const getYear = (date) => date?.slice?.(0, 4) || "-";
 
@@ -194,7 +219,9 @@ function ProfileStatCard({ value, label, icon }) {
 function ProfileReviewItem({ item, disabled, onEdit, onDelete }) {
   const genres = item.genres?.length
     ? item.genres.slice(0, 2)
-    : (item.genre_ids || []).slice(0, 2).map((genreId) => getGenreName(genreId, item.media_type));
+    : (item.genre_ids || [])
+        .slice(0, 2)
+        .map((genreId) => getGenreName(genreId, item.media_type));
 
   return (
     <article className="profile-review-item">
@@ -203,11 +230,16 @@ function ProfileReviewItem({ item, disabled, onEdit, onDelete }) {
         <div className="profile-review-item__header">
           <div>
             <h3>{item.title}</h3>
-            <div className="profile-review-rating" aria-label={`Rating ${item.rating} dari 5`}>
+            <div
+              className="profile-review-rating"
+              aria-label={`Rating ${item.rating} dari 5`}
+            >
               {[1, 2, 3, 4, 5].map((star) => (
                 <FaStar
                   key={star}
-                  className={star <= Number(item.rating || 0) ? "is-active" : ""}
+                  className={
+                    star <= Number(item.rating || 0) ? "is-active" : ""
+                  }
                 />
               ))}
               <span>{formatRating(Number(item.rating || 0))}</span>
@@ -269,7 +301,13 @@ function ProfileFriendItem({ friend, disabled, onMessage, onRemove }) {
 
   return (
     <article className="profile-friend-item">
-      <span className={avatarUrl ? "profile-friend-avatar has-image" : "profile-friend-avatar"}>
+      <span
+        className={
+          avatarUrl
+            ? "profile-friend-avatar has-image"
+            : "profile-friend-avatar"
+        }
+      >
         {avatarUrl ? (
           <img src={avatarUrl} alt={friend.username || "Friend"} />
         ) : (
@@ -293,7 +331,11 @@ function ProfileFriendItem({ friend, disabled, onMessage, onRemove }) {
           <FaTrash />
           Remove
         </button>
-        <button type="button" onClick={() => onMessage(friend)} disabled={disabled}>
+        <button
+          type="button"
+          onClick={() => onMessage(friend)}
+          disabled={disabled}
+        >
           <FaEnvelope />
           Message
         </button>
@@ -307,7 +349,13 @@ function ProfileFriendRequestItem({ request, disabled, onAccept, onDecline }) {
 
   return (
     <article className="profile-friend-request-item">
-      <span className={avatarUrl ? "profile-friend-avatar has-image" : "profile-friend-avatar"}>
+      <span
+        className={
+          avatarUrl
+            ? "profile-friend-avatar has-image"
+            : "profile-friend-avatar"
+        }
+      >
         {avatarUrl ? (
           <img src={avatarUrl} alt={request.username || "Friend request"} />
         ) : (
@@ -322,11 +370,19 @@ function ProfileFriendRequestItem({ request, disabled, onAccept, onDecline }) {
       </div>
 
       <div className="profile-friend-request-actions">
-        <button type="button" onClick={() => onAccept(request)} disabled={disabled}>
+        <button
+          type="button"
+          onClick={() => onAccept(request)}
+          disabled={disabled}
+        >
           <FaCheck />
           Accept
         </button>
-        <button type="button" onClick={() => onDecline(request)} disabled={disabled}>
+        <button
+          type="button"
+          onClick={() => onDecline(request)}
+          disabled={disabled}
+        >
           <FaTimes />
           Decline
         </button>
@@ -342,7 +398,13 @@ function ProfileFriendSearchResult({ user, disabled, onAdd }) {
 
   return (
     <article className="profile-friend-search-result">
-      <span className={avatarUrl ? "profile-friend-avatar has-image" : "profile-friend-avatar"}>
+      <span
+        className={
+          avatarUrl
+            ? "profile-friend-avatar has-image"
+            : "profile-friend-avatar"
+        }
+      >
         {avatarUrl ? (
           <img src={avatarUrl} alt={user.username || "User FLIX"} />
         ) : (
@@ -368,23 +430,260 @@ function ProfileFriendSearchResult({ user, disabled, onAdd }) {
   );
 }
 
-function EditProfileModal({ open, form, saving, onClose, onChange, onSubmit }) {
+const createImage = (url) =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener("load", () => resolve(image));
+    image.addEventListener("error", reject);
+    image.src = url;
+  });
+
+const getCroppedImageBlob = async (
+  imageSrc,
+  croppedAreaPixels,
+  aspectRatio,
+) => {
+  const image = await createImage(imageSrc);
+  const outputWidth = aspectRatio === 1 ? 600 : 1200;
+  const outputHeight = Math.round(outputWidth / aspectRatio);
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  canvas.width = outputWidth;
+  canvas.height = outputHeight;
+  context.drawImage(
+    image,
+    croppedAreaPixels.x,
+    croppedAreaPixels.y,
+    croppedAreaPixels.width,
+    croppedAreaPixels.height,
+    0,
+    0,
+    outputWidth,
+    outputHeight,
+  );
+
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.92);
+  });
+};
+
+function ImageCropperModal({
+  open,
+  imageSrc,
+  target,
+  onCancel,
+  onCropComplete,
+}) {
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const isBanner = target === "banner_image_url";
+  const aspectRatio = isBanner ? 3 : 1;
+
+  useEffect(() => {
+    if (open) {
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCroppedAreaPixels(null);
+    }
+  }, [imageSrc, open]);
+
+  const handleCropComplete = useCallback((_, nextCroppedAreaPixels) => {
+    setCroppedAreaPixels(nextCroppedAreaPixels);
+  }, []);
+
   if (!open) {
     return null;
   }
 
+  const handleUseImage = async () => {
+    if (!croppedAreaPixels) {
+      return;
+    }
+
+    const blob = await getCroppedImageBlob(
+      imageSrc,
+      croppedAreaPixels,
+      aspectRatio,
+    );
+
+    if (blob) {
+      onCropComplete(blob);
+    }
+  };
+
+  return (
+    <div
+      className="profile-edit-modal profile-cropper-modal"
+      role="presentation"
+      onClick={onCancel}
+    >
+      <section
+        className="profile-edit-modal__dialog profile-cropper-modal__dialog"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="profile-edit-modal__header">
+          <h2>{isBanner ? "Crop Banner" : "Crop Foto Profile"}</h2>
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Tutup crop gambar"
+          >
+            <FaTimes />
+          </button>
+        </div>
+
+        <div
+          className={
+            isBanner
+              ? "profile-cropper-frame is-banner"
+              : "profile-cropper-frame"
+          }
+        >
+          <Cropper
+            image={imageSrc}
+            crop={crop}
+            zoom={zoom}
+            minZoom={1}
+            maxZoom={4}
+            aspect={aspectRatio}
+            cropShape={isBanner ? "rect" : "round"}
+            showGrid={false}
+            onCropChange={setCrop}
+            onCropComplete={handleCropComplete}
+            onZoomChange={setZoom}
+          />
+        </div>
+
+        <div className="profile-cropper-tools" aria-label="Kontrol zoom crop">
+          <button
+            type="button"
+            onClick={() =>
+              setZoom((currentZoom) =>
+                Math.max(1, Number((currentZoom - 0.2).toFixed(2))),
+              )
+            }
+            aria-label="Perkecil gambar"
+          >
+            <FaMinus />
+          </button>
+          <span>{Math.round(zoom * 100)}%</span>
+          <button
+            type="button"
+            onClick={() =>
+              setZoom((currentZoom) =>
+                Math.min(4, Number((currentZoom + 0.2).toFixed(2))),
+              )
+            }
+            aria-label="Perbesar gambar"
+          >
+            <FaPlus />
+          </button>
+        </div>
+
+        <div className="profile-modal-actions">
+          <button
+            type="button"
+            className="profile-cancel-button"
+            onClick={onCancel}
+          >
+            Batal
+          </button>
+          <button type="button" onClick={handleUseImage}>
+            Gunakan Gambar
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function EditProfileModal({
+  open,
+  form,
+  profile,
+  previews,
+  saving,
+  onClose,
+  onChange,
+  onMediaChange,
+  onSubmit,
+}) {
+  if (!open) {
+    return null;
+  }
+
+  const avatarPreview =
+    previews.profile_image_url || resolveMediaUrl(profile?.profile_image_url);
+  const bannerPreview =
+    previews.banner_image_url || resolveMediaUrl(profile?.banner_image_url);
+
   return (
     <div className="profile-edit-modal" role="presentation" onClick={onClose}>
       <form
-        className="profile-edit-modal__dialog"
+        className="profile-edit-modal__dialog profile-edit-profile-dialog"
         onSubmit={onSubmit}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="profile-edit-modal__header">
-          <h2>Edit Profil</h2>
-          <button type="button" onClick={onClose} aria-label="Tutup edit profil">
+          <div>
+            <h2>Edit Profil</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup edit profil"
+          >
             <FaTimes />
           </button>
+        </div>
+
+        <div className="profile-edit-preview">
+          <div
+            className="profile-edit-preview__banner"
+            style={
+              bannerPreview
+                ? { "--profile-edit-banner-image": `url(${bannerPreview})` }
+                : undefined
+            }
+          >
+            <label aria-label="Edit banner profile" title="Edit Banner">
+              <FaEdit />
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/jpg,image/webp"
+                onChange={(event) => onMediaChange(event, "banner_image_url")}
+              />
+            </label>
+          </div>
+
+          <div
+            className={
+              avatarPreview
+                ? "profile-edit-preview__avatar has-image"
+                : "profile-edit-preview__avatar"
+            }
+          >
+            {avatarPreview ? (
+              <img src={avatarPreview} alt="Preview foto profile" />
+            ) : (
+              getInitial(form.username)
+            )}
+          </div>
+
+          <label
+            className="profile-edit-preview__avatar-button"
+            aria-label="Edit foto profile"
+            title="Edit Foto Profile"
+          >
+            <FaEdit />
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/jpg,image/webp"
+              onChange={(event) => onMediaChange(event, "profile_image_url")}
+            />
+          </label>
         </div>
 
         <label>
@@ -396,24 +695,20 @@ function EditProfileModal({ open, form, saving, onClose, onChange, onSubmit }) {
             onChange={onChange}
           />
         </label>
-        <label>
-          Email
-          <input type="email" name="email" value={form.email} onChange={onChange} />
-        </label>
-        <label>
-          Password Baru
-          <input
-            type="password"
-            name="password"
-            value={form.password}
-            onChange={onChange}
-            placeholder="Kosongkan jika tidak ingin ganti password"
-          />
-        </label>
 
-        <button type="submit" disabled={saving}>
-          {saving ? "Menyimpan..." : "Simpan Perubahan"}
-        </button>
+        <div className="profile-modal-actions">
+          <button
+            type="button"
+            className="profile-cancel-button"
+            onClick={onClose}
+            disabled={saving}
+          >
+            Batal
+          </button>
+          <button type="submit" disabled={saving}>
+            {saving ? "Menyimpan..." : "Simpan Perubahan"}
+          </button>
+        </div>
       </form>
     </div>
   );
@@ -442,7 +737,11 @@ function EditReviewModal({
       >
         <div className="profile-edit-modal__header">
           <h2>Edit Review</h2>
-          <button type="button" onClick={onClose} aria-label="Tutup edit review">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup edit review"
+          >
             <FaTimes />
           </button>
         </div>
@@ -485,7 +784,11 @@ function EditReviewModal({
         </label>
 
         <div className="profile-modal-actions">
-          <button type="button" className="profile-cancel-button" onClick={onClose}>
+          <button
+            type="button"
+            className="profile-cancel-button"
+            onClick={onClose}
+          >
             Batal
           </button>
           <button type="submit" disabled={saving}>
@@ -510,7 +813,11 @@ function DeleteReviewConfirmModal({ review, saving, onCancel, onConfirm }) {
       >
         <div className="profile-edit-modal__header">
           <h2>Hapus Review?</h2>
-          <button type="button" onClick={onCancel} aria-label="Tutup konfirmasi hapus">
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Tutup konfirmasi hapus"
+          >
             <FaTimes />
           </button>
         </div>
@@ -520,7 +827,11 @@ function DeleteReviewConfirmModal({ review, saving, onCancel, onConfirm }) {
         </p>
 
         <div className="profile-modal-actions">
-          <button type="button" className="profile-cancel-button" onClick={onCancel}>
+          <button
+            type="button"
+            className="profile-cancel-button"
+            onClick={onCancel}
+          >
             Batal
           </button>
           <button
@@ -541,8 +852,6 @@ function ProfilePage() {
   const navigate = useNavigate();
   const [profileSearchParams] = useSearchParams();
   const token = localStorage.getItem("token");
-  const avatarInputRef = useRef(null);
-  const bannerInputRef = useRef(null);
   const storedUser = useMemo(() => getStoredUser(), []);
   const [profile, setProfile] = useState(storedUser);
   const [activity, setActivity] = useState({
@@ -559,7 +868,6 @@ function ProfilePage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingTarget, setUploadingTarget] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [reviewSaving, setReviewSaving] = useState(false);
@@ -573,8 +881,19 @@ function ProfilePage() {
   const [reviewToDelete, setReviewToDelete] = useState(null);
   const [form, setForm] = useState({
     username: "",
-    email: "",
-    password: "",
+  });
+  const [selectedMedia, setSelectedMedia] = useState({
+    profile_image_url: null,
+    banner_image_url: null,
+  });
+  const [mediaPreviews, setMediaPreviews] = useState({
+    profile_image_url: "",
+    banner_image_url: "",
+  });
+  const [cropperState, setCropperState] = useState({
+    open: false,
+    imageSrc: "",
+    target: "",
   });
   const [reviewForm, setReviewForm] = useState({
     content: "",
@@ -607,7 +926,9 @@ function ProfilePage() {
     [movieWatchlist, seriesWatchlist],
   );
 
-  const watchedCount = watchlistItems.filter((item) => watchStatus[getItemKey(item)]).length;
+  const watchedCount = watchlistItems.filter(
+    (item) => watchStatus[getItemKey(item)],
+  ).length;
   const unwatchedCount = watchlistItems.length - watchedCount;
 
   const visibleReviews = useMemo(
@@ -638,7 +959,9 @@ function ProfilePage() {
     };
 
     watchlistItems.forEach((item) => {
-      (item.genre_ids || []).forEach((genreId) => addGenre(getGenreName(genreId, item.mediaType)));
+      (item.genre_ids || []).forEach((genreId) =>
+        addGenre(getGenreName(genreId, item.mediaType)),
+      );
     });
 
     visibleReviews.forEach((review) => {
@@ -657,14 +980,28 @@ function ProfilePage() {
   const favoriteGenres =
     genreCounts.length > 0
       ? genreCounts
-      : ["Drama", "Thriller", "Animasi", "Komedi", "Adventure", "Fantasy", "Horror"];
+      : [
+          "Drama",
+          "Thriller",
+          "Animasi",
+          "Komedi",
+          "Adventure",
+          "Fantasy",
+          "Horror",
+        ];
 
   const moodStats = useMemo(() => {
-    const derivedCounts = Object.fromEntries(moodDefinitions.map((mood) => [mood.key, 0]));
+    const derivedCounts = Object.fromEntries(
+      moodDefinitions.map((mood) => [mood.key, 0]),
+    );
 
     watchlistItems.forEach((item) => {
       moodDefinitions.forEach((mood) => {
-        if ((item.genre_ids || []).some((genreId) => mood.genreIds.includes(Number(genreId)))) {
+        if (
+          (item.genre_ids || []).some((genreId) =>
+            mood.genreIds.includes(Number(genreId)),
+          )
+        ) {
           derivedCounts[mood.key] += 1;
         }
       });
@@ -672,7 +1009,11 @@ function ProfilePage() {
 
     visibleReviews.forEach((review) => {
       moodDefinitions.forEach((mood) => {
-        if ((review.genre_ids || []).some((genreId) => mood.genreIds.includes(Number(genreId)))) {
+        if (
+          (review.genre_ids || []).some((genreId) =>
+            mood.genreIds.includes(Number(genreId)),
+          )
+        ) {
           derivedCounts[mood.key] += 1;
         }
       });
@@ -744,14 +1085,14 @@ function ProfilePage() {
         );
         setForm({
           username: profileResponse.data.username || "",
-          email: profileResponse.data.email || "",
-          password: "",
         });
         setActivity(activityResponse.data);
         setFriends(friendsResponse.data || []);
         setFriendRequests(friendRequestsResponse.data || []);
       } catch (error) {
-        setErrorMessage(error.response?.data?.message || "Gagal mengambil profile");
+        setErrorMessage(
+          error.response?.data?.message || "Gagal mengambil profile",
+        );
       } finally {
         setLoading(false);
       }
@@ -763,7 +1104,9 @@ function ProfilePage() {
   useEffect(() => {
     const missingReviews = activity.reviews
       .slice(0, 12)
-      .filter((review) => !reviewDetails[`${review.media_type}:${review.tmdb_id}`]);
+      .filter(
+        (review) => !reviewDetails[`${review.media_type}:${review.tmdb_id}`],
+      );
 
     if (missingReviews.length === 0) {
       return undefined;
@@ -775,16 +1118,22 @@ function ProfilePage() {
       const entries = await Promise.all(
         missingReviews.map(async (review) => {
           const detailKey = `${review.media_type}:${review.tmdb_id}`;
-          const endpoint =
-            review.media_type === "tv" ? "tv-series" : "movies";
+          const endpoint = review.media_type === "tv" ? "tv-series" : "movies";
 
           try {
-            const response = await axios.get(`${apiUrl}/api/${endpoint}/${review.tmdb_id}`, {
-              params: { language: "id-ID" },
-            });
+            const response = await axios.get(
+              `${apiUrl}/api/${endpoint}/${review.tmdb_id}`,
+              {
+                params: { language: "id-ID" },
+              },
+            );
             const media = response.data;
             const title =
-              media.title || media.name || media.original_title || media.original_name || "Untitled";
+              media.title ||
+              media.name ||
+              media.original_title ||
+              media.original_name ||
+              "Untitled";
 
             return [
               detailKey,
@@ -792,7 +1141,9 @@ function ProfilePage() {
                 title,
                 poster: media.poster_url || fallbackPoster,
                 genres: (media.genres || []).map((genre) => genre.name),
-                genre_ids: media.genre_ids || (media.genres || []).map((genre) => genre.id),
+                genre_ids:
+                  media.genre_ids ||
+                  (media.genres || []).map((genre) => genre.id),
               },
             ];
           } catch {
@@ -857,7 +1208,9 @@ function ProfilePage() {
       } catch (error) {
         if (!shouldIgnore) {
           setFriendSearchResults([]);
-          setFriendSearchMessage(error.response?.data?.message || "Gagal mencari teman");
+          setFriendSearchMessage(
+            error.response?.data?.message || "Gagal mencari teman",
+          );
         }
       } finally {
         if (!shouldIgnore) {
@@ -879,49 +1232,24 @@ function ProfilePage() {
     }));
   };
 
-  const handleSubmitProfile = async (event) => {
-    event.preventDefault();
-
-    try {
-      setSaving(true);
-      const response = await axios.put(`${apiUrl}/api/profile/me`, form, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const updatedUser = {
-        ...(storedUser || {}),
-        ...response.data.user,
-        role: profile?.role_name || storedUser?.role,
-      };
-
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      setProfile((currentProfile) => ({
-        ...currentProfile,
-        ...response.data.user,
-      }));
-      setForm((currentForm) => ({ ...currentForm, password: "" }));
-      setIsEditOpen(false);
-    } catch (error) {
-      setErrorMessage(error.response?.data?.message || "Gagal update profile");
-    } finally {
-      setSaving(false);
-    }
+  const openEditProfile = () => {
+    setForm({
+      username: profile?.username || "",
+    });
+    setSelectedMedia({ profile_image_url: null, banner_image_url: null });
+    setMediaPreviews({ profile_image_url: "", banner_image_url: "" });
+    setErrorMessage("");
+    setIsEditOpen(true);
   };
 
-  const updateStoredUser = (nextUser) => {
-    const currentUser = getStoredUser() || {};
-
-    localStorage.setItem(
-      "user",
-      JSON.stringify({
-        ...currentUser,
-        ...nextUser,
-        role: profile?.role_name || currentUser.role,
-      }),
-    );
+  const closeEditProfile = () => {
+    setIsEditOpen(false);
+    setSelectedMedia({ profile_image_url: null, banner_image_url: null });
+    setMediaPreviews({ profile_image_url: "", banner_image_url: "" });
+    setCropperState({ open: false, imageSrc: "", target: "" });
   };
 
-  const handleMediaUpload = async (event, field) => {
+  const handleMediaSelect = (event, target) => {
     const file = event.target.files?.[0];
     event.target.value = "";
 
@@ -929,49 +1257,114 @@ function ProfilePage() {
       return;
     }
 
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropperState({
+        open: true,
+        imageSrc: reader.result,
+        target,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropComplete = (blob) => {
+    const { target } = cropperState;
+
+    if (!target) {
+      return;
+    }
+
+    setSelectedMedia((currentMedia) => ({
+      ...currentMedia,
+      [target]: blob,
+    }));
+    setMediaPreviews((currentPreviews) => {
+      if (currentPreviews[target]) {
+        URL.revokeObjectURL(currentPreviews[target]);
+      }
+
+      return {
+        ...currentPreviews,
+        [target]: URL.createObjectURL(blob),
+      };
+    });
+    setCropperState({ open: false, imageSrc: "", target: "" });
+    setIsEditOpen(true);
+  };
+
+  const uploadProfileMedia = async (blob) => {
+    const formData = new FormData();
+    formData.append("image", blob, "profile-media.jpg");
+
+    const response = await axios.post(
+      `${apiUrl}/api/uploads/editor-image`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+
+    return response.data.imageUrl;
+  };
+
+  const handleSubmitProfile = async (event) => {
+    event.preventDefault();
+
     try {
-      setUploadingTarget(field);
+      setSaving(true);
       setErrorMessage("");
-
-      const formData = new FormData();
-      formData.append("image", file);
-
-      const uploadResponse = await axios.post(
-        `${apiUrl}/api/uploads/editor-image`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        },
-      );
-
-      const mediaResponse = await axios.put(
-        `${apiUrl}/api/profile/media`,
-        {
-          field,
-          image_url: uploadResponse.data.imageUrl,
-        },
+      const response = await axios.put(
+        `${apiUrl}/api/profile/me`,
+        { username: form.username },
         {
           headers: { Authorization: `Bearer ${token}` },
         },
       );
 
+      let nextUser = response.data.user;
+
+      for (const field of ["banner_image_url", "profile_image_url"]) {
+        if (selectedMedia[field]) {
+          const imageUrl = await uploadProfileMedia(selectedMedia[field]);
+          const mediaResponse = await axios.put(
+            `${apiUrl}/api/profile/media`,
+            {
+              field,
+              image_url: imageUrl,
+            },
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          );
+
+          nextUser = {
+            ...nextUser,
+            ...mediaResponse.data.user,
+          };
+        }
+      }
+
+      const updatedUser = {
+        ...(storedUser || {}),
+        ...nextUser,
+        role: profile?.role_name || storedUser?.role,
+      };
+      localStorage.setItem("user", JSON.stringify(updatedUser));
       setProfile((currentProfile) => ({
         ...currentProfile,
-        ...mediaResponse.data.user,
+        ...nextUser,
       }));
-      updateStoredUser(mediaResponse.data.user);
+      setSelectedMedia({ profile_image_url: null, banner_image_url: null });
+      setMediaPreviews({ profile_image_url: "", banner_image_url: "" });
+      setIsEditOpen(false);
     } catch (error) {
-      setErrorMessage(
-        error.response?.data?.message ||
-          (field === "profile_image_url"
-            ? "Gagal upload foto profile"
-            : "Gagal upload banner profile"),
-      );
+      setErrorMessage(error.response?.data?.message || "Gagal update profile");
     } finally {
-      setUploadingTarget("");
+      setSaving(false);
     }
   };
 
@@ -1058,7 +1451,9 @@ function ProfilePage() {
 
       const deletedReviewKey = getReviewKey(reviewToDelete);
       const mediaStatKey =
-        reviewToDelete.media_type === "tv" ? "tv_review_count" : "movie_review_count";
+        reviewToDelete.media_type === "tv"
+          ? "tv_review_count"
+          : "movie_review_count";
 
       setActivity((currentActivity) => ({
         ...currentActivity,
@@ -1066,7 +1461,10 @@ function ProfilePage() {
           ...currentActivity.stats,
           review_count: Math.max(
             0,
-            Number(currentActivity.stats?.review_count || currentActivity.reviews.length) - 1,
+            Number(
+              currentActivity.stats?.review_count ||
+                currentActivity.reviews.length,
+            ) - 1,
           ),
           [mediaStatKey]: Math.max(
             0,
@@ -1080,7 +1478,9 @@ function ProfilePage() {
 
       setReviewToDelete(null);
     } catch (error) {
-      setErrorMessage(error.response?.data?.message || "Gagal menghapus review");
+      setErrorMessage(
+        error.response?.data?.message || "Gagal menghapus review",
+      );
     } finally {
       setReviewSaving(false);
     }
@@ -1102,7 +1502,9 @@ function ProfilePage() {
       );
       setFriends((currentFriends) => [response.data.friend, ...currentFriends]);
     } catch (error) {
-      setErrorMessage(error.response?.data?.message || "Gagal menerima pertemanan");
+      setErrorMessage(
+        error.response?.data?.message || "Gagal menerima pertemanan",
+      );
     } finally {
       setFriendActionSaving(false);
     }
@@ -1111,15 +1513,20 @@ function ProfilePage() {
   const handleDeclineFriendRequest = async (request) => {
     try {
       setFriendActionSaving(true);
-      await axios.delete(`${apiUrl}/api/friends/requests/${request.id_friend}/decline`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.delete(
+        `${apiUrl}/api/friends/requests/${request.id_friend}/decline`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
       setFriendRequests((currentRequests) =>
         currentRequests.filter((item) => item.id_friend !== request.id_friend),
       );
     } catch (error) {
-      setErrorMessage(error.response?.data?.message || "Gagal menolak pertemanan");
+      setErrorMessage(
+        error.response?.data?.message || "Gagal menolak pertemanan",
+      );
     } finally {
       setFriendActionSaving(false);
     }
@@ -1149,9 +1556,13 @@ function ProfilePage() {
             : result,
         ),
       );
-      setFriendSearchMessage(response.data?.message || "Permintaan pertemanan dikirim.");
+      setFriendSearchMessage(
+        response.data?.message || "Permintaan pertemanan dikirim.",
+      );
     } catch (error) {
-      setFriendSearchMessage(error.response?.data?.message || "Gagal menambahkan teman");
+      setFriendSearchMessage(
+        error.response?.data?.message || "Gagal menambahkan teman",
+      );
     } finally {
       setFriendSearchSavingId(null);
     }
@@ -1185,7 +1596,9 @@ function ProfilePage() {
       });
 
       setFriends((currentFriends) =>
-        currentFriends.filter((item) => Number(item.id_user) !== Number(friend.id_user)),
+        currentFriends.filter(
+          (item) => Number(item.id_user) !== Number(friend.id_user),
+        ),
       );
     } catch (error) {
       setErrorMessage(error.response?.data?.message || "Gagal menghapus teman");
@@ -1215,36 +1628,28 @@ function ProfilePage() {
             : undefined
         }
       >
-        <input
-          ref={bannerInputRef}
-          className="profile-media-input"
-          type="file"
-          accept="image/jpeg,image/png,image/jpg,image/webp"
-          onChange={(event) => handleMediaUpload(event, "banner_image_url")}
-        />
         <button
           type="button"
           className="profile-banner__edit"
-          onClick={() => bannerInputRef.current?.click()}
-          disabled={uploadingTarget === "banner_image_url"}
+          onClick={openEditProfile}
         >
           <FaEdit />
-          {uploadingTarget === "banner_image_url" ? "Mengupload..." : "Edit Banner"}
+          Edit Banner
         </button>
       </section>
 
       <section className="profile-header">
         <div className="profile-avatar-wrap">
-          <input
-            ref={avatarInputRef}
-            className="profile-media-input"
-            type="file"
-            accept="image/jpeg,image/png,image/jpg,image/webp"
-            onChange={(event) => handleMediaUpload(event, "profile_image_url")}
-          />
-          <div className={profileImageUrl ? "profile-avatar has-image" : "profile-avatar"}>
+          <div
+            className={
+              profileImageUrl ? "profile-avatar has-image" : "profile-avatar"
+            }
+          >
             {profileImageUrl ? (
-              <img src={profileImageUrl} alt={profile?.username || "Foto profile"} />
+              <img
+                src={profileImageUrl}
+                alt={profile?.username || "Foto profile"}
+              />
             ) : (
               initial
             )}
@@ -1252,8 +1657,7 @@ function ProfilePage() {
           <button
             type="button"
             aria-label="Edit avatar"
-            onClick={() => avatarInputRef.current?.click()}
-            disabled={uploadingTarget === "profile_image_url"}
+            onClick={openEditProfile}
           >
             <FaEdit />
           </button>
@@ -1275,7 +1679,7 @@ function ProfilePage() {
         <button
           className="profile-edit-button"
           type="button"
-          onClick={() => setIsEditOpen(true)}
+          onClick={openEditProfile}
         >
           Edit Profil
         </button>
@@ -1292,8 +1696,16 @@ function ProfilePage() {
           label="Review Film"
           icon={<FaRegCommentDots />}
         />
-        <ProfileStatCard value={watchedCount} label="Sudah Ditonton" icon={<FaCheck />} />
-        <ProfileStatCard value={unwatchedCount} label="Belum Ditonton" icon={<FaClock />} />
+        <ProfileStatCard
+          value={watchedCount}
+          label="Sudah Ditonton"
+          icon={<FaCheck />}
+        />
+        <ProfileStatCard
+          value={unwatchedCount}
+          label="Belum Ditonton"
+          icon={<FaClock />}
+        />
       </section>
 
       <div className="profile-divider" aria-hidden="true" />
@@ -1322,30 +1734,34 @@ function ProfilePage() {
             ];
 
             return (
-          <div className="profile-tabs">
-            <div className="profile-tabs__list" role="tablist" aria-label="Menu profil">
-              {profileTabs.map((tab) => (
-                <button
-                  className={activeTab === tab.key ? "is-active" : ""}
-                  key={tab.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === tab.key}
-                  onClick={() => setActiveTab(tab.key)}
+              <div className="profile-tabs">
+                <div
+                  className="profile-tabs__list"
+                  role="tablist"
+                  aria-label="Menu profil"
                 >
-                  {tab.label}
-                  <span>{tab.count}</span>
+                  {profileTabs.map((tab) => (
+                    <button
+                      className={activeTab === tab.key ? "is-active" : ""}
+                      key={tab.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={activeTab === tab.key}
+                      onClick={() => setActiveTab(tab.key)}
+                    >
+                      {tab.label}
+                      <span>{tab.count}</span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  className="profile-tabs__watchlist"
+                  type="button"
+                  onClick={() => navigate("/watchlist")}
+                >
+                  Lihat Watchlist
                 </button>
-              ))}
-            </div>
-            <button
-              className="profile-tabs__watchlist"
-              type="button"
-              onClick={() => navigate("/watchlist")}
-            >
-              Lihat Watchlist
-            </button>
-          </div>
+              </div>
             );
           })()}
 
@@ -1395,7 +1811,9 @@ function ProfilePage() {
                   <input
                     type="search"
                     value={friendSearchQuery}
-                    onChange={(event) => setFriendSearchQuery(event.target.value)}
+                    onChange={(event) =>
+                      setFriendSearchQuery(event.target.value)
+                    }
                     placeholder="Cari nama atau email teman..."
                   />
                 </label>
@@ -1418,11 +1836,15 @@ function ProfilePage() {
                       ))
                     ) : (
                       friendSearchMessage && (
-                        <p className="profile-friend-muted">{friendSearchMessage}</p>
+                        <p className="profile-friend-muted">
+                          {friendSearchMessage}
+                        </p>
                       )
                     )}
                     {friendSearchMessage && friendSearchResults.length > 0 && (
-                      <p className="profile-friend-search-message">{friendSearchMessage}</p>
+                      <p className="profile-friend-search-message">
+                        {friendSearchMessage}
+                      </p>
                     )}
                   </div>
                 )}
@@ -1453,23 +1875,26 @@ function ProfilePage() {
                   <span>{friends.length}</span>
                 </div>
 
-              {friends.length > 0 ? (
-                friends.map((friend) => (
-                  <ProfileFriendItem
-                    key={friend.id_user}
-                    friend={friend}
-                    disabled={friendActionSaving}
-                    onMessage={handleMessageFriend}
-                    onRemove={handleRemoveFriend}
-                  />
-                ))
-              ) : (
-                <div className="profile-empty-state">
-                  <h2>Belum ada teman</h2>
-                  <p>Tambahkan teman dari Community untuk mulai ngobrol tentang film.</p>
-                  <Link to="/community">Cari Teman</Link>
-                </div>
-              )}
+                {friends.length > 0 ? (
+                  friends.map((friend) => (
+                    <ProfileFriendItem
+                      key={friend.id_user}
+                      friend={friend}
+                      disabled={friendActionSaving}
+                      onMessage={handleMessageFriend}
+                      onRemove={handleRemoveFriend}
+                    />
+                  ))
+                ) : (
+                  <div className="profile-empty-state">
+                    <h2>Belum ada teman</h2>
+                    <p>
+                      Tambahkan teman dari Community untuk mulai ngobrol tentang
+                      film.
+                    </p>
+                    <Link to="/community">Cari Teman</Link>
+                  </div>
+                )}
               </section>
             </div>
           )}
@@ -1500,7 +1925,10 @@ function ProfilePage() {
             <h2>Genre Favorit</h2>
             <div className="profile-genre-list">
               {favoriteGenres.map((genre, index) => (
-                <span className={index === 0 || index === 5 ? "is-active" : ""} key={genre}>
+                <span
+                  className={index === 0 || index === 5 ? "is-active" : ""}
+                  key={genre}
+                >
                   {genre}
                 </span>
               ))}
@@ -1516,6 +1944,7 @@ function ProfilePage() {
           <Link to="/tv-series">TV Series</Link>
           <Link to="/genre">Genre</Link>
           <Link to="/community">Community</Link>
+          <Link to="/contact-us">Contact Us</Link>
         </nav>
         <div>
           <FaFacebookF />
@@ -1528,10 +1957,23 @@ function ProfilePage() {
       <EditProfileModal
         open={isEditOpen}
         form={form}
+        profile={profile}
+        previews={mediaPreviews}
         saving={saving}
-        onClose={() => setIsEditOpen(false)}
+        onClose={closeEditProfile}
         onChange={handleFormChange}
+        onMediaChange={handleMediaSelect}
         onSubmit={handleSubmitProfile}
+      />
+
+      <ImageCropperModal
+        open={cropperState.open}
+        imageSrc={cropperState.imageSrc}
+        target={cropperState.target}
+        onCancel={() =>
+          setCropperState({ open: false, imageSrc: "", target: "" })
+        }
+        onCropComplete={handleCropComplete}
       />
 
       <EditReviewModal

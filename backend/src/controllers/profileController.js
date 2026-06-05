@@ -132,54 +132,36 @@ export const getMyProfileActivity = async (req, res) => {
 
 export const updateMyProfile = async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username } = req.body;
 
-    if (!username || !email) {
+    if (!username) {
       return res.status(400).json({
-        message: "Username dan email wajib diisi"
+        message: "Username wajib diisi"
       });
     }
 
     const checkUser = await pool.query(
       `SELECT id_user
        FROM flix.users
-       WHERE (username = $1 OR email = $2)
-         AND id_user <> $3`,
-      [username, email, req.user.id_user]
+       WHERE username = $1
+         AND id_user <> $2`,
+      [username, req.user.id_user]
     );
 
     if (checkUser.rows.length > 0) {
       return res.status(400).json({
-        message: "Username atau email sudah digunakan user lain"
+        message: "Username sudah digunakan user lain"
       });
     }
 
-    let result;
-
-    if (password && password.trim() !== "") {
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      result = await pool.query(
-        `UPDATE flix.users
-         SET username = $1,
-             email = $2,
-             password = $3,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id_user = $4
-         RETURNING id_user, username, email, profile_image_url, banner_image_url`,
-        [username, email, hashedPassword, req.user.id_user]
-      );
-    } else {
-      result = await pool.query(
-        `UPDATE flix.users
-         SET username = $1,
-             email = $2,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id_user = $3
-         RETURNING id_user, username, email, profile_image_url, banner_image_url`,
-        [username, email, req.user.id_user]
-      );
-    }
+    const result = await pool.query(
+      `UPDATE flix.users
+       SET username = $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id_user = $2
+       RETURNING id_user, username, email, profile_image_url, banner_image_url`,
+      [username, req.user.id_user]
+    );
 
     return res.json({
       message: "Profile berhasil diperbarui",
@@ -188,6 +170,162 @@ export const updateMyProfile = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Gagal update profile",
+      error: error.message
+    });
+  }
+};
+
+export const updateMyEmail = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        message: "Email baru dan password wajib diisi"
+      });
+    }
+
+    const userResult = await pool.query(
+      `SELECT id_user, password
+       FROM flix.users
+       WHERE id_user = $1`,
+      [req.user.id_user]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        message: "User tidak ditemukan"
+      });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, userResult.rows[0].password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        message: "Password konfirmasi salah"
+      });
+    }
+
+    const checkEmail = await pool.query(
+      `SELECT id_user
+       FROM flix.users
+       WHERE email = $1
+         AND id_user <> $2`,
+      [email, req.user.id_user]
+    );
+
+    if (checkEmail.rows.length > 0) {
+      return res.status(400).json({
+        message: "Email sudah digunakan user lain"
+      });
+    }
+
+    const result = await pool.query(
+      `UPDATE flix.users
+       SET email = $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id_user = $2
+       RETURNING id_user, username, email, profile_image_url, banner_image_url`,
+      [email, req.user.id_user]
+    );
+
+    return res.json({
+      message: "Email berhasil diperbarui",
+      user: result.rows[0]
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal update email",
+      error: error.message
+    });
+  }
+};
+
+export const updateMyPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        message: "Semua field password wajib diisi"
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        message: "Konfirmasi password baru tidak sama"
+      });
+    }
+
+    if (newPassword.trim().length < 6) {
+      return res.status(400).json({
+        message: "Password baru minimal 6 karakter"
+      });
+    }
+
+    const userResult = await pool.query(
+      `SELECT id_user, password
+       FROM flix.users
+       WHERE id_user = $1`,
+      [req.user.id_user]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        message: "User tidak ditemukan"
+      });
+    }
+
+    const isPasswordValid = await bcrypt.compare(currentPassword, userResult.rows[0].password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        message: "Kata sandi saat ini salah"
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await pool.query(
+      `UPDATE flix.users
+       SET password = $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id_user = $2`,
+      [hashedPassword, req.user.id_user]
+    );
+
+    return res.json({
+      message: "Password berhasil diperbarui"
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal update password",
+      error: error.message
+    });
+  }
+};
+
+export const deleteMyAccount = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `DELETE FROM flix.users
+       WHERE id_user = $1
+       RETURNING id_user`,
+      [req.user.id_user]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "User tidak ditemukan"
+      });
+    }
+
+    return res.json({
+      message: "Akun berhasil dihapus"
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal menghapus akun",
       error: error.message
     });
   }
