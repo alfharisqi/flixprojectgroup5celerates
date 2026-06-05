@@ -1,6 +1,14 @@
-﻿API
-Key
+node_modules/
+**/node_modules/
+
+dist/
+**/dist/
+
 .env
+.env.*
+frontend/.env
+frontend/.env.*
 backend/.env
-node_modules/backend/.env
-backend/.env
+backend/.env.*
+
+API Key.txt

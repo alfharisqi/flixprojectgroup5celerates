@@ -2,6 +2,8 @@
 -- Please log an issue at https://github.com/pgadmin-org/pgadmin4/issues/new/choose if you find any bugs, including reproduction steps.
 BEGIN;
 
+CREATE SCHEMA IF NOT EXISTS flix;
+
 
 CREATE TABLE IF NOT EXISTS flix.admin_movies
 (
