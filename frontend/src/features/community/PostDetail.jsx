@@ -15,11 +15,13 @@ import GifPickerModal from "@/components/editor/GifPickerModal";
 import PostInsightModal from "@/components/community/PostInsightModal";
 import RichContent from "@/components/editor/RichContent";
 import SiteNavbar from "@/components/layout/SiteNavbar";
+import ReportModal from "@/components/ui/ReportModal";
 import reportIcon from "@/assets/icon/report-icon.svg";
 import shareIcon from "@/assets/icon/share-icon.svg";
 import { createChatThreadFromUser, openChatThread } from "@/utils/chat";
 import { requireLogin } from "@/utils/authPrompt";
 import { resolveMediaUrl } from "@/utils/media";
+import { submitReport } from "@/utils/report";
 import "@/components/community/PostCard.css";
 import "./PostDetail.css";
 
@@ -52,6 +54,9 @@ function PostDetail() {
   const [selectedPostReaction, setSelectedPostReaction] = useState(null);
   const [friendTarget, setFriendTarget] = useState(null);
   const [friendRequestSaving, setFriendRequestSaving] = useState(false);
+  const [reportTarget, setReportTarget] = useState(null);
+  const [reportSaving, setReportSaving] = useState(false);
+  const [reportError, setReportError] = useState("");
 
   const token = localStorage.getItem("token");
   const storedUser = localStorage.getItem("user");
@@ -435,7 +440,39 @@ function PostDetail() {
   };
 
   const handleReportClick = (targetType, targetId) => {
-    alert(`Fitur report ${targetType} #${targetId} akan ditambahkan.`);
+    if (!requireLogin()) {
+      return;
+    }
+
+    const isReply = targetType === "reply";
+
+    setReportError("");
+    setReportTarget({
+      targetType: isReply ? "community_reply" : "community_post",
+      targetId,
+      targetLabel: isReply ? "reply" : "post",
+    });
+  };
+
+  const handleSubmitReport = async ({ category, reason }) => {
+    if (!reportTarget) return;
+
+    try {
+      setReportSaving(true);
+      setReportError("");
+      await submitReport({
+        targetType: reportTarget.targetType,
+        targetId: reportTarget.targetId,
+        category,
+        reason,
+      });
+      setReportTarget(null);
+      alert("Report berhasil dikirim");
+    } catch (error) {
+      setReportError(error.response?.data?.message || "Gagal mengirim report");
+    } finally {
+      setReportSaving(false);
+    }
   };
 
   const handleAddFriend = (targetUser) => {
@@ -1038,6 +1075,14 @@ function PostDetail() {
         saving={friendRequestSaving}
         onCancel={() => setFriendTarget(null)}
         onConfirm={handleConfirmAddFriend}
+      />
+      <ReportModal
+        open={Boolean(reportTarget)}
+        targetLabel={reportTarget?.targetLabel}
+        isSubmitting={reportSaving}
+        errorMessage={reportError}
+        onClose={() => setReportTarget(null)}
+        onSubmit={handleSubmitReport}
       />
     </main>
   );

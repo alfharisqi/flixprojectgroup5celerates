@@ -7,6 +7,7 @@ import chatRoutes from "./routes/chatRoutes.js";
 import chatbotRoutes from "./routes/chatbotRoutes.js";
 import friendRoutes from "./routes/friendRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import moderatorRoutes from "./routes/moderatorRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
@@ -35,6 +36,7 @@ import { initializePasswordResetTable } from "./config/initPasswordReset.js";
 import { initializeMovieReviewsTable } from "./config/initMovieReviews.js";
 import { initializeTvSeriesReviewsTable } from "./config/initTvSeriesReviews.js";
 import { initializeUserProfileMediaColumns } from "./config/initUserProfileMedia.js";
+import { initializeReportsTable } from "./config/initReports.js";
 
 dotenv.config();
 
@@ -56,6 +58,7 @@ app.use("/api/chats", chatRoutes);
 app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/friends", friendRoutes);
 app.use("/api/posts", postRoutes);
+app.use("/api/reports", reportRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/moderator", moderatorRoutes);
 app.use("/api/comments", commentRoutes);
@@ -96,6 +99,7 @@ Promise.all([
   initializeNotificationsTable(),
   initializeFriendsTable(),
 ])
+  .then(() => initializeReportsTable())
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Server berjalan di http://localhost:${PORT}`);

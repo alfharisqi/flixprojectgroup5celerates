@@ -427,7 +427,9 @@ function AdminPage() {
         const incomingReviews = Array.isArray(reviewsData?.reviews?.incoming)
           ? reviewsData.reviews.incoming
           : [];
-        const reportedReviews = dummyReportedReviews;
+        const reportedReviews = Array.isArray(reviewsData?.reviews?.reported)
+          ? reviewsData.reviews.reported
+          : dummyReportedReviews;
         const blockedReviews = Array.isArray(reviewsData?.reviews?.blocked)
           ? reviewsData.reviews.blocked
           : [];
@@ -435,7 +437,7 @@ function AdminPage() {
         setAdminReviews({
           summary: {
             incoming: Number(reviewsData?.summary?.incoming || incomingReviews.length),
-            reported: reportedReviews.length,
+            reported: Number(reviewsData?.summary?.reported || reportedReviews.length),
             blocked: Number(reviewsData?.summary?.blocked || blockedReviews.length)
           },
           incoming: incomingReviews,
@@ -447,8 +449,12 @@ function AdminPage() {
         const communityAllPosts = Array.isArray(communityData?.posts?.all)
           ? communityData.posts.all
           : [];
-        const communityReportedPosts = dummyCommunityReportedPosts;
-        const communityBlockedPosts = dummyCommunityBlockedPosts;
+        const communityReportedPosts = Array.isArray(communityData?.posts?.reported)
+          ? communityData.posts.reported
+          : dummyCommunityReportedPosts;
+        const communityBlockedPosts = Array.isArray(communityData?.posts?.blocked)
+          ? communityData.posts.blocked
+          : dummyCommunityBlockedPosts;
 
         setAdminCommunity({
           summary: {

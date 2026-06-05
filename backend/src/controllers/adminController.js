@@ -38,6 +38,30 @@ const formatDateTime = (dateValue) => {
   }).format(date);
 };
 
+const reportCategoryLabels = {
+  spam: "Spam / promosi",
+  harassment: "Pelecehan / bullying",
+  hate_speech: "Ujaran kebencian",
+  violence: "Kekerasan / ancaman",
+  sexual_content: "Konten seksual",
+  misinformation: "Informasi salah",
+  spoiler: "Spoiler tanpa peringatan",
+  copyright: "Pelanggaran hak cipta",
+  other: "Lainnya",
+};
+
+const formatReportCategory = (category) =>
+  reportCategoryLabels[category] || "Konten bermasalah";
+
+const formatReportStatus = (status) => {
+  const normalizedStatus = String(status || "pending").toLowerCase();
+
+  if (normalizedStatus === "approved") return "Disetujui";
+  if (normalizedStatus === "rejected") return "Ditolak";
+  if (normalizedStatus === "reviewed") return "Ditinjau";
+  return "Pending";
+};
+
 const safeRows = async (query, params = []) => {
   try {
     const result = await pool.query(query, params);
@@ -229,15 +253,13 @@ const getRecentActivities = async () => {
       `),
       safeRows(`
         SELECT created_at
-        FROM flix.notifications
-        WHERE notification_type ILIKE '%report%'
+        FROM flix.reports
         ORDER BY created_at DESC
         LIMIT 1
       `),
       safeCount(`
         SELECT COUNT(*)::INTEGER AS count
-        FROM flix.notifications
-        WHERE notification_type ILIKE '%report%'
+        FROM flix.reports
       `),
     ]);
 
@@ -432,15 +454,23 @@ const mapAdminReviewRows = async (rows) =>
 
       return {
         no: index + 1,
-        id: `${mediaType}-${row.id_review || row.id_notification || index}`,
+        id: row.id_report
+          ? `report-${row.id_report}`
+          : `${mediaType}-${row.id_review || row.id_notification || index}`,
+        reportId: Number(row.id_report || row.id_notification || 0),
         reviewId: Number(row.id_review || 0),
         notificationId: Number(row.id_notification || 0),
         mediaType,
         mediaId,
         title,
         content: row.content || row.metadata_content || "Review belum memiliki isi.",
+        category: row.category || null,
+        reason:
+          row.reason || row.report_reason
+            ? `${formatReportCategory(row.category)}: ${row.reason || row.report_reason}`
+            : null,
         rating: row.rating === null || row.rating === undefined ? null : Number(row.rating),
-        status: row.status || "Menunggu",
+        status: row.status || formatReportStatus(row.report_status) || "Menunggu",
         date: formatDate(row.created_at),
         createdAt: row.created_at,
         user: {
@@ -491,53 +521,80 @@ const getAdminIncomingReviewRows = async () =>
 
 const getAdminReportedReviewRows = async () =>
   safeRows(`
+    WITH reported_reviews AS (
+      SELECT
+        reports.id_report,
+        reports.reporter_user_id AS actor_user_id,
+        reports.category,
+        reports.reason,
+        reports.status AS report_status,
+        reports.created_at,
+        movie_reviews.id_review,
+        'movie' AS media_type,
+        movie_reviews.tmdb_movie_id AS tmdb_id,
+        movie_reviews.content,
+        movie_reviews.rating
+      FROM flix.reports reports
+      JOIN flix.movie_reviews movie_reviews
+        ON reports.movie_review_id = movie_reviews.id_review
+      WHERE reports.movie_review_id IS NOT NULL
+
+      UNION ALL
+
+      SELECT
+        reports.id_report,
+        reports.reporter_user_id AS actor_user_id,
+        reports.category,
+        reports.reason,
+        reports.status AS report_status,
+        reports.created_at,
+        tv_reviews.id_review,
+        'tv' AS media_type,
+        tv_reviews.tmdb_series_id AS tmdb_id,
+        tv_reviews.content,
+        tv_reviews.rating
+      FROM flix.reports reports
+      JOIN flix.tv_series_reviews tv_reviews
+        ON reports.tv_series_review_id = tv_reviews.id_review
+      WHERE reports.tv_series_review_id IS NOT NULL
+    )
     SELECT
-      notifications.id_notification,
-      notifications.actor_user_id,
-      notifications.metadata->>'review_id' AS id_review,
-      COALESCE(
-        notifications.metadata->>'media_type',
-        notifications.metadata->>'review_media_type',
-        CASE
-          WHEN notifications.metadata ? 'tmdb_series_id' THEN 'tv'
-          ELSE 'movie'
-        END
-      ) AS media_type,
-      COALESCE(
-        notifications.metadata->>'tmdb_id',
-        notifications.metadata->>'tmdb_movie_id',
-        notifications.metadata->>'tmdb_series_id'
-      ) AS metadata_tmdb_id,
-      notifications.metadata->>'media_title' AS media_title,
-      notifications.metadata->>'content' AS metadata_content,
-      notifications.created_at,
+      reported_reviews.*,
+      reported_reviews.tmdb_id AS metadata_tmdb_id,
+      reported_reviews.content AS metadata_content,
+      CASE
+        WHEN reported_reviews.report_status = 'approved' THEN 'Disetujui'
+        WHEN reported_reviews.report_status = 'rejected' THEN 'Ditolak'
+        WHEN reported_reviews.report_status = 'reviewed' THEN 'Ditinjau'
+        ELSE 'Pending'
+      END AS status,
       actor.username AS actor_username,
       actor.profile_image_url AS actor_profile_image_url
-    FROM flix.notifications notifications
-    LEFT JOIN flix.users actor ON notifications.actor_user_id = actor.id_user
-    WHERE notifications.notification_type ILIKE '%report%'
-      AND (
-        notifications.notification_type ILIKE '%review%'
-        OR notifications.metadata ? 'review_id'
-        OR notifications.metadata ? 'id_review'
-        OR notifications.metadata ? 'tmdb_id'
-        OR notifications.metadata ? 'tmdb_movie_id'
-        OR notifications.metadata ? 'tmdb_series_id'
-      )
-    ORDER BY notifications.created_at DESC
+    FROM reported_reviews
+    JOIN flix.users actor ON reported_reviews.actor_user_id = actor.id_user
+    ORDER BY reported_reviews.created_at DESC
     LIMIT 100
   `);
 
 const mapAdminCommunityRows = (rows) =>
   rows.map((row) => ({
-    id: Number(row.id_post),
+    id: row.id_report ? `report-${row.id_report}` : Number(row.id_post),
+    postId: Number(row.id_post),
+    reportId: Number(row.id_report || 0),
+    reportType: row.report_type || null,
     author: row.username || "User FLIX",
     profileImageUrl: row.profile_image_url || null,
     time: getRelativeTime(row.created_at),
     date: formatDate(row.created_at),
     title: row.title || "",
     content: row.content || "",
-    status: "Aktif",
+    status: row.status || "Aktif",
+    reportReason: row.reason
+      ? `${formatReportCategory(row.category)}: ${row.reason}`
+      : null,
+    reportedAt: row.report_created_at
+      ? `${row.reporter_username || "User FLIX"} - ${formatDateTime(row.report_created_at)}`
+      : null,
     metrics: {
       views: Number(row.view_count || 0),
       replies: Number(row.reply_count || 0),
@@ -589,6 +646,97 @@ const getAdminCommunityRows = async () =>
       GROUP BY id_post
     ) r ON p.id_post = r.id_post
     ORDER BY p.created_at DESC, p.id_post DESC
+    LIMIT 100
+  `);
+
+const getAdminReportedCommunityRows = async () =>
+  safeRows(`
+    WITH reported_community AS (
+      SELECT
+        reports.id_report,
+        reports.report_type,
+        reports.category,
+        reports.reason,
+        reports.status AS report_status,
+        reports.created_at AS report_created_at,
+        reports.reporter_user_id,
+        posts.id_post,
+        posts.title,
+        posts.content,
+        posts.created_at,
+        posts.id_user,
+        'post' AS target_kind
+      FROM flix.reports reports
+      JOIN flix.posts posts ON reports.community_post_id = posts.id_post
+      WHERE reports.community_post_id IS NOT NULL
+
+      UNION ALL
+
+      SELECT
+        reports.id_report,
+        reports.report_type,
+        reports.category,
+        reports.reason,
+        reports.status AS report_status,
+        reports.created_at AS report_created_at,
+        reports.reporter_user_id,
+        posts.id_post,
+        posts.title,
+        comments.content,
+        comments.created_at,
+        comments.id_user,
+        'reply' AS target_kind
+      FROM flix.reports reports
+      JOIN flix.comments comments
+        ON reports.community_comment_id = comments.id_comment
+      JOIN flix.posts posts ON comments.id_post = posts.id_post
+      WHERE reports.community_comment_id IS NOT NULL
+    )
+    SELECT
+      reported_community.*,
+      target_user.username,
+      target_user.profile_image_url,
+      reporter.username AS reporter_username,
+      CASE
+        WHEN reported_community.report_status = 'approved' THEN 'Disetujui'
+        WHEN reported_community.report_status = 'rejected' THEN 'Ditolak'
+        WHEN reported_community.report_status = 'reviewed' THEN 'Ditinjau'
+        ELSE 'Dilaporkan'
+      END AS status,
+      COALESCE(v.view_count, 0)::INTEGER AS view_count,
+      COALESCE(c.reply_count, 0)::INTEGER AS reply_count,
+      COALESCE(s.share_count, 0)::INTEGER AS share_count,
+      COALESCE(l.like_count, 0)::INTEGER AS like_count,
+      COALESCE(r.reaction_count, 0)::INTEGER AS reaction_count
+    FROM reported_community
+    JOIN flix.users target_user ON reported_community.id_user = target_user.id_user
+    JOIN flix.users reporter ON reported_community.reporter_user_id = reporter.id_user
+    LEFT JOIN (
+      SELECT id_post, COUNT(*) AS view_count
+      FROM flix.post_views
+      GROUP BY id_post
+    ) v ON reported_community.id_post = v.id_post
+    LEFT JOIN (
+      SELECT id_post, COUNT(*) AS reply_count
+      FROM flix.comments
+      GROUP BY id_post
+    ) c ON reported_community.id_post = c.id_post
+    LEFT JOIN (
+      SELECT id_post, COUNT(*) AS share_count
+      FROM flix.post_shares
+      GROUP BY id_post
+    ) s ON reported_community.id_post = s.id_post
+    LEFT JOIN (
+      SELECT id_post, COUNT(*) AS like_count
+      FROM flix.post_likes
+      GROUP BY id_post
+    ) l ON reported_community.id_post = l.id_post
+    LEFT JOIN (
+      SELECT id_post, COUNT(*) AS reaction_count
+      FROM flix.post_reactions
+      GROUP BY id_post
+    ) r ON reported_community.id_post = r.id_post
+    ORDER BY reported_community.report_created_at DESC
     LIMIT 100
   `);
 
@@ -826,7 +974,6 @@ export const getAdminReviews = async (req, res) => {
           ...row,
           tmdb_id: row.metadata_tmdb_id,
           content: row.metadata_content || "Review dilaporkan oleh user.",
-          status: "Dilaporkan",
         })),
       ),
     ]);
@@ -856,8 +1003,9 @@ export const getAdminReviews = async (req, res) => {
 
 export const getAdminCommunity = async (req, res) => {
   try {
-    const [postRows, totalPostRows, totalReplyRows] = await Promise.all([
+    const [postRows, reportedRows, totalPostRows, totalReplyRows] = await Promise.all([
       getAdminCommunityRows(),
+      getAdminReportedCommunityRows(),
       safeRows(`
         SELECT COUNT(*)::INTEGER AS count
         FROM flix.posts
@@ -869,18 +1017,19 @@ export const getAdminCommunity = async (req, res) => {
     ]);
 
     const posts = mapAdminCommunityRows(postRows);
+    const reportedPosts = mapAdminCommunityRows(reportedRows);
 
     return res.json({
       message: "Kelola community admin berhasil dimuat",
       summary: {
         totalPost: Number(totalPostRows[0]?.count || posts.length),
         totalReply: Number(totalReplyRows[0]?.count || 0),
-        reported: 0,
+        reported: reportedPosts.length,
         blocked: 0,
       },
       posts: {
         all: posts,
-        reported: [],
+        reported: reportedPosts,
         blocked: [],
       },
     });

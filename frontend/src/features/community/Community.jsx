@@ -18,9 +18,11 @@ import AddFriendConfirmModal from "@/components/community/AddFriendConfirmModal"
 import PostCard from "@/components/community/PostCard";
 import PostInsightModal from "@/components/community/PostInsightModal";
 import PostSearchModal from "@/components/community/PostSearchModal";
+import ReportModal from "@/components/ui/ReportModal";
 import { createChatThreadFromUser, openChatThread } from "@/utils/chat";
 import { requireLogin } from "@/utils/authPrompt";
 import { resolveMediaUrl } from "@/utils/media";
+import { submitReport } from "@/utils/report";
 import "./Community.css";
 
 function Community() {
@@ -33,6 +35,9 @@ function Community() {
   const [showPostSearch, setShowPostSearch] = useState(false);
   const [friendTarget, setFriendTarget] = useState(null);
   const [friendRequestSaving, setFriendRequestSaving] = useState(false);
+  const [reportTarget, setReportTarget] = useState(null);
+  const [reportSaving, setReportSaving] = useState(false);
+  const [reportError, setReportError] = useState("");
 
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -381,7 +386,37 @@ function Community() {
   };
 
   const handleReportPost = (postId) => {
-    alert(`Fitur report post #${postId} akan ditambahkan.`);
+    if (!requireLogin()) {
+      return;
+    }
+
+    setReportError("");
+    setReportTarget({
+      targetType: "community_post",
+      targetId: postId,
+      targetLabel: "post",
+    });
+  };
+
+  const handleSubmitReport = async ({ category, reason }) => {
+    if (!reportTarget) return;
+
+    try {
+      setReportSaving(true);
+      setReportError("");
+      await submitReport({
+        targetType: reportTarget.targetType,
+        targetId: reportTarget.targetId,
+        category,
+        reason,
+      });
+      setReportTarget(null);
+      alert("Report berhasil dikirim");
+    } catch (error) {
+      setReportError(error.response?.data?.message || "Gagal mengirim report");
+    } finally {
+      setReportSaving(false);
+    }
   };
 
   const handleReportUser = (targetUserId) => {
@@ -742,6 +777,15 @@ function Community() {
         saving={friendRequestSaving}
         onCancel={() => setFriendTarget(null)}
         onConfirm={handleConfirmAddFriend}
+      />
+
+      <ReportModal
+        open={Boolean(reportTarget)}
+        targetLabel={reportTarget?.targetLabel}
+        isSubmitting={reportSaving}
+        errorMessage={reportError}
+        onClose={() => setReportTarget(null)}
+        onSubmit={handleSubmitReport}
       />
     </main>
   );

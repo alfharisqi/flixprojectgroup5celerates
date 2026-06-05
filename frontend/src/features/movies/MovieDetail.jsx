@@ -15,8 +15,10 @@ import {
   FaYoutube,
 } from "react-icons/fa";
 import SiteNavbar from "@/components/layout/SiteNavbar";
+import ReportModal from "@/components/ui/ReportModal";
 import ReviewModal from "@/components/ui/ReviewModal";
 import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
+import reportIcon from "@/assets/icon/report-icon.svg";
 import amazonPrimeVideoIcon from "@/assets/platformstream-logo/amazonprimevideo-icon.png";
 import appleTvIcon from "@/assets/platformstream-logo/appletv-icon.png";
 import catchplayIcon from "@/assets/platformstream-logo/catchplay-icon.png";
@@ -25,6 +27,7 @@ import hboMaxIcon from "@/assets/platformstream-logo/HBOmax-icon.png";
 import netflixIcon from "@/assets/platformstream-logo/netflix-icon.png";
 import { requireLogin } from "@/utils/authPrompt";
 import { resolveMediaUrl } from "@/utils/media";
+import { submitReport } from "@/utils/report";
 import "@/features/movies/MovieDetail.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -243,6 +246,9 @@ function MovieDetail() {
   const [isSynopsisExpanded, setIsSynopsisExpanded] = useState(false);
   const [showSynopsisToggle, setShowSynopsisToggle] = useState(false);
   const [shareMessage, setShareMessage] = useState("");
+  const [reportTarget, setReportTarget] = useState(null);
+  const [reportSaving, setReportSaving] = useState(false);
+  const [reportError, setReportError] = useState("");
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const synopsisRef = useRef(null);
@@ -528,6 +534,40 @@ function MovieDetail() {
     await fetchReviews();
   };
 
+  const handleOpenReport = (reviewId, label = "review") => {
+    if (!requireLogin()) {
+      return;
+    }
+
+    setReportError("");
+    setReportTarget({
+      targetType: "movie_review",
+      targetId: reviewId,
+      targetLabel: label,
+    });
+  };
+
+  const handleSubmitReport = async ({ category, reason }) => {
+    if (!reportTarget) return;
+
+    try {
+      setReportSaving(true);
+      setReportError("");
+      await submitReport({
+        targetType: reportTarget.targetType,
+        targetId: reportTarget.targetId,
+        category,
+        reason,
+      });
+      setReportTarget(null);
+      alert("Report berhasil dikirim");
+    } catch (error) {
+      setReportError(error.response?.data?.message || "Gagal mengirim report");
+    } finally {
+      setReportSaving(false);
+    }
+  };
+
   if (loading) {
     return <main className="movie-detail-page movie-detail-state">Memuat detail film...</main>;
   }
@@ -752,7 +792,18 @@ function MovieDetail() {
                       <p>{formatReviewDate(review.created_at)}</p>
                     </div>
                   </div>
-                  <RatingStars value={review.rating || 0} readonly />
+                  <div className="movie-review-header-tools">
+                    <RatingStars value={review.rating || 0} readonly />
+                    <button
+                      className="movie-review-report-button"
+                      type="button"
+                      onClick={() => handleOpenReport(review.id_review, "review")}
+                      aria-label={`Report review dari ${review.username}`}
+                      title="Report review"
+                    >
+                      <img src={reportIcon} alt="" aria-hidden="true" />
+                    </button>
+                  </div>
                 </div>
                 <p className="movie-review-content">{review.content}</p>
                 <div className="movie-review-actions">
@@ -776,12 +827,23 @@ function MovieDetail() {
                   <div className="movie-review-replies">
                     {review.replies.map((reply) => (
                       <article className="movie-review-reply" key={reply.id_review}>
-                        <div className="movie-review-user">
-                          <ReviewAvatar review={reply} />
-                          <div>
-                            <h3>{reply.username}</h3>
-                            <p>{formatReviewDate(reply.created_at)}</p>
+                        <div className="movie-review-reply-header">
+                          <div className="movie-review-user">
+                            <ReviewAvatar review={reply} />
+                            <div>
+                              <h3>{reply.username}</h3>
+                              <p>{formatReviewDate(reply.created_at)}</p>
+                            </div>
                           </div>
+                          <button
+                            className="movie-review-report-button"
+                            type="button"
+                            onClick={() => handleOpenReport(reply.id_review, "reply review")}
+                            aria-label={`Report reply review dari ${reply.username}`}
+                            title="Report reply review"
+                          >
+                            <img src={reportIcon} alt="" aria-hidden="true" />
+                          </button>
                         </div>
                         <p className="movie-review-content">{reply.content}</p>
                         <button
@@ -856,6 +918,14 @@ function MovieDetail() {
         onContentChange={setReviewContent}
         onClose={() => setIsReviewModalOpen(false)}
         onSubmit={handleSubmitReview}
+      />
+      <ReportModal
+        open={Boolean(reportTarget)}
+        targetLabel={reportTarget?.targetLabel}
+        isSubmitting={reportSaving}
+        errorMessage={reportError}
+        onClose={() => setReportTarget(null)}
+        onSubmit={handleSubmitReport}
       />
     </main>
   );

@@ -1046,6 +1046,45 @@
   gap: 24px;
 }
 
+.movie-review-header-tools,
+.movie-review-reply-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.movie-review-header-tools {
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.movie-review-report-button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #d2d2d2;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.movie-review-report-button img {
+  width: 17px;
+  height: 17px;
+  display: block;
+  object-fit: contain;
+}
+
+.movie-review-report-button:hover,
+.movie-review-report-button:focus-visible {
+  background: rgba(242, 7, 18, 0.16);
+  transform: translateY(-1px);
+}
+
 .movie-review-user {
   display: flex;
   align-items: center;
