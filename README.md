@@ -40,11 +40,12 @@ DB_USER=postgres
 DB_PASSWORD=password_database
 JWT_SECRET=secret_jwt
 
-MAIL_HOST=smtp.mailtrap.io
-MAIL_PORT=2525
-MAIL_USER=user_mailtrap
-MAIL_PASS=password_mailtrap
-MAIL_FROM=no-reply@flix.local
+MAIL_HOST=localhost
+MAIL_PORT=1025
+MAIL_SECURE=false
+MAIL_USER=
+MAIL_PASS=
+MAIL_FROM="FLIX Local <no-reply@flix.local>"
 
 TMDB_API_KEY=api_key_tmdb
 FRONTEND_URL=http://localhost:5173
@@ -92,7 +93,7 @@ http://localhost:5000
 | TMDB API | Mengambil data film, TV series, genre, trending, popular, detail, trailer, cast, rekomendasi, dan watch provider. | Backend `movieController.js` dan `tvController.js` |
 | TMDB Image API | Menampilkan poster dan backdrop film/series. | Frontend dan hasil mapping backend |
 | GIPHY API | Mencari dan menampilkan GIF pada editor post komunitas. | Frontend `GifPickerModal.jsx` |
-| SMTP/Mailtrap via Nodemailer | Mengirim email verifikasi akun dan reset password. | Backend `mail.js` dan `sendEmail.js` |
+| SMTP/Mailpit/Mailtrap via Nodemailer | Mengirim email verifikasi akun dan reset password. | Backend `mail.js` dan `sendEmail.js` |
 
 ### API Internal Backend
 
@@ -288,14 +289,30 @@ Format status watchlist:
 
 Progress episode TV series dibuat berurutan. Contoh: jika user menandai episode 3, maka episode 1, 2, dan 3 ikut tersimpan sebagai sudah ditonton. Jika ingin watchlist tersimpan permanen lintas device, perlu dibuat tabel dan endpoint watchlist di backend.
 
-## 7. Email Testing Lokal Dengan Mailpit
+## 7. Sistem Email Testing Lokal Dengan Mailpit
 
 Project ini bisa memakai Mailpit sebagai pengganti Mailtrap untuk development lokal. Mailpit menangkap email dari backend dan menampilkannya di web inbox lokal, jadi email verifikasi akun dan reset password tidak benar-benar dikirim ke inbox user asli.
 
-Jalankan Mailpit:
+### Opsi Docker
+
+Jalankan Mailpit dengan Docker:
 
 ```bash
 docker compose -f docker-compose.mailpit.yml up -d
+```
+
+### Opsi Windows Tanpa Docker
+
+Jika Docker Desktop bermasalah karena WSL, install Mailpit langsung:
+
+```powershell
+winget install --id axllent.mailpit --source winget
+```
+
+Tutup PowerShell, buka terminal baru, lalu jalankan:
+
+```powershell
+mailpit
 ```
 
 Mailpit akan tersedia di:
@@ -327,3 +344,5 @@ Hentikan Mailpit:
 ```bash
 docker compose -f docker-compose.mailpit.yml down
 ```
+
+Jika menjalankan Mailpit langsung dari PowerShell, hentikan dengan `Ctrl + C`.
