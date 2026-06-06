@@ -18,12 +18,70 @@ import AddFriendConfirmModal from "@/components/community/AddFriendConfirmModal"
 import PostCard from "@/components/community/PostCard";
 import PostInsightModal from "@/components/community/PostInsightModal";
 import PostSearchModal from "@/components/community/PostSearchModal";
+import FilterPopup from "@/components/ui/FilterPopup";
 import ReportModal from "@/components/ui/ReportModal";
 import { createChatThreadFromUser, openChatThread } from "@/utils/chat";
 import { requireLogin } from "@/utils/authPrompt";
 import { resolveMediaUrl } from "@/utils/media";
 import { submitReport } from "@/utils/report";
 import "./Community.css";
+
+const defaultCommunityFilters = {
+  scope: "all",
+  type: "all",
+  timeframe: "all",
+  sort: "latest",
+};
+
+const communityFilterSections = [
+  {
+    key: "scope",
+    title: "Lingkup",
+    options: [
+      { label: "Semua", value: "all" },
+      { label: "Post Saya", value: "mine" },
+      { label: "Teman", value: "friends" },
+    ],
+  },
+  {
+    key: "type",
+    title: "Jenis Post",
+    options: [
+      { label: "Semua", value: "all" },
+      { label: "Diskusi", value: "post" },
+      { label: "Polling", value: "poll" },
+    ],
+  },
+  {
+    key: "timeframe",
+    title: "Periode",
+    options: [
+      { label: "Semua", value: "all" },
+      { label: "Hari Ini", value: "today" },
+      { label: "7 Hari", value: "week" },
+      { label: "30 Hari", value: "month" },
+    ],
+  },
+  {
+    key: "sort",
+    title: "Urutkan",
+    options: [
+      { label: "Terbaru", value: "latest" },
+      { label: "Terlama", value: "oldest" },
+      { label: "Insight", value: "insight" },
+      { label: "Like", value: "likes" },
+      { label: "Reply", value: "replies" },
+      { label: "Vote Poll", value: "poll_votes" },
+    ],
+  },
+];
+
+const communityFilterLabels = communityFilterSections.reduce((acc, section) => {
+  section.options.forEach((option) => {
+    acc[`${section.key}:${option.value}`] = option.label;
+  });
+  return acc;
+}, {});
 
 function Community() {
   const [posts, setPosts] = useState([]);
@@ -33,6 +91,8 @@ function Community() {
   const [showActivityDetail, setShowActivityDetail] = useState(false);
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [showPostSearch, setShowPostSearch] = useState(false);
+  const [showCommunityFilter, setShowCommunityFilter] = useState(false);
+  const [communityFilters, setCommunityFilters] = useState(defaultCommunityFilters);
   const [friendTarget, setFriendTarget] = useState(null);
   const [friendRequestSaving, setFriendRequestSaving] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
@@ -175,8 +235,91 @@ function Community() {
     }).format(activityDate);
   };
 
-  const displayedPosts = [...posts]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const getTimeframeStart = (timeframe) => {
+    const now = new Date();
+
+    if (timeframe === "today") {
+      const startOfDay = new Date(now);
+      startOfDay.setHours(0, 0, 0, 0);
+      return startOfDay;
+    }
+
+    if (timeframe === "week") {
+      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    if (timeframe === "month") {
+      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+
+    return null;
+  };
+
+  const getSortValue = (post, sortKey) => {
+    if (sortKey === "insight") return getPostInsight(post);
+    if (sortKey === "likes") return Number(post.like_count || 0);
+    if (sortKey === "replies") return getReplyCount(post);
+    if (sortKey === "poll_votes") return getPollVoteCount(post);
+    return new Date(post.created_at).getTime();
+  };
+
+  const hasCommunityFilter = Object.entries(communityFilters).some(
+    ([key, value]) => value !== defaultCommunityFilters[key]
+  );
+
+  const activeFilterItems = Object.entries(communityFilters)
+    .filter(([key, value]) => value !== defaultCommunityFilters[key])
+    .map(([key, value]) => communityFilterLabels[`${key}:${value}`])
+    .filter(Boolean);
+
+  const displayedPosts = posts
+    .filter((post) => {
+      if (
+        communityFilters.scope === "mine" &&
+        Number(post.id_user) !== currentUserId
+      ) {
+        return false;
+      }
+
+      if (communityFilters.scope === "friends" && !post.is_friend) {
+        return false;
+      }
+
+      if (
+        communityFilters.type === "poll" &&
+        post.post_type !== "poll"
+      ) {
+        return false;
+      }
+
+      if (
+        communityFilters.type === "post" &&
+        post.post_type === "poll"
+      ) {
+        return false;
+      }
+
+      const startDate = getTimeframeStart(communityFilters.timeframe);
+      if (startDate) {
+        const postDate = new Date(post.created_at);
+
+        if (Number.isNaN(postDate.getTime()) || postDate < startDate) {
+          return false;
+        }
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      if (communityFilters.sort === "oldest") {
+        return new Date(a.created_at) - new Date(b.created_at);
+      }
+
+      return (
+        getSortValue(b, communityFilters.sort) -
+        getSortValue(a, communityFilters.sort)
+      );
+    });
 
   const latestActivities = posts
     .flatMap((post) => {
@@ -245,6 +388,10 @@ function Community() {
 
   const clearTagFilter = () => {
     setSearchParams({});
+  };
+
+  const clearCommunityFilters = () => {
+    setCommunityFilters(defaultCommunityFilters);
   };
 
   const fetchComments = async (postId) => {
@@ -683,23 +830,39 @@ function Community() {
             <button
               type="button"
               className="community-filter-button"
-              onClick={() => alert("Fitur filter post akan ditambahkan.")}
+              onClick={() => setShowCommunityFilter(true)}
             >
               <FiSliders />
               Filter
+              {hasCommunityFilter && (
+                <small>{activeFilterItems.length}</small>
+              )}
             </button>
           </div>
 
-          {activeTag && (
+          {(activeTag || hasCommunityFilter) && (
             <div className="community-active-filter">
               <strong>
-                <FiHash />
-                Filter hashtag: #{activeTag}
+                {activeTag ? <FiHash /> : <FiSliders />}
+                {activeTag && `Hashtag: #${activeTag}`}
+                {activeTag && hasCommunityFilter && " | "}
+                {hasCommunityFilter &&
+                  `Filter: ${activeFilterItems.join(", ")}`}
               </strong>
-              <button type="button" onClick={clearTagFilter}>
-                <FiX />
-                Tampilkan semua
-              </button>
+              <div className="community-active-filter__actions">
+                {activeTag && (
+                  <button type="button" onClick={clearTagFilter}>
+                    <FiX />
+                    Hapus hashtag
+                  </button>
+                )}
+                {hasCommunityFilter && (
+                  <button type="button" onClick={clearCommunityFilters}>
+                    <FiX />
+                    Reset filter
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -729,7 +892,9 @@ function Community() {
                 <h3>
                   {activeTag
                     ? `Belum ada post dengan hashtag #${activeTag}.`
-                    : "Belum ada post."}
+                    : hasCommunityFilter
+                      ? "Tidak ada post yang cocok dengan filter."
+                      : "Belum ada post."}
                 </h3>
                 <p>Mulai diskusi baru agar feed komunitas terlihat hidup.</p>
               </div>
@@ -787,6 +952,15 @@ function Community() {
         comments={comments}
         onClose={() => setShowPostSearch(false)}
         onOpenPost={(postId) => navigate(`/post/${postId}`)}
+      />
+
+      <FilterPopup
+        open={showCommunityFilter}
+        title="Filter Community"
+        values={communityFilters}
+        sections={communityFilterSections}
+        onChange={setCommunityFilters}
+        onClose={() => setShowCommunityFilter(false)}
       />
 
       <AddFriendConfirmModal
