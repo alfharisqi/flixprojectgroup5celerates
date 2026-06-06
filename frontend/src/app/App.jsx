@@ -22,6 +22,8 @@ import PostDetail from "@/features/community/PostDetail";
 import CreatePostPage from "@/features/community/CreatePostPage";
 import WatchlistPage from "@/features/watchlist/WatchlistPage";
 import ContactUsPage from "@/features/contact/ContactUsPage";
+import PaymentPage from "@/features/payment/PaymentPage";
+import UpgradePremium from "@/features/premium/UpgradePremium";
 
 function App() {
   const location = useLocation();
@@ -40,6 +42,8 @@ function App() {
     "/watchlist",
     "/profile",
     "/admin",
+    "/payment",
+    "/premium",
     "/",
   ];
   const hideNavbar =
@@ -56,7 +60,8 @@ function App() {
       "/verify-email",
       "/admin",
       "/moderator",
-    ].includes(location.pathname) || location.pathname.startsWith("/reset-password/");
+    ].includes(location.pathname) ||
+    location.pathname.startsWith("/reset-password/");
 
   return (
     <>
@@ -79,11 +84,15 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/payment" element={<PaymentPage />} />
+        <Route path="/premium" element={<UpgradePremium />} />
 
         <Route
           path="/profile"
           element={
-            <ProtectedRoute allowedRoles={["registered_user", "moderator", "admin"]}>
+            <ProtectedRoute
+              allowedRoles={["registered_user", "moderator", "admin"]}
+            >
               <ProfilePage />
             </ProtectedRoute>
           }

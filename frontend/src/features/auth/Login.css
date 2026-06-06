@@ -94,11 +94,13 @@
   font-size: 18px;
   line-height: 22px;
   outline: none;
-  transition: border-color 160ms ease, background 160ms ease;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
 }
 
 .login-input::placeholder {
-  color: #ffffff;
+  color: #8b8b8b;
   opacity: 1;
 }
 

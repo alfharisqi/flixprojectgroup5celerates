@@ -63,11 +63,12 @@ function Register() {
 
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/auth/register`,
-        payload
+        payload,
       );
 
       setSuccessMessage(
-        response.data.message || "Register berhasil. Cek email untuk verifikasi akun."
+        response.data.message ||
+          "Register berhasil. Cek email untuk verifikasi akun.",
       );
       setTimeout(() => navigate("/login"), 1800);
     } catch (error) {
@@ -94,7 +95,7 @@ function Register() {
               className="login-input"
               type="email"
               name="email"
-              placeholder="john.doe@gmail.com"
+              placeholder="Masukkan email Anda"
               value={form.email}
               onChange={handleChange}
               autoComplete="email"
@@ -108,7 +109,7 @@ function Register() {
               className="login-input login-password-input"
               type={showPassword ? "text" : "password"}
               name="password"
-              placeholder="••••••••••••••••••••"
+              placeholder="Masukkan password Anda"
               value={form.password}
               onChange={handleChange}
               autoComplete="new-password"
@@ -118,19 +119,21 @@ function Register() {
               className="login-password-toggle"
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+              aria-label={
+                showPassword ? "Sembunyikan password" : "Tampilkan password"
+              }
             >
               {showPassword ? <FiEye /> : <FiEyeOff />}
             </button>
           </label>
 
           <label className="login-field">
-            <span className="login-field-label">Confirm Password</span>
+            <span className="login-field-label">Konfirmasi Password</span>
             <input
               className="login-input login-password-input"
               type={showConfirmPassword ? "text" : "password"}
               name="confirmPassword"
-              placeholder="••••••••••••••••••••"
+              placeholder="Konfirmasi password Anda"
               value={form.confirmPassword}
               onChange={handleChange}
               autoComplete="new-password"
@@ -156,22 +159,22 @@ function Register() {
               checked={acceptedTerms}
               onChange={(event) => setAcceptedTerms(event.target.checked)}
             />
-            <span>I agree to all the Terms and Privacy Policies</span>
+            <span>Saya setuju dengan semua Syarat dan Kebijakan Privasi</span>
           </label>
 
           {errorMessage && <p className="login-error">{errorMessage}</p>}
           {successMessage && <p className="login-success">{successMessage}</p>}
 
           <button className="login-submit" type="submit" disabled={loading}>
-            {loading ? "Loading..." : "Create Account"}
+            {loading ? "Loading..." : "Buat Akun"}
           </button>
 
           <p className="login-signup">
-            Already have an account? <Link to="/login">Login</Link>
+            Sudah punya akun? <Link to="/login">Login</Link>
           </p>
         </form>
 
-        <div className="login-divider">Or Sign Up with</div>
+        <div className="login-divider">Atau daftar dengan</div>
 
         <div className="login-socials" aria-label="Social sign up options">
           <button className="login-social login-social-facebook" type="button">
