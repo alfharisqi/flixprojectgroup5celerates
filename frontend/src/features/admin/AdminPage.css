@@ -2026,33 +2026,61 @@
 }
 
 .admin-community-tabs {
+  position: relative;
+  width: max-content;
+  max-width: 100%;
   display: flex;
   align-items: center;
   gap: 36px;
-  max-width: 620px;
   margin-bottom: 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.admin-community-tabs::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .admin-community-tabs button {
+  position: relative;
   min-height: 38px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  padding: 0 0 10px;
   border: 0;
-  border-bottom: 2px solid transparent;
   background: transparent;
   color: #979797;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  transition: color 180ms ease, border-color 180ms ease;
+  transition: color 180ms ease;
+}
+
+.admin-community-tabs button::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  height: 2px;
+  background: transparent;
+  border-radius: 0;
 }
 
 .admin-community-tabs button:hover,
 .admin-community-tabs__item--active {
-  border-bottom-color: #e50914 !important;
   color: #ffffff !important;
+}
+
+.admin-community-tabs button:hover::after,
+.admin-community-tabs__item--active::after {
+  background: #e50914;
 }
 
 .admin-community-tabs small {
@@ -2155,11 +2183,14 @@
   height: 30px;
   display: grid;
   place-items: center;
+  box-sizing: border-box;
+  padding: 0;
   border: 0;
   border-radius: 50%;
   background: #333333;
   color: #d2d2d2;
   cursor: pointer;
+  line-height: 0;
   transition: background 180ms ease, color 180ms ease, transform 180ms ease;
 }
 
@@ -2170,6 +2201,7 @@
 }
 
 .admin-community-post__actions svg {
+  display: block;
   width: 15px;
   height: 15px;
 }
@@ -2232,14 +2264,18 @@
   height: 28px;
   display: grid;
   place-items: center;
+  box-sizing: border-box;
+  padding: 0;
   border: 0;
   border-radius: 50%;
   background: rgba(70, 211, 105, 0.26);
   color: #46d369;
   cursor: pointer;
+  line-height: 0;
 }
 
 .admin-community-post__report button svg {
+  display: block;
   width: 18px;
   height: 18px;
 }
