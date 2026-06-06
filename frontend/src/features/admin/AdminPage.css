@@ -257,8 +257,24 @@
   border-radius: 50%;
   background: #e50914;
   color: #ffffff;
+  overflow: hidden;
   font-size: 22px;
   font-weight: 500;
+}
+
+.admin-profile__avatar img,
+.admin-profile__avatar > span {
+  width: 100%;
+  height: 100%;
+}
+
+.admin-profile__avatar img {
+  object-fit: cover;
+}
+
+.admin-profile__avatar > span {
+  display: grid;
+  place-items: center;
 }
 
 .admin-profile__meta {
@@ -427,6 +443,10 @@
   color: #ffb3b8;
   font-size: 14px;
   font-weight: 500;
+}
+
+.admin-dashboard-alert--inline {
+  margin-bottom: 14px;
 }
 
 .admin-stat-card,
@@ -2191,6 +2211,12 @@
   color: #39d66d;
 }
 
+.admin-user-status--inactive {
+  border-color: rgba(229, 9, 20, 0.7);
+  background: rgba(229, 9, 20, 0.22);
+  color: #ff6f77;
+}
+
 .admin-user-table__empty {
   min-width: 880px;
   padding: 56px 16px;
@@ -2282,6 +2308,17 @@
 
 .admin-user-detail__actions .admin-user-detail__danger {
   border-color: #e50914;
+}
+
+.admin-user-detail__actions .admin-user-detail__success {
+  border-color: #24a44c;
+  color: #39d66d;
+}
+
+.admin-user-detail__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  transform: none;
 }
 
 .admin-user-detail__loading {
@@ -2544,7 +2581,7 @@
 
 .admin-user-detail__review-list > div,
 .admin-user-detail__simple-list > div {
-  min-height: 72px;
+  min-height: 84px;
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr) auto auto;
   align-items: center;
@@ -2584,6 +2621,18 @@
   color: #979797;
   font-size: 11px;
   font-weight: 700;
+}
+
+.admin-user-detail__review-content {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 1px 0 0;
+  color: #bcbcbc;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .admin-user-detail__stars {

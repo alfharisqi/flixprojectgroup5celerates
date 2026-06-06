@@ -38,6 +38,7 @@ import flixAdminLogo from "@/assets/flixadmin-logo.png";
 import communityIcon from "@/assets/icon/community.png";
 import emptyWalletIcon from "@/assets/icon/empty-wallet.png";
 import reviewIcon from "@/assets/icon/review-icon.png";
+import { resolveMediaUrl } from "@/utils/media";
 import "./AdminPage.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -242,6 +243,59 @@ function getStoredUser() {
   }
 }
 
+const getAvatarInitial = (name) =>
+  String(name || "U").trim().charAt(0).toUpperCase() || "U";
+
+function AdminAvatar({ imageUrl, name }) {
+  const resolvedImageUrl = useMemo(() => resolveMediaUrl(imageUrl), [imageUrl]);
+  const [hasImageError, setHasImageError] = useState(false);
+
+  useEffect(() => {
+    setHasImageError(false);
+  }, [resolvedImageUrl]);
+
+  if (resolvedImageUrl && !hasImageError) {
+    return (
+      <img
+        src={resolvedImageUrl}
+        alt={name || "User FLIX"}
+        onError={() => setHasImageError(true)}
+      />
+    );
+  }
+
+  return <span>{getAvatarInitial(name)}</span>;
+}
+
+const decodeHtmlEntities = (value = "") =>
+  String(value)
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'");
+
+const stripHtml = (value = "") =>
+  decodeHtmlEntities(value)
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const formatPostPreview = (value = "", maxLength = 170) => {
+  const text = stripHtml(value);
+
+  if (!text) {
+    return "Post belum memiliki isi.";
+  }
+
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength - 3).trim()}...`;
+};
+
 const readStorageArray = (key) => {
   try {
     const value = JSON.parse(localStorage.getItem(key));
@@ -429,12 +483,14 @@ function AdminPage() {
   const [reviewPage, setReviewPage] = useState(1);
   const [communityPage, setCommunityPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUserStatusLoading, setIsUserStatusLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState("");
   const [moviesError, setMoviesError] = useState("");
   const [usersError, setUsersError] = useState("");
   const [reviewsError, setReviewsError] = useState("");
   const [communityError, setCommunityError] = useState("");
   const [userDetailError, setUserDetailError] = useState("");
+  const [userStatusFeedback, setUserStatusFeedback] = useState("");
   const [selectedChartActivity, setSelectedChartActivity] = useState("login");
   const [selectedChartYear, setSelectedChartYear] = useState(currentAdminYear);
   const [openChartFilter, setOpenChartFilter] = useState(null);
@@ -443,7 +499,7 @@ function AdminPage() {
 
   const user = useMemo(getStoredUser, []);
   const adminName = user?.username || user?.name || "Marsyanda F";
-  const avatarLetter = (adminName || "A").charAt(0).toUpperCase();
+  const adminProfileImageUrl = user?.profile_image_url || user?.profileImageUrl || user?.avatarUrl || "";
   const selectedChartActivityLabel =
     chartActivityOptions.find((option) => option.id === selectedChartActivity)?.label || "Login";
   const dashboardUrl = useMemo(() => {
@@ -836,6 +892,7 @@ function AdminPage() {
       setActiveUserPanel("list");
       setSelectedUserDetail(null);
       setUserDetailError("");
+      setUserStatusFeedback("");
     }
 
     if (itemId === "community") {
@@ -854,6 +911,7 @@ function AdminPage() {
     setActiveUserPanel("detail");
     setSelectedUserDetail(null);
     setUserDetailError("");
+    setUserStatusFeedback("");
     setIsUserDetailLoading(true);
 
     try {
@@ -882,6 +940,84 @@ function AdminPage() {
     setActiveUserPanel("list");
     setSelectedUserDetail(null);
     setUserDetailError("");
+    setUserStatusFeedback("");
+  };
+
+  const handleToggleUserStatus = async () => {
+    if (!detailUser?.id) {
+      return;
+    }
+
+    const nextIsActive = detailUser.isActive === false;
+    const confirmationMessage = nextIsActive
+      ? `Aktifkan kembali user ${detailUser.username}?`
+      : `Nonaktifkan user ${detailUser.username}? User tidak bisa login sampai diaktifkan kembali.`;
+
+    if (!window.confirm(confirmationMessage)) {
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setUserStatusFeedback("Sesi admin tidak tersedia.");
+      return;
+    }
+
+    setIsUserStatusLoading(true);
+    setUserStatusFeedback("");
+
+    try {
+      const response = await fetch(`${API_URL}/api/admin/users/${detailUser.id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          is_active: nextIsActive,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.user) {
+        setUserStatusFeedback(data?.message || "Status user belum bisa diubah.");
+        return;
+      }
+
+      setSelectedUserDetail((currentDetail) => {
+        if (!currentDetail?.user) {
+          return currentDetail;
+        }
+
+        return {
+          ...currentDetail,
+          user: {
+            ...currentDetail.user,
+            ...data.user,
+          },
+        };
+      });
+
+      setAdminUsers((currentUsers) =>
+        currentUsers.map((item) =>
+          item.id === data.user.id
+            ? {
+                ...item,
+                ...data.user,
+                activities: item.activities,
+              }
+            : item
+        )
+      );
+
+      setUserStatusFeedback(data.message || "Status user berhasil diubah.");
+    } catch {
+      setUserStatusFeedback("Status user belum bisa diubah.");
+    } finally {
+      setIsUserStatusLoading(false);
+    }
   };
 
   const handleAddMovieFieldChange = (field, value) => {
@@ -1094,7 +1230,9 @@ function AdminPage() {
           </label>
 
           <div className="admin-profile">
-            <div className="admin-profile__avatar">{avatarLetter}</div>
+            <div className="admin-profile__avatar">
+              <AdminAvatar imageUrl={adminProfileImageUrl} name={adminName} />
+            </div>
             <div className="admin-profile__meta">
               <strong>{adminName}</strong>
               <span>Admin FLIX</span>
@@ -1575,11 +1713,7 @@ function AdminPage() {
                             {(currentReviewPage - 1) * reviewRowsPerPage + index + 1}
                           </span>
                           <div className="admin-review-table__user" role="cell">
-                            {review.user?.profileImageUrl ? (
-                              <img src={review.user.profileImageUrl} alt={review.user.name} />
-                            ) : (
-                              <span>{(review.user?.name || "U").charAt(0).toUpperCase()}</span>
-                            )}
+                            <AdminAvatar imageUrl={review.user?.profileImageUrl} name={review.user?.name} />
                             <strong>{review.user?.name || "User FLIX"}</strong>
                           </div>
                           <strong className="admin-review-table__film" role="cell">
@@ -1622,11 +1756,7 @@ function AdminPage() {
                             {(currentReviewPage - 1) * reviewRowsPerPage + index + 1}
                           </span>
                           <div className="admin-review-table__user" role="cell">
-                            {review.user?.profileImageUrl ? (
-                              <img src={review.user.profileImageUrl} alt={review.user.name} />
-                            ) : (
-                              <span>{(review.user?.name || "U").charAt(0).toUpperCase()}</span>
-                            )}
+                            <AdminAvatar imageUrl={review.user?.profileImageUrl} name={review.user?.name} />
                             <strong>{review.user?.name || "User FLIX"}</strong>
                           </div>
                           <strong className="admin-review-table__film" role="cell">
@@ -1745,11 +1875,7 @@ function AdminPage() {
                     >
                       <div className="admin-community-post__top">
                         <div className="admin-community-post__author">
-                          {post.profileImageUrl ? (
-                            <img src={post.profileImageUrl} alt={post.author} />
-                          ) : (
-                            <span>{(post.author || "U").charAt(0).toUpperCase()}</span>
-                          )}
+                          <AdminAvatar imageUrl={post.profileImageUrl} name={post.author} />
                           <div>
                             <strong>{post.author || "User FLIX"}</strong>
                             <small>{post.time || post.date || "-"}</small>
@@ -1767,7 +1893,7 @@ function AdminPage() {
                       </div>
 
                       <p className="admin-community-post__content">
-                        {post.content || "Post belum memiliki isi."}
+                        {formatPostPreview(post.content)}
                       </p>
 
                       {post.reportReason && (
@@ -1857,9 +1983,26 @@ function AdminPage() {
                       <p>Informasi lengkap & aktivitas user</p>
                     </div>
                     <div className="admin-user-detail__actions">
-                      <button type="button" className="admin-user-detail__danger">
-                        <FiUserX aria-hidden="true" />
-                        Nonaktifkan user
+                      <button
+                        type="button"
+                        className={
+                          detailUser?.isActive === false
+                            ? "admin-user-detail__success"
+                            : "admin-user-detail__danger"
+                        }
+                        disabled={!detailUser || isUserStatusLoading}
+                        onClick={handleToggleUserStatus}
+                      >
+                        {detailUser?.isActive === false ? (
+                          <FiUserCheck aria-hidden="true" />
+                        ) : (
+                          <FiUserX aria-hidden="true" />
+                        )}
+                        {isUserStatusLoading
+                          ? "Memproses..."
+                          : detailUser?.isActive === false
+                            ? "Aktifkan user"
+                            : "Nonaktifkan user"}
                       </button>
                       <button type="button" onClick={closeUserDetail}>
                         <FiArrowLeft aria-hidden="true" />
@@ -1869,6 +2012,11 @@ function AdminPage() {
                   </div>
 
                   {userDetailError && <p className="admin-dashboard-alert">{userDetailError}</p>}
+                  {userStatusFeedback && (
+                    <p className="admin-dashboard-alert admin-dashboard-alert--inline">
+                      {userStatusFeedback}
+                    </p>
+                  )}
 
                   {isUserDetailLoading && (
                     <article className="admin-panel admin-user-detail__loading">
@@ -1881,11 +2029,7 @@ function AdminPage() {
                       <article className="admin-panel admin-user-detail__profile-card">
                         <div className="admin-user-detail__identity">
                           <div className="admin-user-detail__avatar">
-                            {detailUser.profileImageUrl ? (
-                              <img src={detailUser.profileImageUrl} alt={detailUser.username} />
-                            ) : (
-                              <span>{(detailUser.username || "U").charAt(0).toUpperCase()}</span>
-                            )}
+                            <AdminAvatar imageUrl={detailUser.profileImageUrl} name={detailUser.username} />
                             <small className="admin-user-detail__premium-badge">💎 Premium</small>
                           </div>
                           <div className="admin-user-detail__meta">
@@ -1907,7 +2051,15 @@ function AdminPage() {
                                 {detailUser.location || "Sragen, Jawa Tengah"}
                               </span>
                             </div>
-                            <span className="admin-user-status admin-user-status--active">
+                            <span
+                              className={`admin-user-status${
+                                detailUser.status === "Aktif"
+                                  ? " admin-user-status--active"
+                                  : detailUser.status === "Nonaktif"
+                                    ? " admin-user-status--inactive"
+                                    : ""
+                              }`}
+                            >
                               {detailUser.status}
                             </span>
                           </div>
@@ -1975,6 +2127,9 @@ function AdminPage() {
                                 <div>
                                   <strong>{review.title}</strong>
                                   <span>{review.year}</span>
+                                  <p className="admin-user-detail__review-content">
+                                    {formatPostPreview(review.content, 110)}
+                                  </p>
                                 </div>
                                 <span className="admin-user-detail__stars">
                                   {Array.from({ length: 5 }, (_, index) => (
@@ -2021,7 +2176,7 @@ function AdminPage() {
                             {detailPosts.map((post) => (
                               <div key={post.id}>
                                 <strong>{post.title}</strong>
-                                <p>{post.content}</p>
+                                <p>{formatPostPreview(post.content, 130)}</p>
                                 <div>
                                   <span>{post.date}</span>
                                   <span><FiEye aria-hidden="true" /> {post.viewCount}</span>
@@ -2104,11 +2259,7 @@ function AdminPage() {
                         {(currentUserPage - 1) * userRowsPerPage + index + 1}
                       </span>
                       <div className="admin-user-table__profile" role="cell">
-                        {item.profileImageUrl ? (
-                          <img src={item.profileImageUrl} alt={item.username} />
-                        ) : (
-                          <span>{(item.username || "U").charAt(0).toUpperCase()}</span>
-                        )}
+                        <AdminAvatar imageUrl={item.profileImageUrl} name={item.username} />
                         <div>
                           <strong>{item.username}</strong>
                           <small>{item.email}</small>
@@ -2135,7 +2286,11 @@ function AdminPage() {
                       <span role="cell">
                         <span
                           className={`admin-user-status${
-                            item.status === "Aktif" ? " admin-user-status--active" : ""
+                            item.status === "Aktif"
+                              ? " admin-user-status--active"
+                              : item.status === "Nonaktif"
+                                ? " admin-user-status--inactive"
+                                : ""
                           }`}
                         >
                           {item.status}

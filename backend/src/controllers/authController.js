@@ -104,6 +104,7 @@ export const login = async (req, res) => {
           u.email,
           u.password,
           u.email_verified,
+          u.is_active,
           u.profile_image_url,
           u.banner_image_url,
           r.role_name
@@ -126,6 +127,12 @@ export const login = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         message: "Password salah"
+      });
+    }
+
+    if (user.is_active === false) {
+      return res.status(403).json({
+        message: "Akun dinonaktifkan oleh admin."
       });
     }
 

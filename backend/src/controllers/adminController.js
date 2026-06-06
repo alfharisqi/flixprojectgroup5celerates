@@ -495,6 +495,18 @@ const normalizeUserRole = (roleName) => {
   return "User Biasa";
 };
 
+const formatAdminUserStatus = (row) => {
+  if (row.is_active === false) {
+    return "Nonaktif";
+  }
+
+  if (row.email_verified === false) {
+    return "Belum Verifikasi";
+  }
+
+  return "Aktif";
+};
+
 const getAdminUserRows = async () =>
   safeRows(`
     SELECT
@@ -502,6 +514,7 @@ const getAdminUserRows = async () =>
       u.username,
       u.email,
       u.email_verified,
+      u.is_active,
       u.profile_image_url,
       u.created_at,
       r.role_name,
@@ -552,7 +565,8 @@ const mapAdminUsers = (rows) =>
     email: row.email,
     role: row.role_name,
     roleLabel: normalizeUserRole(row.role_name),
-    status: row.email_verified === false ? "Belum Verifikasi" : "Aktif",
+    status: formatAdminUserStatus(row),
+    isActive: row.is_active !== false,
     joinedAt: formatDate(row.created_at),
     profileImageUrl: row.profile_image_url,
     activities: {
@@ -904,8 +918,10 @@ const getAdminUserDetailRows = async (userId) => {
         u.username,
         u.email,
         u.email_verified,
+        u.is_active,
         u.profile_image_url,
         u.banner_image_url,
+        u.deactivated_at,
         u.created_at,
         r.role_name
        FROM flix.users u
@@ -1419,6 +1435,90 @@ export const getAdminUsers = async (req, res) => {
   }
 };
 
+export const updateAdminUserStatus = async (req, res) => {
+  try {
+    const userId = Number(req.params.id);
+    const isActive = req.body?.is_active ?? req.body?.isActive;
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({
+        message: "ID user tidak valid",
+      });
+    }
+
+    if (typeof isActive !== "boolean") {
+      return res.status(400).json({
+        message: "Status aktif user harus berupa boolean",
+      });
+    }
+
+    if (!isActive && Number(req.user?.id_user) === userId) {
+      return res.status(400).json({
+        message: "Admin tidak bisa menonaktifkan akun sendiri",
+      });
+    }
+
+    const result = await pool.query(
+      `WITH updated_user AS (
+        UPDATE flix.users
+        SET
+          is_active = $1,
+          deactivated_at = CASE WHEN $1 THEN NULL ELSE CURRENT_TIMESTAMP END,
+          deactivated_by_user_id = CASE WHEN $1 THEN NULL ELSE $2 END,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id_user = $3
+        RETURNING
+          id_user,
+          username,
+          email,
+          email_verified,
+          is_active,
+          profile_image_url,
+          banner_image_url,
+          created_at,
+          deactivated_at,
+          id_role
+      )
+      SELECT
+        updated_user.*,
+        roles.role_name
+      FROM updated_user
+      JOIN flix.roles roles ON updated_user.id_role = roles.id_role`,
+      [isActive, req.user?.id_user || null, userId],
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({
+        message: "User tidak ditemukan",
+      });
+    }
+
+    const userRow = result.rows[0];
+
+    return res.json({
+      message: isActive ? "User berhasil diaktifkan" : "User berhasil dinonaktifkan",
+      user: {
+        id: Number(userRow.id_user),
+        username: userRow.username,
+        email: userRow.email,
+        role: userRow.role_name,
+        roleLabel: normalizeUserRole(userRow.role_name),
+        status: formatAdminUserStatus(userRow),
+        isActive: userRow.is_active !== false,
+        joinedAt: formatDate(userRow.created_at),
+        deactivatedAt: userRow.deactivated_at ? formatDateTime(userRow.deactivated_at) : null,
+        profileImageUrl: userRow.profile_image_url,
+        bannerImageUrl: userRow.banner_image_url,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal mengubah status user",
+      error: error.message,
+    });
+  }
+};
+
 export const getAdminUserDetail = async (req, res) => {
   try {
     const userId = Number(req.params.id);
@@ -1491,9 +1591,11 @@ export const getAdminUserDetail = async (req, res) => {
         email: userRow.email,
         role: userRow.role_name,
         roleLabel: normalizeUserRole(userRow.role_name),
-        status: userRow.email_verified === false ? "Belum Verifikasi" : "Aktif",
+        status: formatAdminUserStatus(userRow),
+        isActive: userRow.is_active !== false,
         joinedAt: formatDate(userRow.created_at),
         joinedAtDetail: formatDateTime(userRow.created_at),
+        deactivatedAt: userRow.deactivated_at ? formatDateTime(userRow.deactivated_at) : null,
         location: "-",
         profileImageUrl: userRow.profile_image_url,
         bannerImageUrl: userRow.banner_image_url,

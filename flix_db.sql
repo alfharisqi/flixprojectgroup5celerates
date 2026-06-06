@@ -295,6 +295,9 @@ CREATE TABLE IF NOT EXISTS flix.users
     banner_image_url text COLLATE pg_catalog."default",
     email_verified boolean NOT NULL DEFAULT true,
     email_verified_at timestamp without time zone,
+    is_active boolean NOT NULL DEFAULT true,
+    deactivated_at timestamp without time zone,
+    deactivated_by_user_id bigint,
     CONSTRAINT users_pkey PRIMARY KEY (id_user),
     CONSTRAINT users_email_key UNIQUE (email),
     CONSTRAINT users_username_key UNIQUE (username)

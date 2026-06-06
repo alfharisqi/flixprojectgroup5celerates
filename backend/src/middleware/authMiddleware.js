@@ -1,6 +1,24 @@
 import jwt from "jsonwebtoken";
+import pool from "../config/db.js";
 
-export const verifyToken = (req, res, next) => {
+const isDecodedUserActive = async (decoded) => {
+  if (!decoded?.id_user) {
+    return false;
+  }
+
+  const result = await pool.query(
+    "SELECT is_active FROM flix.users WHERE id_user = $1",
+    [decoded.id_user],
+  );
+
+  if (!result.rows.length) {
+    return false;
+  }
+
+  return result.rows[0].is_active !== false;
+};
+
+export const verifyToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -13,6 +31,12 @@ export const verifyToken = (req, res, next) => {
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    if (!(await isDecodedUserActive(decoded))) {
+      return res.status(403).json({
+        message: "Akun dinonaktifkan oleh admin"
+      });
+    }
+
     req.user = decoded;
     next();
   } catch (error) {
@@ -22,7 +46,7 @@ export const verifyToken = (req, res, next) => {
   }
 };
 
-export const optionalToken = (req, res, next) => {
+export const optionalToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -31,7 +55,9 @@ export const optionalToken = (req, res, next) => {
     }
 
     const token = authHeader.split(" ")[1];
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    req.user = (await isDecodedUserActive(decoded)) ? decoded : null;
   } catch (error) {
     req.user = null;
   }

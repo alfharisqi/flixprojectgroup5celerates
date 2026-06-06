@@ -37,6 +37,7 @@ import { initializePasswordResetTable } from "./config/initPasswordReset.js";
 import { initializeMovieReviewsTable } from "./config/initMovieReviews.js";
 import { initializeTvSeriesReviewsTable } from "./config/initTvSeriesReviews.js";
 import { initializeUserProfileMediaColumns } from "./config/initUserProfileMedia.js";
+import { initializeUserStatusColumns } from "./config/initUserStatus.js";
 import { initializeReportsTable } from "./config/initReports.js";
 import { initializeAdminMoviesTable } from "./config/initAdminMovies.js";
 import { initializeContactMessagesTable } from "./config/initContactMessages.js";
@@ -59,6 +60,7 @@ const initializeDatabase = () => {
       initializeMovieReviewsTable(),
       initializeTvSeriesReviewsTable(),
       initializeUserProfileMediaColumns(),
+      initializeUserStatusColumns(),
       initializeChatsTable(),
       initializeNotificationsTable(),
       initializeFriendsTable(),
