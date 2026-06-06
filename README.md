@@ -287,3 +287,43 @@ Format status watchlist:
 - `tv:<series_id>:s<season_number>:e<episode_number>` untuk status episode TV series
 
 Progress episode TV series dibuat berurutan. Contoh: jika user menandai episode 3, maka episode 1, 2, dan 3 ikut tersimpan sebagai sudah ditonton. Jika ingin watchlist tersimpan permanen lintas device, perlu dibuat tabel dan endpoint watchlist di backend.
+
+## 7. Email Testing Lokal Dengan Mailpit
+
+Project ini bisa memakai Mailpit sebagai pengganti Mailtrap untuk development lokal. Mailpit menangkap email dari backend dan menampilkannya di web inbox lokal, jadi email verifikasi akun dan reset password tidak benar-benar dikirim ke inbox user asli.
+
+Jalankan Mailpit:
+
+```bash
+docker compose -f docker-compose.mailpit.yml up -d
+```
+
+Mailpit akan tersedia di:
+
+```text
+SMTP server: localhost:1025
+Web inbox: http://localhost:8025
+```
+
+Gunakan konfigurasi berikut di `backend/.env`:
+
+```env
+MAIL_HOST=localhost
+MAIL_PORT=1025
+MAIL_SECURE=false
+MAIL_USER=
+MAIL_PASS=
+MAIL_FROM="FLIX Local <no-reply@flix.local>"
+```
+
+Setelah backend berjalan, coba register akun atau fitur lupa password. Email akan muncul di inbox Mailpit:
+
+```text
+http://localhost:8025
+```
+
+Hentikan Mailpit:
+
+```bash
+docker compose -f docker-compose.mailpit.yml down
+```
