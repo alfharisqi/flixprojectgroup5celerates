@@ -120,7 +120,7 @@ const normalizeReviewReportStatus = (status) => {
 const formatReviewReportStatus = (status) => {
   const normalizedStatus = String(status || "pending").toLowerCase();
 
-  if (normalizedStatus === "approved") return "Terblokir";
+  if (normalizedStatus === "approved") return "Diblokir";
   if (normalizedStatus === "rejected") return "Ditolak";
   if (normalizedStatus === "reviewed") return "Ditinjau";
   return "Pending";
@@ -1372,7 +1372,6 @@ export const getAdminReviews = async (req, res) => {
     const isBlockedReviewReport = (row) =>
       String(row.report_status || "").toLowerCase() === "approved" ||
       String(row.moderation_status || "").toLowerCase() === "blocked";
-    const reportedActiveRows = reportedRows.filter((row) => !isBlockedReviewReport(row));
     const blockedRows = reportedRows.filter(isBlockedReviewReport);
     const normalizeReportedRow = (row) => ({
       ...row,
@@ -1382,7 +1381,7 @@ export const getAdminReviews = async (req, res) => {
 
     const [incoming, reported, blocked] = await Promise.all([
       mapAdminReviewRows(incomingRows),
-      mapAdminReviewRows(reportedActiveRows.map(normalizeReportedRow)),
+      mapAdminReviewRows(reportedRows.map(normalizeReportedRow)),
       mapAdminReviewRows(blockedRows.map(normalizeReportedRow)),
     ]);
 

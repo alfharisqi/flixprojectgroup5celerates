@@ -218,7 +218,39 @@ const reviewTabs = [
 ];
 
 const isBlockedReviewStatus = (status) =>
-  ["terblokir", "blocked", "approved"].includes(String(status || "").trim().toLowerCase());
+  ["diblokir", "terblokir", "blocked", "approved"].includes(String(status || "").trim().toLowerCase());
+
+const reviewReportCategoryLabels = {
+  spam: "Spam / promosi",
+  harassment: "Pelecehan",
+  hate_speech: "Ujaran kebencian",
+  violence: "Kekerasan",
+  sexual_content: "Konten seksual",
+  misinformation: "Informasi salah",
+  spoiler: "Spoiler",
+  copyright: "Hak cipta",
+  other: "Lainnya"
+};
+
+const getReviewReportReasonSummary = (review) => {
+  const categoryLabel = reviewReportCategoryLabels[String(review?.category || "").toLowerCase()];
+
+  if (categoryLabel) {
+    return categoryLabel;
+  }
+
+  const reasonText = String(review?.reason || "").trim();
+
+  if (!reasonText) {
+    return "Konten bermasalah";
+  }
+
+  if (reasonText.includes(":")) {
+    return reasonText.split(":")[0].trim() || "Konten bermasalah";
+  }
+
+  return reasonText.length > 28 ? "Laporan user" : reasonText;
+};
 
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: FiGrid },
@@ -590,9 +622,6 @@ function AdminPage() {
         const reportedBlockedReviews = reportedReviews.filter((review) =>
           isBlockedReviewStatus(review.status)
         );
-        const normalizedReportedReviews = reportedReviews.filter(
-          (review) => !isBlockedReviewStatus(review.status)
-        );
         const normalizedBlockedReviews = [
           ...blockedReviews,
           ...reportedBlockedReviews.filter(
@@ -606,11 +635,11 @@ function AdminPage() {
         setAdminReviews({
           summary: {
             incoming: Number(reviewsData?.summary?.incoming || incomingReviews.length),
-            reported: normalizedReportedReviews.length,
+            reported: reportedReviews.length,
             blocked: normalizedBlockedReviews.length
           },
           incoming: incomingReviews,
-          reported: normalizedReportedReviews,
+          reported: reportedReviews,
           blocked: normalizedBlockedReviews
         });
         setReviewsError(reviewsResponse.ok ? "" : "Moderasi review belum bisa mengambil data backend.");
@@ -836,7 +865,7 @@ function AdminPage() {
     const blockedRows = Array.isArray(adminReviews.blocked) ? adminReviews.blocked : [];
 
     if (activeReviewTab === "reported") {
-      return reportedRows.filter((review) => !isBlockedReviewStatus(review.status));
+      return reportedRows;
     }
 
     if (activeReviewTab === "blocked") {
@@ -1086,7 +1115,7 @@ function AdminPage() {
 
   const handleUpdateReviewReportStatus = async (review, status) => {
     const actionKey = String(review.reportId || review.id);
-    const nextStatusLabel = status === "blocked" ? "Terblokir" : "Ditolak";
+    const nextStatusLabel = status === "blocked" ? "Diblokir" : "Ditolak";
     const token = localStorage.getItem("token");
 
     setReviewsError("");
@@ -1137,9 +1166,7 @@ function AdminPage() {
           status === "blocked" ||
           isBlockedReviewStatus(updatedReview.status) ||
           isBlockedReviewStatus(responseData?.report?.status);
-        const nextReported = (
-          shouldMoveToBlocked ? reportedWithoutCurrent : [updatedReview, ...reportedWithoutCurrent]
-        ).filter((item) => !isBlockedReviewStatus(item.status));
+        const nextReported = [updatedReview, ...reportedWithoutCurrent];
         const nextBlocked = shouldMoveToBlocked
           ? [updatedReview, ...blockedWithoutCurrent]
           : blockedWithoutCurrent.filter((item) => !isSameReviewReport(item));
@@ -1873,7 +1900,7 @@ function AdminPage() {
                             <p>{review.content}</p>
                           </div>
                           <span className="admin-review-table__reason" role="cell">
-                            {review.reason || "Konten bermasalah"}
+                            {getReviewReportReasonSummary(review)}
                           </span>
                           <div className="admin-review-table__status-cell" role="cell">
                             <span
@@ -1904,6 +1931,8 @@ function AdminPage() {
                       <div
                         className={`admin-review-table__row admin-review-table__row--head${
                           activeReviewTab === "incoming" ? " admin-review-table__row--incoming" : ""
+                        }${
+                          activeReviewTab === "blocked" ? " admin-review-table__row--blocked" : ""
                         }`}
                         role="row"
                       >
@@ -1912,13 +1941,18 @@ function AdminPage() {
                         <span role="columnheader">Film</span>
                         <span role="columnheader">Review</span>
                         <span role="columnheader">Tanggal</span>
-                        {activeReviewTab === "incoming" && <span role="columnheader">Detail</span>}
+                        {activeReviewTab === "blocked" && <span role="columnheader">Status</span>}
+                        {(activeReviewTab === "incoming" || activeReviewTab === "blocked") && (
+                          <span role="columnheader">Detail</span>
+                        )}
                       </div>
 
                       {visibleAdminReviews.map((review, index) => (
                         <div
                           className={`admin-review-table__row${
                             activeReviewTab === "incoming" ? " admin-review-table__row--incoming" : ""
+                          }${
+                            activeReviewTab === "blocked" ? " admin-review-table__row--blocked" : ""
                           }`}
                           role="row"
                           key={review.id}
@@ -1947,7 +1981,17 @@ function AdminPage() {
                           <span className="admin-review-table__date" role="cell">
                             {review.date}
                           </span>
-                          {activeReviewTab === "incoming" && (
+                          {activeReviewTab === "blocked" && (
+                            <span
+                              className={`admin-review-status admin-review-status--${String(
+                                review.status || "diblokir"
+                              ).toLowerCase()}`}
+                              role="cell"
+                            >
+                              {review.status || "Diblokir"}
+                            </span>
+                          )}
+                          {(activeReviewTab === "incoming" || activeReviewTab === "blocked") && (
                             <div className="admin-review-table__detail-cell" role="cell">
                               <button
                                 type="button"
@@ -2831,42 +2875,58 @@ function AdminPage() {
 
             <footer className="admin-review-report-modal__actions">
               {selectedReviewReport.hasReport ? (
-                <>
+                isBlockedReviewStatus(selectedReviewReport.status) ? (
                   <button
                     type="button"
-                    className="admin-review-report-modal__action admin-review-report-modal__action--reject"
-                    disabled={
-                      Boolean(
-                        reviewReportActionLoading[
-                          String(selectedReviewReport.reportId || selectedReviewReport.id)
-                        ]
-                      ) || selectedReviewReport.status === "Ditolak"
-                    }
+                    className="admin-review-report-modal__action admin-review-report-modal__action--restore"
+                    disabled={Boolean(
+                      reviewReportActionLoading[
+                        String(selectedReviewReport.reportId || selectedReviewReport.id)
+                      ]
+                    )}
                     onClick={() => handleUpdateReviewReportStatus(selectedReviewReport, "rejected")}
                   >
                     {reviewReportActionLoading[String(selectedReviewReport.reportId || selectedReviewReport.id)] ===
                     "rejected"
                       ? "Memproses..."
-                      : "Tolak"}
+                      : "Kembalikan Review"}
                   </button>
-                  <button
-                    type="button"
-                    className="admin-review-report-modal__action admin-review-report-modal__action--block"
-                    disabled={
-                      Boolean(
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="admin-review-report-modal__action admin-review-report-modal__action--reject"
+                      disabled={
+                        Boolean(
+                          reviewReportActionLoading[
+                            String(selectedReviewReport.reportId || selectedReviewReport.id)
+                          ]
+                        ) || selectedReviewReport.status === "Ditolak"
+                      }
+                      onClick={() => handleUpdateReviewReportStatus(selectedReviewReport, "rejected")}
+                    >
+                      {reviewReportActionLoading[String(selectedReviewReport.reportId || selectedReviewReport.id)] ===
+                      "rejected"
+                        ? "Memproses..."
+                        : "Tolak"}
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-review-report-modal__action admin-review-report-modal__action--block"
+                      disabled={Boolean(
                         reviewReportActionLoading[
                           String(selectedReviewReport.reportId || selectedReviewReport.id)
                         ]
-                      ) || selectedReviewReport.status === "Terblokir"
-                    }
-                    onClick={() => handleUpdateReviewReportStatus(selectedReviewReport, "blocked")}
-                  >
-                    {reviewReportActionLoading[String(selectedReviewReport.reportId || selectedReviewReport.id)] ===
-                    "blocked"
-                      ? "Memproses..."
-                      : "Blokir Review"}
-                  </button>
-                </>
+                      )}
+                      onClick={() => handleUpdateReviewReportStatus(selectedReviewReport, "blocked")}
+                    >
+                      {reviewReportActionLoading[String(selectedReviewReport.reportId || selectedReviewReport.id)] ===
+                      "blocked"
+                        ? "Memproses..."
+                        : "Blokir Review"}
+                    </button>
+                  </>
+                )
               ) : (
                 <button
                   type="button"

@@ -1528,6 +1528,11 @@
   grid-template-columns: 70px minmax(220px, 1.15fr) minmax(145px, 0.8fr) minmax(280px, 1.6fr) 130px 104px;
 }
 
+.admin-review-table__row--blocked {
+  min-width: 1060px;
+  grid-template-columns: 70px minmax(220px, 1.15fr) minmax(145px, 0.8fr) minmax(260px, 1.5fr) 130px 118px 104px;
+}
+
 .admin-review-table__row--head {
   min-height: 38px;
   border-bottom: 0;
@@ -1649,7 +1654,8 @@
   color: #39d66d;
 }
 
-.admin-review-status--terblokir {
+.admin-review-status--terblokir,
+.admin-review-status--diblokir {
   border: 1px solid #e50914;
   background: rgba(229, 9, 20, 0.22);
   color: #ff5a62;
@@ -1930,6 +1936,11 @@
 }
 
 .admin-review-report-modal__action--block {
+  background: #e50914;
+  box-shadow: 0 12px 28px rgba(229, 9, 20, 0.24);
+}
+
+.admin-review-report-modal__action--restore {
   background: #e50914;
   box-shadow: 0 12px 28px rgba(229, 9, 20, 0.24);
 }
@@ -3285,6 +3296,10 @@
   .admin-review-table__row--report,
   .admin-review-table__empty--report {
     min-width: 1080px;
+  }
+
+  .admin-review-table__row--blocked {
+    min-width: 1060px;
   }
 
   .admin-review-report-modal {
