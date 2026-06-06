@@ -56,6 +56,36 @@ export const initializeReportsTable = async () => {
   `);
 
   await pool.query(`
+    ALTER TABLE flix.posts
+    ADD COLUMN IF NOT EXISTS moderation_status VARCHAR(20) NOT NULL DEFAULT 'active'
+  `);
+
+  await pool.query(`
+    ALTER TABLE flix.posts
+    ADD COLUMN IF NOT EXISTS blocked_at TIMESTAMP
+  `);
+
+  await pool.query(`
+    ALTER TABLE flix.posts
+    ADD COLUMN IF NOT EXISTS blocked_by_user_id BIGINT REFERENCES flix.users(id_user) ON DELETE SET NULL
+  `);
+
+  await pool.query(`
+    ALTER TABLE flix.comments
+    ADD COLUMN IF NOT EXISTS moderation_status VARCHAR(20) NOT NULL DEFAULT 'active'
+  `);
+
+  await pool.query(`
+    ALTER TABLE flix.comments
+    ADD COLUMN IF NOT EXISTS blocked_at TIMESTAMP
+  `);
+
+  await pool.query(`
+    ALTER TABLE flix.comments
+    ADD COLUMN IF NOT EXISTS blocked_by_user_id BIGINT REFERENCES flix.users(id_user) ON DELETE SET NULL
+  `);
+
+  await pool.query(`
     DO $$
     DECLARE
       constraint_record RECORD;

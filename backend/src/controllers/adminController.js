@@ -126,6 +126,18 @@ const formatReviewReportStatus = (status) => {
   return "Pending";
 };
 
+const formatCommunityReportStatus = (status) => {
+  const normalizedStatus = String(status || "pending").toLowerCase();
+
+  if (normalizedStatus === "approved") return "Terblokir";
+  if (normalizedStatus === "rejected") return "Ditolak";
+  if (normalizedStatus === "reviewed") return "Ditinjau";
+  return "Dilaporkan";
+};
+
+const formatCommunityTargetStatus = (status) =>
+  String(status || "").toLowerCase() === "blocked" ? "Terblokir" : "Aktif";
+
 const safeRows = async (query, params = []) => {
   try {
     const result = await pool.query(query, params);
@@ -790,8 +802,10 @@ const mapAdminCommunityRows = (rows) =>
   rows.map((row) => ({
     id: row.id_report ? `report-${row.id_report}` : Number(row.id_post),
     postId: Number(row.id_post),
+    commentId: row.id_comment ? Number(row.id_comment) : null,
     reportId: Number(row.id_report || 0),
     reportType: row.report_type || null,
+    targetKind: row.target_kind || "post",
     author: row.username || "User FLIX",
     profileImageUrl: row.profile_image_url || null,
     time: getRelativeTime(row.created_at),
@@ -799,6 +813,8 @@ const mapAdminCommunityRows = (rows) =>
     title: row.title || "",
     content: row.content || "",
     status: row.status || "Aktif",
+    targetStatus: row.target_status || row.moderation_status || "active",
+    targetStatusLabel: formatCommunityTargetStatus(row.target_status || row.moderation_status),
     reportReason: row.reason
       ? `${formatReportCategory(row.category)}: ${row.reason}`
       : null,
@@ -821,6 +837,13 @@ const getAdminCommunityRows = async () =>
       p.title,
       p.content,
       p.created_at,
+      p.moderation_status,
+      p.moderation_status AS target_status,
+      CASE
+        WHEN COALESCE(p.moderation_status, 'active') = 'blocked' THEN 'Terblokir'
+        ELSE 'Aktif'
+      END AS status,
+      'post' AS target_kind,
       u.username,
       u.profile_image_url,
       COALESCE(v.view_count, 0)::INTEGER AS view_count,
@@ -871,10 +894,12 @@ const getAdminReportedCommunityRows = async () =>
         reports.created_at AS report_created_at,
         reports.reporter_user_id,
         posts.id_post,
+        NULL::BIGINT AS id_comment,
         posts.title,
         posts.content,
         posts.created_at,
         posts.id_user,
+        posts.moderation_status,
         'post' AS target_kind
       FROM flix.reports reports
       JOIN flix.posts posts ON reports.community_post_id = posts.id_post
@@ -891,10 +916,12 @@ const getAdminReportedCommunityRows = async () =>
         reports.created_at AS report_created_at,
         reports.reporter_user_id,
         posts.id_post,
+        comments.id_comment,
         posts.title,
         comments.content,
         comments.created_at,
         comments.id_user,
+        comments.moderation_status,
         'reply' AS target_kind
       FROM flix.reports reports
       JOIN flix.comments comments
@@ -908,11 +935,13 @@ const getAdminReportedCommunityRows = async () =>
       target_user.profile_image_url,
       reporter.username AS reporter_username,
       CASE
-        WHEN reported_community.report_status = 'approved' THEN 'Disetujui'
+        WHEN reported_community.report_status = 'approved'
+          OR COALESCE(reported_community.moderation_status, 'active') = 'blocked' THEN 'Terblokir'
         WHEN reported_community.report_status = 'rejected' THEN 'Ditolak'
         WHEN reported_community.report_status = 'reviewed' THEN 'Ditinjau'
         ELSE 'Dilaporkan'
       END AS status,
+      reported_community.moderation_status AS target_status,
       COALESCE(v.view_count, 0)::INTEGER AS view_count,
       COALESCE(c.reply_count, 0)::INTEGER AS reply_count,
       COALESCE(s.share_count, 0)::INTEGER AS share_count,
@@ -1423,6 +1452,13 @@ export const getAdminCommunity = async (req, res) => {
 
     const posts = mapAdminCommunityRows(postRows);
     const reportedPosts = mapAdminCommunityRows(reportedRows);
+    const blockedPosts = mapAdminCommunityRows(
+      reportedRows.filter(
+        (row) =>
+          String(row.report_status || "").toLowerCase() === "approved" ||
+          String(row.target_status || row.moderation_status || "").toLowerCase() === "blocked",
+      ),
+    );
 
     return res.json({
       message: "Kelola community admin berhasil dimuat",
@@ -1430,12 +1466,12 @@ export const getAdminCommunity = async (req, res) => {
         totalPost: Number(totalPostRows[0]?.count || posts.length),
         totalReply: Number(totalReplyRows[0]?.count || 0),
         reported: reportedPosts.length,
-        blocked: 0,
+        blocked: blockedPosts.length,
       },
       posts: {
         all: posts,
         reported: reportedPosts,
-        blocked: [],
+        blocked: blockedPosts,
       },
     });
   } catch (error) {
@@ -1675,6 +1711,132 @@ export const updateAdminReviewReportStatus = async (req, res) => {
     await client.query("ROLLBACK");
     return res.status(500).json({
       message: "Gagal mengubah status report review",
+      error: error.message,
+    });
+  } finally {
+    client.release();
+  }
+};
+
+export const updateAdminCommunityReportStatus = async (req, res) => {
+  const reportId = Number(req.params.reportId);
+  const nextStatus = normalizeReviewReportStatus(req.body?.status);
+
+  if (!Number.isInteger(reportId) || reportId <= 0) {
+    return res.status(400).json({
+      message: "ID report tidak valid",
+    });
+  }
+
+  if (!nextStatus || !["approved", "rejected", "pending"].includes(nextStatus)) {
+    return res.status(400).json({
+      message: "Status report tidak valid",
+    });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const reportResult = await client.query(
+      `SELECT
+         id_report,
+         community_post_id,
+         community_comment_id
+       FROM flix.reports
+       WHERE id_report = $1
+         AND (community_post_id IS NOT NULL OR community_comment_id IS NOT NULL)`,
+      [reportId],
+    );
+
+    if (!reportResult.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        message: "Report community tidak ditemukan",
+      });
+    }
+
+    const report = reportResult.rows[0];
+    const isPostReport = Boolean(report.community_post_id);
+    const targetId = Number(report.community_post_id || report.community_comment_id);
+    const targetKind = isPostReport ? "post" : "reply";
+    const reportColumn = isPostReport ? "community_post_id" : "community_comment_id";
+    const targetTable = isPostReport ? "flix.posts" : "flix.comments";
+    const targetIdColumn = isPostReport ? "id_post" : "id_comment";
+
+    const updatedReport = await client.query(
+      `UPDATE flix.reports
+       SET status = $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id_report = $2
+       RETURNING id_report, status, updated_at`,
+      [nextStatus, reportId],
+    );
+
+    let targetStatus = "active";
+
+    if (nextStatus === "approved") {
+      targetStatus = "blocked";
+      await client.query(
+        `UPDATE ${targetTable}
+         SET moderation_status = 'blocked',
+             blocked_at = CURRENT_TIMESTAMP,
+             blocked_by_user_id = $1,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE ${targetIdColumn} = $2`,
+        [req.user.id_user, targetId],
+      );
+    } else {
+      const otherApprovedReports = await client.query(
+        `SELECT COUNT(*)::INTEGER AS count
+         FROM flix.reports
+         WHERE ${reportColumn} = $1
+           AND id_report <> $2
+           AND status = 'approved'`,
+        [targetId, reportId],
+      );
+
+      if (Number(otherApprovedReports.rows[0]?.count || 0) === 0) {
+        await client.query(
+          `UPDATE ${targetTable}
+           SET moderation_status = 'active',
+               blocked_at = NULL,
+               blocked_by_user_id = NULL,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE ${targetIdColumn} = $1`,
+          [targetId],
+        );
+      } else {
+        targetStatus = "blocked";
+      }
+    }
+
+    await client.query("COMMIT");
+
+    return res.json({
+      message:
+        nextStatus === "approved"
+          ? "Konten community berhasil diblokir"
+          : "Report community berhasil ditolak",
+      report: {
+        id: Number(updatedReport.rows[0].id_report),
+        status: updatedReport.rows[0].status,
+        statusLabel: formatCommunityReportStatus(updatedReport.rows[0].status),
+        targetKind,
+        targetId,
+      },
+      target: {
+        kind: targetKind,
+        id: targetId,
+        status: targetStatus,
+        statusLabel: formatCommunityTargetStatus(targetStatus),
+      },
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    return res.status(500).json({
+      message: "Gagal mengubah status report community",
       error: error.message,
     });
   } finally {

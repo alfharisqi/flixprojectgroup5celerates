@@ -8,6 +8,7 @@ import {
   getAdminReviews,
   getAdminUserDetail,
   getAdminUsers,
+  updateAdminCommunityReportStatus,
   updateAdminReviewReportStatus,
   updateAdminUserStatus,
   updateAdminMovie
@@ -62,6 +63,13 @@ router.get(
   verifyToken,
   allowRoles("admin"),
   getAdminCommunity
+);
+
+router.patch(
+  "/community/reports/:reportId/status",
+  verifyToken,
+  allowRoles("admin"),
+  updateAdminCommunityReportStatus
 );
 
 router.get(

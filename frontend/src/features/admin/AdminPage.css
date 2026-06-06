@@ -2211,6 +2211,21 @@
   transform: translateY(-1px);
 }
 
+.admin-community-post__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+}
+
+.admin-community-post__actions .admin-community-post__action--block {
+  color: #e50914;
+}
+
+.admin-community-post__actions .admin-community-post__action--block:hover {
+  background: #3b3b3b;
+  color: #ff2630;
+}
+
 .admin-community-post__actions svg {
   display: block;
   width: 15px;
@@ -2270,7 +2285,7 @@
   font-weight: 600;
 }
 
-.admin-community-post__report button {
+.admin-community-post__report-check {
   width: 28px;
   height: 28px;
   display: grid;
@@ -2281,14 +2296,50 @@
   border-radius: 50%;
   background: rgba(70, 211, 105, 0.26);
   color: #46d369;
-  cursor: pointer;
   line-height: 0;
 }
 
-.admin-community-post__report button svg {
+.admin-community-post__report-check svg {
   display: block;
   width: 18px;
   height: 18px;
+}
+
+.admin-community-status {
+  min-width: 82px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.admin-community-status--aktif {
+  border: 1px solid #24a44c;
+  background: rgba(36, 164, 76, 0.22);
+  color: #39d66d;
+}
+
+.admin-community-status--dilaporkan {
+  border: 1px solid #c6a100;
+  background: rgba(255, 212, 0, 0.18);
+  color: #ffd400;
+}
+
+.admin-community-status--ditolak {
+  border: 1px solid #24a44c;
+  background: rgba(70, 211, 105, 0.22);
+  color: #46d369;
+}
+
+.admin-community-status--terblokir,
+.admin-community-status--diblokir {
+  border: 1px solid #e50914;
+  background: rgba(229, 9, 20, 0.22);
+  color: #ff5a62;
 }
 
 .admin-community-post__metrics {

@@ -4,17 +4,19 @@ export const getPosts = async (req, res) => {
   try {
     const tag = typeof req.query.tag === "string" ? req.query.tag.trim() : "";
     const values = [req.user?.id_user || null];
-    let tagFilter = "";
+    const whereClauses = ["COALESCE(p.moderation_status, 'active') <> 'blocked'"];
 
     if (tag) {
       values.push(tag);
-      tagFilter = `
-       WHERE EXISTS (
+      whereClauses.push(`
+       EXISTS (
          SELECT 1
          FROM unnest(p.tags) AS tag_name
          WHERE LOWER(tag_name) = LOWER($${values.length})
-       )`;
+       )`);
     }
+
+    const postFilter = `WHERE ${whereClauses.join(" AND ")}`;
 
     const result = await pool.query(
       `SELECT 
@@ -106,6 +108,7 @@ export const getPosts = async (req, res) => {
        LEFT JOIN (
          SELECT id_post, COUNT(*) AS reply_count
          FROM flix.comments
+         WHERE COALESCE(moderation_status, 'active') <> 'blocked'
          GROUP BY id_post
        ) c ON p.id_post = c.id_post
 
@@ -159,7 +162,7 @@ export const getPosts = async (req, res) => {
          WHERE o.id_poll = pp.id_poll
        ) po ON TRUE
 
-       ${tagFilter}
+       ${postFilter}
        ORDER BY p.id_post DESC`,
       values
     );
@@ -258,6 +261,7 @@ export const getPostById = async (req, res) => {
        LEFT JOIN (
          SELECT id_post, COUNT(*) AS reply_count
          FROM flix.comments
+         WHERE COALESCE(moderation_status, 'active') <> 'blocked'
          GROUP BY id_post
        ) c ON p.id_post = c.id_post
 
@@ -298,7 +302,8 @@ export const getPostById = async (req, res) => {
          GROUP BY pp.id_post
        ) pv ON p.id_post = pv.id_post
 
-       WHERE p.id_post = $1`,
+       WHERE p.id_post = $1
+         AND COALESCE(p.moderation_status, 'active') <> 'blocked'`,
       [id, userId]
     );
 
