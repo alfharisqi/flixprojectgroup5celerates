@@ -1,4 +1,5 @@
 import pool from "../config/db.js";
+import { initializeUserStatusColumns } from "../config/initUserStatus.js";
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w92";
@@ -1506,13 +1507,15 @@ export const updateAdminUserStatus = async (req, res) => {
       });
     }
 
+    await initializeUserStatusColumns();
+
     const result = await pool.query(
       `WITH updated_user AS (
         UPDATE flix.users
         SET
-          is_active = $1,
-          deactivated_at = CASE WHEN $1 THEN NULL ELSE CURRENT_TIMESTAMP END,
-          deactivated_by_user_id = CASE WHEN $1 THEN NULL ELSE $2 END,
+          is_active = $1::BOOLEAN,
+          deactivated_at = CASE WHEN $1::BOOLEAN THEN NULL ELSE CURRENT_TIMESTAMP END,
+          deactivated_by_user_id = CASE WHEN $1::BOOLEAN THEN NULL ELSE $2::BIGINT END,
           updated_at = CURRENT_TIMESTAMP
         WHERE id_user = $3
         RETURNING

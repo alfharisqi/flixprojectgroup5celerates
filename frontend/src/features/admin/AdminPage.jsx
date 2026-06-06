@@ -1032,7 +1032,11 @@ function AdminPage() {
       const data = await response.json().catch(() => null);
 
       if (!response.ok || !data?.user) {
-        setUserStatusFeedback(data?.message || "Status user belum bisa diubah.");
+        setUserStatusFeedback(
+          data?.error
+            ? `${data?.message || "Status user belum bisa diubah."}: ${data.error}`
+            : data?.message || "Status user belum bisa diubah."
+        );
         return;
       }
 

@@ -3,6 +3,11 @@ import pool from "./db.js";
 export const initializeUserStatusColumns = async () => {
   await pool.query(`
     ALTER TABLE flix.users
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  `);
+
+  await pool.query(`
+    ALTER TABLE flix.users
     ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE NOT NULL
   `);
 
