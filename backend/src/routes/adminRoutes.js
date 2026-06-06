@@ -8,6 +8,7 @@ import {
   getAdminReviews,
   getAdminUserDetail,
   getAdminUsers,
+  updateAdminReviewReportStatus,
   updateAdminUserStatus,
   updateAdminMovie
 } from "../controllers/adminController.js";
@@ -47,6 +48,13 @@ router.get(
   verifyToken,
   allowRoles("admin"),
   getAdminReviews
+);
+
+router.patch(
+  "/reviews/reports/:reportId/status",
+  verifyToken,
+  allowRoles("admin"),
+  updateAdminReviewReportStatus
 );
 
 router.get(

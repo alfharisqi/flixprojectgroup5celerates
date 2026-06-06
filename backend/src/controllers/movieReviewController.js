@@ -42,6 +42,13 @@ export const getMovieReviews = async (req, res) => {
        JOIN flix.users u ON mr.id_user = u.id_user
        LEFT JOIN flix.movie_review_likes mrl ON mr.id_review = mrl.id_review
        WHERE mr.tmdb_movie_id = $1
+         AND COALESCE(mr.moderation_status, 'active') <> 'blocked'
+         AND NOT EXISTS (
+           SELECT 1
+           FROM flix.reports report
+           WHERE report.movie_review_id = mr.id_review
+             AND report.status = 'approved'
+         )
        GROUP BY mr.id_review, u.username, u.profile_image_url
        ORDER BY mr.created_at ASC, mr.id_review ASC`,
       [movieId],
@@ -54,6 +61,13 @@ export const getMovieReviews = async (req, res) => {
        FROM flix.movie_reviews
        WHERE tmdb_movie_id = $1
          AND parent_review_id IS NULL
+         AND COALESCE(moderation_status, 'active') <> 'blocked'
+         AND NOT EXISTS (
+           SELECT 1
+           FROM flix.reports report
+           WHERE report.movie_review_id = flix.movie_reviews.id_review
+             AND report.status = 'approved'
+         )
          AND rating IS NOT NULL`,
       [movieId],
     );

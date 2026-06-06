@@ -98,6 +98,33 @@ const formatReportStatus = (status) => {
   return "Pending";
 };
 
+const normalizeReviewReportStatus = (status) => {
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+
+  if (["blocked", "approved", "terblokir", "blokir"].includes(normalizedStatus)) {
+    return "approved";
+  }
+
+  if (["rejected", "ditolak", "tolak"].includes(normalizedStatus)) {
+    return "rejected";
+  }
+
+  if (normalizedStatus === "pending") {
+    return "pending";
+  }
+
+  return null;
+};
+
+const formatReviewReportStatus = (status) => {
+  const normalizedStatus = String(status || "pending").toLowerCase();
+
+  if (normalizedStatus === "approved") return "Terblokir";
+  if (normalizedStatus === "rejected") return "Ditolak";
+  if (normalizedStatus === "reviewed") return "Ditinjau";
+  return "Pending";
+};
+
 const safeRows = async (query, params = []) => {
   try {
     const result = await pool.query(query, params);
@@ -656,9 +683,17 @@ const getAdminIncomingReviewRows = async () =>
         id_user,
         content,
         rating,
+        moderation_status,
         created_at
       FROM flix.movie_reviews
       WHERE parent_review_id IS NULL
+        AND COALESCE(moderation_status, 'active') <> 'blocked'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM flix.reports report
+          WHERE report.movie_review_id = flix.movie_reviews.id_review
+            AND report.status = 'approved'
+        )
 
       UNION ALL
 
@@ -669,9 +704,17 @@ const getAdminIncomingReviewRows = async () =>
         id_user,
         content,
         rating,
+        moderation_status,
         created_at
       FROM flix.tv_series_reviews
       WHERE parent_review_id IS NULL
+        AND COALESCE(moderation_status, 'active') <> 'blocked'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM flix.reports report
+          WHERE report.tv_series_review_id = flix.tv_series_reviews.id_review
+            AND report.status = 'approved'
+        )
     )
     SELECT
       reviews.*,
@@ -697,7 +740,8 @@ const getAdminReportedReviewRows = async () =>
         'movie' AS media_type,
         movie_reviews.tmdb_movie_id AS tmdb_id,
         movie_reviews.content,
-        movie_reviews.rating
+        movie_reviews.rating,
+        movie_reviews.moderation_status
       FROM flix.reports reports
       JOIN flix.movie_reviews movie_reviews
         ON reports.movie_review_id = movie_reviews.id_review
@@ -716,7 +760,8 @@ const getAdminReportedReviewRows = async () =>
         'tv' AS media_type,
         tv_reviews.tmdb_series_id AS tmdb_id,
         tv_reviews.content,
-        tv_reviews.rating
+        tv_reviews.rating,
+        tv_reviews.moderation_status
       FROM flix.reports reports
       JOIN flix.tv_series_reviews tv_reviews
         ON reports.tv_series_review_id = tv_reviews.id_review
@@ -727,7 +772,7 @@ const getAdminReportedReviewRows = async () =>
       reported_reviews.tmdb_id AS metadata_tmdb_id,
       reported_reviews.content AS metadata_content,
       CASE
-        WHEN reported_reviews.report_status = 'approved' THEN 'Disetujui'
+        WHEN reported_reviews.report_status = 'approved' THEN 'Terblokir'
         WHEN reported_reviews.report_status = 'rejected' THEN 'Ditolak'
         WHEN reported_reviews.report_status = 'reviewed' THEN 'Ditinjau'
         ELSE 'Pending'
@@ -1323,19 +1368,22 @@ export const getAdminReviews = async (req, res) => {
       getAdminIncomingReviewRows(),
       getAdminReportedReviewRows(),
     ]);
+    const isBlockedReviewReport = (row) =>
+      String(row.report_status || "").toLowerCase() === "approved" ||
+      String(row.moderation_status || "").toLowerCase() === "blocked";
+    const reportedActiveRows = reportedRows.filter((row) => !isBlockedReviewReport(row));
+    const blockedRows = reportedRows.filter(isBlockedReviewReport);
+    const normalizeReportedRow = (row) => ({
+      ...row,
+      tmdb_id: row.metadata_tmdb_id,
+      content: row.metadata_content || "Review dilaporkan oleh user.",
+    });
 
-    const [incoming, reported] = await Promise.all([
+    const [incoming, reported, blocked] = await Promise.all([
       mapAdminReviewRows(incomingRows),
-      mapAdminReviewRows(
-        reportedRows.map((row) => ({
-          ...row,
-          tmdb_id: row.metadata_tmdb_id,
-          content: row.metadata_content || "Review dilaporkan oleh user.",
-        })),
-      ),
+      mapAdminReviewRows(reportedActiveRows.map(normalizeReportedRow)),
+      mapAdminReviewRows(blockedRows.map(normalizeReportedRow)),
     ]);
-
-    const blocked = [];
 
     return res.json({
       message: "Moderasi review admin berhasil dimuat",
@@ -1516,6 +1564,119 @@ export const updateAdminUserStatus = async (req, res) => {
       message: "Gagal mengubah status user",
       error: error.message,
     });
+  }
+};
+
+export const updateAdminReviewReportStatus = async (req, res) => {
+  const reportId = Number(req.params.reportId);
+  const nextStatus = normalizeReviewReportStatus(req.body?.status);
+
+  if (!Number.isInteger(reportId) || reportId <= 0) {
+    return res.status(400).json({
+      message: "ID report tidak valid",
+    });
+  }
+
+  if (!nextStatus || !["approved", "rejected", "pending"].includes(nextStatus)) {
+    return res.status(400).json({
+      message: "Status report tidak valid",
+    });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const reportResult = await client.query(
+      `SELECT
+         id_report,
+         movie_review_id,
+         tv_series_review_id
+       FROM flix.reports
+       WHERE id_report = $1
+         AND (movie_review_id IS NOT NULL OR tv_series_review_id IS NOT NULL)`,
+      [reportId],
+    );
+
+    if (!reportResult.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        message: "Report review tidak ditemukan",
+      });
+    }
+
+    const report = reportResult.rows[0];
+    const mediaType = report.movie_review_id ? "movie" : "tv";
+    const reviewId = Number(report.movie_review_id || report.tv_series_review_id);
+    const reportColumn = mediaType === "movie" ? "movie_review_id" : "tv_series_review_id";
+    const reviewTable = mediaType === "movie" ? "flix.movie_reviews" : "flix.tv_series_reviews";
+
+    const updatedReport = await client.query(
+      `UPDATE flix.reports
+       SET status = $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id_report = $2
+       RETURNING id_report, status, updated_at`,
+      [nextStatus, reportId],
+    );
+
+    if (nextStatus === "approved") {
+      await client.query(
+        `UPDATE ${reviewTable}
+         SET moderation_status = 'blocked',
+             blocked_at = CURRENT_TIMESTAMP,
+             blocked_by_user_id = $1,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id_review = $2`,
+        [req.user.id_user, reviewId],
+      );
+    } else {
+      const otherApprovedReports = await client.query(
+        `SELECT COUNT(*)::INTEGER AS count
+         FROM flix.reports
+         WHERE ${reportColumn} = $1
+           AND id_report <> $2
+           AND status = 'approved'`,
+        [reviewId, reportId],
+      );
+
+      if (Number(otherApprovedReports.rows[0]?.count || 0) === 0) {
+        await client.query(
+          `UPDATE ${reviewTable}
+           SET moderation_status = 'active',
+               blocked_at = NULL,
+               blocked_by_user_id = NULL,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id_review = $1`,
+          [reviewId],
+        );
+      }
+    }
+
+    await client.query("COMMIT");
+
+    return res.json({
+      message:
+        nextStatus === "approved"
+          ? "Review berhasil dipindahkan ke Review Terblokir"
+          : "Report review berhasil ditolak",
+      report: {
+        id: Number(updatedReport.rows[0].id_report),
+        status: updatedReport.rows[0].status,
+        statusLabel: formatReviewReportStatus(updatedReport.rows[0].status),
+        mediaType,
+        reviewId,
+      },
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    return res.status(500).json({
+      message: "Gagal mengubah status report review",
+      error: error.message,
+    });
+  } finally {
+    client.release();
   }
 };
 

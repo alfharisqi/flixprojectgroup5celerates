@@ -106,6 +106,9 @@ CREATE TABLE IF NOT EXISTS flix.movie_reviews
     parent_review_id integer,
     content text COLLATE pg_catalog."default" NOT NULL,
     rating smallint,
+    moderation_status character varying(20) COLLATE pg_catalog."default" NOT NULL DEFAULT 'active'::character varying,
+    blocked_at timestamp without time zone,
+    blocked_by_user_id bigint,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT movie_reviews_pkey PRIMARY KEY (id_review)
@@ -266,6 +269,9 @@ CREATE TABLE IF NOT EXISTS flix.tv_series_reviews
     parent_review_id integer,
     content text COLLATE pg_catalog."default" NOT NULL,
     rating smallint,
+    moderation_status character varying(20) COLLATE pg_catalog."default" NOT NULL DEFAULT 'active'::character varying,
+    blocked_at timestamp without time zone,
+    blocked_by_user_id bigint,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT tv_series_reviews_pkey PRIMARY KEY (id_review)
@@ -400,6 +406,18 @@ ALTER TABLE IF EXISTS flix.movie_reviews
     REFERENCES flix.users (id_user) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS flix.movie_reviews
+    ADD CONSTRAINT movie_reviews_blocked_by_user_id_fkey FOREIGN KEY (blocked_by_user_id)
+    REFERENCES flix.users (id_user) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE SET NULL;
+
+ALTER TABLE IF EXISTS flix.movie_reviews
+    ADD CONSTRAINT chk_movie_reviews_moderation_status CHECK (moderation_status IN ('active', 'blocked'));
+
+CREATE INDEX IF NOT EXISTS idx_movie_reviews_moderation_status
+    ON flix.movie_reviews(moderation_status);
 
 
 ALTER TABLE IF EXISTS flix.movie_reviews
@@ -615,6 +633,18 @@ ALTER TABLE IF EXISTS flix.tv_series_reviews
     REFERENCES flix.users (id_user) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS flix.tv_series_reviews
+    ADD CONSTRAINT tv_series_reviews_blocked_by_user_id_fkey FOREIGN KEY (blocked_by_user_id)
+    REFERENCES flix.users (id_user) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE SET NULL;
+
+ALTER TABLE IF EXISTS flix.tv_series_reviews
+    ADD CONSTRAINT chk_tv_series_reviews_moderation_status CHECK (moderation_status IN ('active', 'blocked'));
+
+CREATE INDEX IF NOT EXISTS idx_tv_series_reviews_moderation_status
+    ON flix.tv_series_reviews(moderation_status);
 
 
 ALTER TABLE IF EXISTS flix.tv_series_reviews

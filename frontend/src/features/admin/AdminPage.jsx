@@ -484,6 +484,7 @@ function AdminPage() {
   const [communityPage, setCommunityPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isUserStatusLoading, setIsUserStatusLoading] = useState(false);
+  const [reviewReportActionLoading, setReviewReportActionLoading] = useState({});
   const [dashboardError, setDashboardError] = useState("");
   const [moviesError, setMoviesError] = useState("");
   const [usersError, setUsersError] = useState("");
@@ -1017,6 +1018,82 @@ function AdminPage() {
       setUserStatusFeedback("Status user belum bisa diubah.");
     } finally {
       setIsUserStatusLoading(false);
+    }
+  };
+
+  const handleUpdateReviewReportStatus = async (review, status) => {
+    const actionKey = String(review.reportId || review.id);
+    const nextStatusLabel = status === "blocked" ? "Terblokir" : "Ditolak";
+    const token = localStorage.getItem("token");
+
+    setReviewsError("");
+    setReviewReportActionLoading((current) => ({
+      ...current,
+      [actionKey]: status,
+    }));
+
+    try {
+      let responseData = null;
+
+      if (review.reportId) {
+        if (!token) {
+          throw new Error("Sesi admin tidak tersedia.");
+        }
+
+        const response = await fetch(`${API_URL}/api/admin/reviews/reports/${review.reportId}/status`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status }),
+        });
+
+        responseData = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(responseData?.message || "Status report review belum bisa diubah.");
+        }
+      }
+
+      const updatedReview = {
+        ...review,
+        status: responseData?.report?.statusLabel || nextStatusLabel,
+      };
+
+      setAdminReviews((currentReviews) => {
+        const isSameReviewReport = (item) =>
+          String(item.reportId || item.id) === String(review.reportId || review.id);
+        const reportedWithoutCurrent = (currentReviews.reported || []).filter(
+          (item) => !isSameReviewReport(item)
+        );
+        const blockedWithoutCurrent = (currentReviews.blocked || []).filter(
+          (item) => !isSameReviewReport(item)
+        );
+        const nextReported =
+          status === "blocked" ? reportedWithoutCurrent : [updatedReview, ...reportedWithoutCurrent];
+        const nextBlocked =
+          status === "blocked" ? [updatedReview, ...blockedWithoutCurrent] : blockedWithoutCurrent;
+
+        return {
+          ...currentReviews,
+          reported: nextReported,
+          blocked: nextBlocked,
+          summary: {
+            ...currentReviews.summary,
+            reported: nextReported.length,
+            blocked: nextBlocked.length,
+          },
+        };
+      });
+    } catch (error) {
+      setReviewsError(error.message || "Status report review belum bisa diubah.");
+    } finally {
+      setReviewReportActionLoading((current) => {
+        const next = { ...current };
+        delete next[actionKey];
+        return next;
+      });
     }
   };
 
@@ -1725,7 +1802,7 @@ function AdminPage() {
                           <span className="admin-review-table__reason" role="cell">
                             {review.reason || "Konten bermasalah"}
                           </span>
-                          <span role="cell">
+                          <div className="admin-review-table__status-cell" role="cell">
                             <span
                               className={`admin-review-status admin-review-status--${String(
                                 review.status || "pending"
@@ -1733,7 +1810,35 @@ function AdminPage() {
                             >
                               {review.status || "Pending"}
                             </span>
-                          </span>
+                            <div className="admin-review-table__actions">
+                              <button
+                                type="button"
+                                className="admin-review-table__action admin-review-table__action--block"
+                                disabled={
+                                  Boolean(reviewReportActionLoading[String(review.reportId || review.id)]) ||
+                                  review.status === "Terblokir"
+                                }
+                                onClick={() => handleUpdateReviewReportStatus(review, "blocked")}
+                              >
+                                {reviewReportActionLoading[String(review.reportId || review.id)] === "blocked"
+                                  ? "..."
+                                  : "Blokir"}
+                              </button>
+                              <button
+                                type="button"
+                                className="admin-review-table__action admin-review-table__action--reject"
+                                disabled={
+                                  Boolean(reviewReportActionLoading[String(review.reportId || review.id)]) ||
+                                  review.status === "Ditolak"
+                                }
+                                onClick={() => handleUpdateReviewReportStatus(review, "rejected")}
+                              >
+                                {reviewReportActionLoading[String(review.reportId || review.id)] === "rejected"
+                                  ? "..."
+                                  : "Tolak"}
+                              </button>
+                            </div>
+                          </div>
                           <span className="admin-review-table__date" role="cell">
                             {review.date}
                           </span>

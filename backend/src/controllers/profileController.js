@@ -52,6 +52,13 @@ export const getMyProfileActivity = async (req, res) => {
          LEFT JOIN flix.movie_review_likes mrl ON mr.id_review = mrl.id_review
          WHERE mr.id_user = $1
            AND mr.parent_review_id IS NULL
+           AND COALESCE(mr.moderation_status, 'active') <> 'blocked'
+           AND NOT EXISTS (
+             SELECT 1
+             FROM flix.reports report
+             WHERE report.movie_review_id = mr.id_review
+               AND report.status = 'approved'
+           )
          GROUP BY mr.id_review
          ORDER BY mr.created_at DESC`,
         [userId]
@@ -70,6 +77,13 @@ export const getMyProfileActivity = async (req, res) => {
          LEFT JOIN flix.tv_series_review_likes trl ON tr.id_review = trl.id_review
          WHERE tr.id_user = $1
            AND tr.parent_review_id IS NULL
+           AND COALESCE(tr.moderation_status, 'active') <> 'blocked'
+           AND NOT EXISTS (
+             SELECT 1
+             FROM flix.reports report
+             WHERE report.tv_series_review_id = tr.id_review
+               AND report.status = 'approved'
+           )
          GROUP BY tr.id_review
          ORDER BY tr.created_at DESC`,
         [userId]

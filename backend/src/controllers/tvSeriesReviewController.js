@@ -42,6 +42,13 @@ export const getTvSeriesReviews = async (req, res) => {
        JOIN flix.users u ON tsr.id_user = u.id_user
        LEFT JOIN flix.tv_series_review_likes tsrl ON tsr.id_review = tsrl.id_review
        WHERE tsr.tmdb_series_id = $1
+         AND COALESCE(tsr.moderation_status, 'active') <> 'blocked'
+         AND NOT EXISTS (
+           SELECT 1
+           FROM flix.reports report
+           WHERE report.tv_series_review_id = tsr.id_review
+             AND report.status = 'approved'
+         )
        GROUP BY tsr.id_review, u.username, u.profile_image_url
        ORDER BY tsr.created_at ASC, tsr.id_review ASC`,
       [seriesId],
@@ -54,6 +61,13 @@ export const getTvSeriesReviews = async (req, res) => {
        FROM flix.tv_series_reviews
        WHERE tmdb_series_id = $1
          AND parent_review_id IS NULL
+         AND COALESCE(moderation_status, 'active') <> 'blocked'
+         AND NOT EXISTS (
+           SELECT 1
+           FROM flix.reports report
+           WHERE report.tv_series_review_id = flix.tv_series_reviews.id_review
+             AND report.status = 'approved'
+         )
          AND rating IS NOT NULL`,
       [seriesId],
     );
