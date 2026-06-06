@@ -28,6 +28,7 @@ import tvRoutes from "./routes/tvRoutes.js";
 import movieReviewRoutes from "./routes/movieReviewRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import tvSeriesReviewRoutes from "./routes/tvSeriesReviewRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 import { initializeChatsTable } from "./config/initChats.js";
 import { initializeFriendsTable } from "./config/initFriends.js";
 import { initializeNotificationsTable } from "./config/initNotifications.js";
@@ -74,7 +75,8 @@ const initializeDatabase = () => {
 
 const verifyMailer = () => {
   if (!mailVerifyPromise) {
-    mailVerifyPromise = transporter.verify()
+    mailVerifyPromise = transporter
+      .verify()
       .then(() => {
         console.log("SMTP Mailtrap siap digunakan");
       })
@@ -128,6 +130,7 @@ app.use("/api/tv-series-reviews", tvSeriesReviewRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use("/api/payment", paymentRoutes);
 
 const PORT = process.env.PORT || 5000;
 
@@ -136,14 +139,14 @@ verifyMailer();
 if (!process.env.VERCEL) {
   initializeDatabase()
     .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Server berjalan di http://localhost:${PORT}`);
+      app.listen(PORT, () => {
+        console.log(`Server berjalan di http://localhost:${PORT}`);
+      });
+    })
+    .catch((error) => {
+      console.error("Gagal menyiapkan tabel database:", error.message);
+      process.exit(1);
     });
-  })
-  .catch((error) => {
-    console.error("Gagal menyiapkan tabel database:", error.message);
-    process.exit(1);
-  });
 }
 
 export default app;
