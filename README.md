@@ -51,6 +51,8 @@ TMDB_API_KEY=api_key_tmdb
 FRONTEND_URL=http://localhost:5173
 ```
 
+Konfigurasi email lokal memakai SMTP Mailpit. Detail cara menjalankan Mailpit ada di `README_MAILPIT.md`.
+
 Buat file environment untuk frontend di `frontend/.env`:
 
 ```env
@@ -291,38 +293,9 @@ Progress episode TV series dibuat berurutan. Contoh: jika user menandai episode 
 
 ## 7. Sistem Email Testing Lokal Dengan Mailpit
 
-Project ini bisa memakai Mailpit sebagai pengganti Mailtrap untuk development lokal. Mailpit menangkap email dari backend dan menampilkannya di web inbox lokal, jadi email verifikasi akun dan reset password tidak benar-benar dikirim ke inbox user asli.
+Project ini memakai SMTP Mailpit untuk testing email lokal. Mailpit menangkap email verifikasi akun dan reset password dari backend, lalu menampilkannya di web inbox lokal tanpa mengirim email ke inbox asli user.
 
-### Opsi Docker
-
-Jalankan Mailpit dengan Docker:
-
-```bash
-docker compose -f docker-compose.mailpit.yml up -d
-```
-
-### Opsi Windows Tanpa Docker
-
-Jika Docker Desktop bermasalah karena WSL, install Mailpit langsung:
-
-```powershell
-winget install --id axllent.mailpit --source winget
-```
-
-Tutup PowerShell, buka terminal baru, lalu jalankan:
-
-```powershell
-mailpit
-```
-
-Mailpit akan tersedia di:
-
-```text
-SMTP server: localhost:1025
-Web inbox: http://localhost:8025
-```
-
-Gunakan konfigurasi berikut di `backend/.env`:
+Konfigurasi SMTP backend:
 
 ```env
 MAIL_HOST=localhost
@@ -333,16 +306,15 @@ MAIL_PASS=
 MAIL_FROM="FLIX Local <no-reply@flix.local>"
 ```
 
-Setelah backend berjalan, coba register akun atau fitur lupa password. Email akan muncul di inbox Mailpit:
+Alamat Mailpit lokal:
 
 ```text
-http://localhost:8025
+SMTP server: localhost:1025
+Web inbox: http://localhost:8025
 ```
 
-Hentikan Mailpit:
+Panduan lengkap menjalankan Mailpit tersedia di:
 
-```bash
-docker compose -f docker-compose.mailpit.yml down
+```text
+README_MAILPIT.md
 ```
-
-Jika menjalankan Mailpit langsung dari PowerShell, hentikan dengan `Ctrl + C`.
