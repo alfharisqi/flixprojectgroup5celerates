@@ -63,12 +63,27 @@ const tvGenreLookup = {
 };
 
 const moodDefinitions = [
-  { key: "santai", label: "Santai", icon: santaiIcon, genreIds: [35, 10751, 16] },
+  {
+    key: "santai",
+    label: "Santai",
+    icon: santaiIcon,
+    genreIds: [35, 10751, 16],
+  },
   { key: "seru", label: "Seru", icon: seruIcon, genreIds: [28, 12, 10759] },
   { key: "sedih", label: "Sedih", icon: sedihIcon, genreIds: [18] },
-  { key: "menegangkan", label: "Menegangkan", icon: menegangkanIcon, genreIds: [53, 27, 80, 9648] },
+  {
+    key: "menegangkan",
+    label: "Menegangkan",
+    icon: menegangkanIcon,
+    genreIds: [53, 27, 80, 9648],
+  },
   { key: "romantis", label: "Romantis", icon: romantisIcon, genreIds: [10749] },
-  { key: "pikiran", label: "Pikiran", icon: pikiranIcon, genreIds: [878, 10765, 9648] },
+  {
+    key: "pikiran",
+    label: "Pikiran",
+    icon: pikiranIcon,
+    genreIds: [878, 10765, 9648],
+  },
 ];
 
 const readStorageArray = (key) => {
@@ -83,7 +98,9 @@ const readStorageArray = (key) => {
 const readStorageObject = (key) => {
   try {
     const value = JSON.parse(localStorage.getItem(key));
-    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : {};
   } catch {
     return {};
   }
@@ -98,10 +115,14 @@ const getStoredUser = () => {
 };
 
 const getUserStorageId = (user) => user?.id_user || "guest";
-const getMovieWatchlistKey = (user) => `flix_movie_watchlist_${getUserStorageId(user)}`;
-const getSeriesWatchlistKey = (user) => `flix_tv_watchlist_${getUserStorageId(user)}`;
-const getWatchStatusKey = (user) => `flix_watchlist_status_${getUserStorageId(user)}`;
-const getMoodHistoryKey = (user) => `flix_mood_history_${getUserStorageId(user)}`;
+const getMovieWatchlistKey = (user) =>
+  `flix_movie_watchlist_${getUserStorageId(user)}`;
+const getSeriesWatchlistKey = (user) =>
+  `flix_tv_watchlist_${getUserStorageId(user)}`;
+const getWatchStatusKey = (user) =>
+  `flix_watchlist_status_${getUserStorageId(user)}`;
+const getMoodHistoryKey = (user) =>
+  `flix_mood_history_${getUserStorageId(user)}`;
 const getItemKey = (item) => `${item.mediaType}:${item.id}`;
 const getReviewKey = (review) => `${review.media_type}:${review.id_review}`;
 const getReviewApiUrl = (review) =>
@@ -116,7 +137,8 @@ const getFriendSearchButtonLabel = (status) => {
   return "Add";
 };
 
-const getInitial = (name = "User") => name.trim().slice(0, 1).toUpperCase() || "U";
+const getInitial = (name = "User") =>
+  name.trim().slice(0, 1).toUpperCase() || "U";
 
 const getYear = (date) => date?.slice?.(0, 4) || "-";
 
@@ -194,7 +216,9 @@ function ProfileStatCard({ value, label, icon }) {
 function ProfileReviewItem({ item, disabled, onEdit, onDelete }) {
   const genres = item.genres?.length
     ? item.genres.slice(0, 2)
-    : (item.genre_ids || []).slice(0, 2).map((genreId) => getGenreName(genreId, item.media_type));
+    : (item.genre_ids || [])
+        .slice(0, 2)
+        .map((genreId) => getGenreName(genreId, item.media_type));
 
   return (
     <article className="profile-review-item">
@@ -203,11 +227,16 @@ function ProfileReviewItem({ item, disabled, onEdit, onDelete }) {
         <div className="profile-review-item__header">
           <div>
             <h3>{item.title}</h3>
-            <div className="profile-review-rating" aria-label={`Rating ${item.rating} dari 5`}>
+            <div
+              className="profile-review-rating"
+              aria-label={`Rating ${item.rating} dari 5`}
+            >
               {[1, 2, 3, 4, 5].map((star) => (
                 <FaStar
                   key={star}
-                  className={star <= Number(item.rating || 0) ? "is-active" : ""}
+                  className={
+                    star <= Number(item.rating || 0) ? "is-active" : ""
+                  }
                 />
               ))}
               <span>{formatRating(Number(item.rating || 0))}</span>
@@ -269,7 +298,13 @@ function ProfileFriendItem({ friend, disabled, onMessage, onRemove }) {
 
   return (
     <article className="profile-friend-item">
-      <span className={avatarUrl ? "profile-friend-avatar has-image" : "profile-friend-avatar"}>
+      <span
+        className={
+          avatarUrl
+            ? "profile-friend-avatar has-image"
+            : "profile-friend-avatar"
+        }
+      >
         {avatarUrl ? (
           <img src={avatarUrl} alt={friend.username || "Friend"} />
         ) : (
@@ -293,7 +328,11 @@ function ProfileFriendItem({ friend, disabled, onMessage, onRemove }) {
           <FaTrash />
           Remove
         </button>
-        <button type="button" onClick={() => onMessage(friend)} disabled={disabled}>
+        <button
+          type="button"
+          onClick={() => onMessage(friend)}
+          disabled={disabled}
+        >
           <FaEnvelope />
           Message
         </button>
@@ -307,7 +346,13 @@ function ProfileFriendRequestItem({ request, disabled, onAccept, onDecline }) {
 
   return (
     <article className="profile-friend-request-item">
-      <span className={avatarUrl ? "profile-friend-avatar has-image" : "profile-friend-avatar"}>
+      <span
+        className={
+          avatarUrl
+            ? "profile-friend-avatar has-image"
+            : "profile-friend-avatar"
+        }
+      >
         {avatarUrl ? (
           <img src={avatarUrl} alt={request.username || "Friend request"} />
         ) : (
@@ -322,11 +367,19 @@ function ProfileFriendRequestItem({ request, disabled, onAccept, onDecline }) {
       </div>
 
       <div className="profile-friend-request-actions">
-        <button type="button" onClick={() => onAccept(request)} disabled={disabled}>
+        <button
+          type="button"
+          onClick={() => onAccept(request)}
+          disabled={disabled}
+        >
           <FaCheck />
           Accept
         </button>
-        <button type="button" onClick={() => onDecline(request)} disabled={disabled}>
+        <button
+          type="button"
+          onClick={() => onDecline(request)}
+          disabled={disabled}
+        >
           <FaTimes />
           Decline
         </button>
@@ -342,7 +395,13 @@ function ProfileFriendSearchResult({ user, disabled, onAdd }) {
 
   return (
     <article className="profile-friend-search-result">
-      <span className={avatarUrl ? "profile-friend-avatar has-image" : "profile-friend-avatar"}>
+      <span
+        className={
+          avatarUrl
+            ? "profile-friend-avatar has-image"
+            : "profile-friend-avatar"
+        }
+      >
         {avatarUrl ? (
           <img src={avatarUrl} alt={user.username || "User FLIX"} />
         ) : (
@@ -382,7 +441,11 @@ function EditProfileModal({ open, form, saving, onClose, onChange, onSubmit }) {
       >
         <div className="profile-edit-modal__header">
           <h2>Edit Profil</h2>
-          <button type="button" onClick={onClose} aria-label="Tutup edit profil">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup edit profil"
+          >
             <FaTimes />
           </button>
         </div>
@@ -398,7 +461,12 @@ function EditProfileModal({ open, form, saving, onClose, onChange, onSubmit }) {
         </label>
         <label>
           Email
-          <input type="email" name="email" value={form.email} onChange={onChange} />
+          <input
+            type="email"
+            name="email"
+            value={form.email}
+            onChange={onChange}
+          />
         </label>
         <label>
           Password Baru
@@ -442,7 +510,11 @@ function EditReviewModal({
       >
         <div className="profile-edit-modal__header">
           <h2>Edit Review</h2>
-          <button type="button" onClick={onClose} aria-label="Tutup edit review">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup edit review"
+          >
             <FaTimes />
           </button>
         </div>
@@ -485,7 +557,11 @@ function EditReviewModal({
         </label>
 
         <div className="profile-modal-actions">
-          <button type="button" className="profile-cancel-button" onClick={onClose}>
+          <button
+            type="button"
+            className="profile-cancel-button"
+            onClick={onClose}
+          >
             Batal
           </button>
           <button type="submit" disabled={saving}>
@@ -510,7 +586,11 @@ function DeleteReviewConfirmModal({ review, saving, onCancel, onConfirm }) {
       >
         <div className="profile-edit-modal__header">
           <h2>Hapus Review?</h2>
-          <button type="button" onClick={onCancel} aria-label="Tutup konfirmasi hapus">
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Tutup konfirmasi hapus"
+          >
             <FaTimes />
           </button>
         </div>
@@ -520,7 +600,11 @@ function DeleteReviewConfirmModal({ review, saving, onCancel, onConfirm }) {
         </p>
 
         <div className="profile-modal-actions">
-          <button type="button" className="profile-cancel-button" onClick={onCancel}>
+          <button
+            type="button"
+            className="profile-cancel-button"
+            onClick={onCancel}
+          >
             Batal
           </button>
           <button
@@ -607,7 +691,9 @@ function ProfilePage() {
     [movieWatchlist, seriesWatchlist],
   );
 
-  const watchedCount = watchlistItems.filter((item) => watchStatus[getItemKey(item)]).length;
+  const watchedCount = watchlistItems.filter(
+    (item) => watchStatus[getItemKey(item)],
+  ).length;
   const unwatchedCount = watchlistItems.length - watchedCount;
 
   const visibleReviews = useMemo(
@@ -638,7 +724,9 @@ function ProfilePage() {
     };
 
     watchlistItems.forEach((item) => {
-      (item.genre_ids || []).forEach((genreId) => addGenre(getGenreName(genreId, item.mediaType)));
+      (item.genre_ids || []).forEach((genreId) =>
+        addGenre(getGenreName(genreId, item.mediaType)),
+      );
     });
 
     visibleReviews.forEach((review) => {
@@ -657,14 +745,28 @@ function ProfilePage() {
   const favoriteGenres =
     genreCounts.length > 0
       ? genreCounts
-      : ["Drama", "Thriller", "Animasi", "Komedi", "Adventure", "Fantasy", "Horror"];
+      : [
+          "Drama",
+          "Thriller",
+          "Animasi",
+          "Komedi",
+          "Adventure",
+          "Fantasy",
+          "Horror",
+        ];
 
   const moodStats = useMemo(() => {
-    const derivedCounts = Object.fromEntries(moodDefinitions.map((mood) => [mood.key, 0]));
+    const derivedCounts = Object.fromEntries(
+      moodDefinitions.map((mood) => [mood.key, 0]),
+    );
 
     watchlistItems.forEach((item) => {
       moodDefinitions.forEach((mood) => {
-        if ((item.genre_ids || []).some((genreId) => mood.genreIds.includes(Number(genreId)))) {
+        if (
+          (item.genre_ids || []).some((genreId) =>
+            mood.genreIds.includes(Number(genreId)),
+          )
+        ) {
           derivedCounts[mood.key] += 1;
         }
       });
@@ -672,7 +774,11 @@ function ProfilePage() {
 
     visibleReviews.forEach((review) => {
       moodDefinitions.forEach((mood) => {
-        if ((review.genre_ids || []).some((genreId) => mood.genreIds.includes(Number(genreId)))) {
+        if (
+          (review.genre_ids || []).some((genreId) =>
+            mood.genreIds.includes(Number(genreId)),
+          )
+        ) {
           derivedCounts[mood.key] += 1;
         }
       });
@@ -751,7 +857,9 @@ function ProfilePage() {
         setFriends(friendsResponse.data || []);
         setFriendRequests(friendRequestsResponse.data || []);
       } catch (error) {
-        setErrorMessage(error.response?.data?.message || "Gagal mengambil profile");
+        setErrorMessage(
+          error.response?.data?.message || "Gagal mengambil profile",
+        );
       } finally {
         setLoading(false);
       }
@@ -763,7 +871,9 @@ function ProfilePage() {
   useEffect(() => {
     const missingReviews = activity.reviews
       .slice(0, 12)
-      .filter((review) => !reviewDetails[`${review.media_type}:${review.tmdb_id}`]);
+      .filter(
+        (review) => !reviewDetails[`${review.media_type}:${review.tmdb_id}`],
+      );
 
     if (missingReviews.length === 0) {
       return undefined;
@@ -775,16 +885,22 @@ function ProfilePage() {
       const entries = await Promise.all(
         missingReviews.map(async (review) => {
           const detailKey = `${review.media_type}:${review.tmdb_id}`;
-          const endpoint =
-            review.media_type === "tv" ? "tv-series" : "movies";
+          const endpoint = review.media_type === "tv" ? "tv-series" : "movies";
 
           try {
-            const response = await axios.get(`${apiUrl}/api/${endpoint}/${review.tmdb_id}`, {
-              params: { language: "id-ID" },
-            });
+            const response = await axios.get(
+              `${apiUrl}/api/${endpoint}/${review.tmdb_id}`,
+              {
+                params: { language: "id-ID" },
+              },
+            );
             const media = response.data;
             const title =
-              media.title || media.name || media.original_title || media.original_name || "Untitled";
+              media.title ||
+              media.name ||
+              media.original_title ||
+              media.original_name ||
+              "Untitled";
 
             return [
               detailKey,
@@ -792,7 +908,9 @@ function ProfilePage() {
                 title,
                 poster: media.poster_url || fallbackPoster,
                 genres: (media.genres || []).map((genre) => genre.name),
-                genre_ids: media.genre_ids || (media.genres || []).map((genre) => genre.id),
+                genre_ids:
+                  media.genre_ids ||
+                  (media.genres || []).map((genre) => genre.id),
               },
             ];
           } catch {
@@ -857,7 +975,9 @@ function ProfilePage() {
       } catch (error) {
         if (!shouldIgnore) {
           setFriendSearchResults([]);
-          setFriendSearchMessage(error.response?.data?.message || "Gagal mencari teman");
+          setFriendSearchMessage(
+            error.response?.data?.message || "Gagal mencari teman",
+          );
         }
       } finally {
         if (!shouldIgnore) {
@@ -1058,7 +1178,9 @@ function ProfilePage() {
 
       const deletedReviewKey = getReviewKey(reviewToDelete);
       const mediaStatKey =
-        reviewToDelete.media_type === "tv" ? "tv_review_count" : "movie_review_count";
+        reviewToDelete.media_type === "tv"
+          ? "tv_review_count"
+          : "movie_review_count";
 
       setActivity((currentActivity) => ({
         ...currentActivity,
@@ -1066,7 +1188,10 @@ function ProfilePage() {
           ...currentActivity.stats,
           review_count: Math.max(
             0,
-            Number(currentActivity.stats?.review_count || currentActivity.reviews.length) - 1,
+            Number(
+              currentActivity.stats?.review_count ||
+                currentActivity.reviews.length,
+            ) - 1,
           ),
           [mediaStatKey]: Math.max(
             0,
@@ -1080,7 +1205,9 @@ function ProfilePage() {
 
       setReviewToDelete(null);
     } catch (error) {
-      setErrorMessage(error.response?.data?.message || "Gagal menghapus review");
+      setErrorMessage(
+        error.response?.data?.message || "Gagal menghapus review",
+      );
     } finally {
       setReviewSaving(false);
     }
@@ -1102,7 +1229,9 @@ function ProfilePage() {
       );
       setFriends((currentFriends) => [response.data.friend, ...currentFriends]);
     } catch (error) {
-      setErrorMessage(error.response?.data?.message || "Gagal menerima pertemanan");
+      setErrorMessage(
+        error.response?.data?.message || "Gagal menerima pertemanan",
+      );
     } finally {
       setFriendActionSaving(false);
     }
@@ -1111,15 +1240,20 @@ function ProfilePage() {
   const handleDeclineFriendRequest = async (request) => {
     try {
       setFriendActionSaving(true);
-      await axios.delete(`${apiUrl}/api/friends/requests/${request.id_friend}/decline`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.delete(
+        `${apiUrl}/api/friends/requests/${request.id_friend}/decline`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
       setFriendRequests((currentRequests) =>
         currentRequests.filter((item) => item.id_friend !== request.id_friend),
       );
     } catch (error) {
-      setErrorMessage(error.response?.data?.message || "Gagal menolak pertemanan");
+      setErrorMessage(
+        error.response?.data?.message || "Gagal menolak pertemanan",
+      );
     } finally {
       setFriendActionSaving(false);
     }
@@ -1149,9 +1283,13 @@ function ProfilePage() {
             : result,
         ),
       );
-      setFriendSearchMessage(response.data?.message || "Permintaan pertemanan dikirim.");
+      setFriendSearchMessage(
+        response.data?.message || "Permintaan pertemanan dikirim.",
+      );
     } catch (error) {
-      setFriendSearchMessage(error.response?.data?.message || "Gagal menambahkan teman");
+      setFriendSearchMessage(
+        error.response?.data?.message || "Gagal menambahkan teman",
+      );
     } finally {
       setFriendSearchSavingId(null);
     }
@@ -1185,7 +1323,9 @@ function ProfilePage() {
       });
 
       setFriends((currentFriends) =>
-        currentFriends.filter((item) => Number(item.id_user) !== Number(friend.id_user)),
+        currentFriends.filter(
+          (item) => Number(item.id_user) !== Number(friend.id_user),
+        ),
       );
     } catch (error) {
       setErrorMessage(error.response?.data?.message || "Gagal menghapus teman");
@@ -1229,7 +1369,9 @@ function ProfilePage() {
           disabled={uploadingTarget === "banner_image_url"}
         >
           <FaEdit />
-          {uploadingTarget === "banner_image_url" ? "Mengupload..." : "Edit Banner"}
+          {uploadingTarget === "banner_image_url"
+            ? "Mengupload..."
+            : "Edit Banner"}
         </button>
       </section>
 
@@ -1242,9 +1384,16 @@ function ProfilePage() {
             accept="image/jpeg,image/png,image/jpg,image/webp"
             onChange={(event) => handleMediaUpload(event, "profile_image_url")}
           />
-          <div className={profileImageUrl ? "profile-avatar has-image" : "profile-avatar"}>
+          <div
+            className={
+              profileImageUrl ? "profile-avatar has-image" : "profile-avatar"
+            }
+          >
             {profileImageUrl ? (
-              <img src={profileImageUrl} alt={profile?.username || "Foto profile"} />
+              <img
+                src={profileImageUrl}
+                alt={profile?.username || "Foto profile"}
+              />
             ) : (
               initial
             )}
@@ -1265,10 +1414,22 @@ function ProfilePage() {
           <div className="profile-join-row">
             <FaCalendarAlt />
             <span>{formatJoinDate(profile?.created_at)}</span>
-            <span className="profile-premium-badge">
-              <img src={diamondIcon} alt="" />
-              Premium
-            </span>
+
+            {/* Logika Kondisional Status Premium */}
+            {profile?.is_premium ? (
+              <span className="profile-premium-badge">
+                <img src={diamondIcon} alt="" />
+                Premium
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="profile-upgrade-btn"
+                onClick={() => navigate("/premium")}
+              >
+                💎 Upgrade Premium
+              </button>
+            )}
           </div>
         </div>
 
@@ -1292,8 +1453,16 @@ function ProfilePage() {
           label="Review Film"
           icon={<FaRegCommentDots />}
         />
-        <ProfileStatCard value={watchedCount} label="Sudah Ditonton" icon={<FaCheck />} />
-        <ProfileStatCard value={unwatchedCount} label="Belum Ditonton" icon={<FaClock />} />
+        <ProfileStatCard
+          value={watchedCount}
+          label="Sudah Ditonton"
+          icon={<FaCheck />}
+        />
+        <ProfileStatCard
+          value={unwatchedCount}
+          label="Belum Ditonton"
+          icon={<FaClock />}
+        />
       </section>
 
       <div className="profile-divider" aria-hidden="true" />
@@ -1322,30 +1491,34 @@ function ProfilePage() {
             ];
 
             return (
-          <div className="profile-tabs">
-            <div className="profile-tabs__list" role="tablist" aria-label="Menu profil">
-              {profileTabs.map((tab) => (
-                <button
-                  className={activeTab === tab.key ? "is-active" : ""}
-                  key={tab.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === tab.key}
-                  onClick={() => setActiveTab(tab.key)}
+              <div className="profile-tabs">
+                <div
+                  className="profile-tabs__list"
+                  role="tablist"
+                  aria-label="Menu profil"
                 >
-                  {tab.label}
-                  <span>{tab.count}</span>
+                  {profileTabs.map((tab) => (
+                    <button
+                      className={activeTab === tab.key ? "is-active" : ""}
+                      key={tab.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={activeTab === tab.key}
+                      onClick={() => setActiveTab(tab.key)}
+                    >
+                      {tab.label}
+                      <span>{tab.count}</span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  className="profile-tabs__watchlist"
+                  type="button"
+                  onClick={() => navigate("/watchlist")}
+                >
+                  Lihat Watchlist
                 </button>
-              ))}
-            </div>
-            <button
-              className="profile-tabs__watchlist"
-              type="button"
-              onClick={() => navigate("/watchlist")}
-            >
-              Lihat Watchlist
-            </button>
-          </div>
+              </div>
             );
           })()}
 
@@ -1395,7 +1568,9 @@ function ProfilePage() {
                   <input
                     type="search"
                     value={friendSearchQuery}
-                    onChange={(event) => setFriendSearchQuery(event.target.value)}
+                    onChange={(event) =>
+                      setFriendSearchQuery(event.target.value)
+                    }
                     placeholder="Cari nama atau email teman..."
                   />
                 </label>
@@ -1418,11 +1593,15 @@ function ProfilePage() {
                       ))
                     ) : (
                       friendSearchMessage && (
-                        <p className="profile-friend-muted">{friendSearchMessage}</p>
+                        <p className="profile-friend-muted">
+                          {friendSearchMessage}
+                        </p>
                       )
                     )}
                     {friendSearchMessage && friendSearchResults.length > 0 && (
-                      <p className="profile-friend-search-message">{friendSearchMessage}</p>
+                      <p className="profile-friend-search-message">
+                        {friendSearchMessage}
+                      </p>
                     )}
                   </div>
                 )}
@@ -1453,23 +1632,26 @@ function ProfilePage() {
                   <span>{friends.length}</span>
                 </div>
 
-              {friends.length > 0 ? (
-                friends.map((friend) => (
-                  <ProfileFriendItem
-                    key={friend.id_user}
-                    friend={friend}
-                    disabled={friendActionSaving}
-                    onMessage={handleMessageFriend}
-                    onRemove={handleRemoveFriend}
-                  />
-                ))
-              ) : (
-                <div className="profile-empty-state">
-                  <h2>Belum ada teman</h2>
-                  <p>Tambahkan teman dari Community untuk mulai ngobrol tentang film.</p>
-                  <Link to="/community">Cari Teman</Link>
-                </div>
-              )}
+                {friends.length > 0 ? (
+                  friends.map((friend) => (
+                    <ProfileFriendItem
+                      key={friend.id_user}
+                      friend={friend}
+                      disabled={friendActionSaving}
+                      onMessage={handleMessageFriend}
+                      onRemove={handleRemoveFriend}
+                    />
+                  ))
+                ) : (
+                  <div className="profile-empty-state">
+                    <h2>Belum ada teman</h2>
+                    <p>
+                      Tambahkan teman dari Community untuk mulai ngobrol tentang
+                      film.
+                    </p>
+                    <Link to="/community">Cari Teman</Link>
+                  </div>
+                )}
               </section>
             </div>
           )}
@@ -1500,7 +1682,10 @@ function ProfilePage() {
             <h2>Genre Favorit</h2>
             <div className="profile-genre-list">
               {favoriteGenres.map((genre, index) => (
-                <span className={index === 0 || index === 5 ? "is-active" : ""} key={genre}>
+                <span
+                  className={index === 0 || index === 5 ? "is-active" : ""}
+                  key={genre}
+                >
                   {genre}
                 </span>
               ))}

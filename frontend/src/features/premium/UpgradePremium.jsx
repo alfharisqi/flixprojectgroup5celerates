@@ -117,7 +117,8 @@ function UpgradePage() {
           FLIX — yuk bergabung!
         </p>
       </section>
-      /* 3. Kartu Paket */
+      
+      {/* 3. Kartu Paket */}
       <section className="upgrade-cards-container">
         <div className="upgrade-cards">
           {packages.map((pkg) => (
@@ -200,7 +201,28 @@ function UpgradePage() {
               </ul>
 
               {/* Tombol Aksi */}
-              <button className={`card-button ${pkg.buttonClass}`}>
+              <button
+                className={`card-button ${pkg.buttonClass}`}
+                onClick={() => {
+                  if (pkg.id === "free") return; // Paket free tidak perlu diarahkan ke pembayaran
+
+                  // Konfigurasi data paket untuk dibawa ke halaman pembayaran
+                  const selectedPkg = {
+                    name:
+                      pkg.name === "PREMIUM TAHUNAN"
+                        ? "Premium Tahunan"
+                        : "Premium Bulanan",
+                    priceText:
+                      pkg.name === "PREMIUM TAHUNAN"
+                        ? "Rp 249.000"
+                        : "Rp 29.000",
+                    price: pkg.name === "PREMIUM TAHUNAN" ? 249000 : 29000,
+                    durationMonths: pkg.name === "PREMIUM TAHUNAN" ? 12 : 1,
+                  };
+
+                  navigate("/payment", { state: { package: selectedPkg } });
+                }}
+              >
                 {pkg.buttonText}
                 {pkg.hasArrow && (
                   <svg

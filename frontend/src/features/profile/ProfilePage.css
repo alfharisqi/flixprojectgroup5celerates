@@ -21,9 +21,21 @@
   position: relative;
   height: 300px;
   background:
-    linear-gradient(180deg, rgba(64, 64, 64, 0.55) 0%, rgba(20, 20, 20, 0.24) 45%, rgba(20, 20, 20, 0.62) 100%),
-    var(--profile-banner-image, linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.04))),
-    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08), transparent 46%),
+    linear-gradient(
+      180deg,
+      rgba(64, 64, 64, 0.55) 0%,
+      rgba(20, 20, 20, 0.24) 45%,
+      rgba(20, 20, 20, 0.62) 100%
+    ),
+    var(
+      --profile-banner-image,
+      linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.04))
+    ),
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(255, 255, 255, 0.08),
+      transparent 46%
+    ),
     #181818;
   background-size: cover;
   background-position: center;
@@ -192,7 +204,10 @@
   font-size: 20px;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .profile-stats {
@@ -248,7 +263,12 @@
 .profile-divider {
   height: 1px;
   margin-top: 54px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.18), #e50914 42%, rgba(255, 255, 255, 0.18));
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.18),
+    #e50914 42%,
+    rgba(255, 255, 255, 0.18)
+  );
 }
 
 .profile-error {
@@ -948,7 +968,12 @@
 .profile-post-item__header a,
 .profile-empty-state a,
 .profile-edit-modal button {
-  transition: transform 160ms ease, background 160ms ease, color 160ms ease, opacity 160ms ease, box-shadow 160ms ease;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .profile-banner__edit:hover,
@@ -1325,4 +1350,35 @@
   .profile-post-item__meta span + span {
     padding-left: 10px;
   }
+}
+
+.profile-upgrade-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 30px;
+  border-radius: 20px;
+  border: none;
+  font-family:
+    netflix sans,
+    Arial,
+    sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #e50914;
+  background: linear-gradient(
+    90deg,
+    rgba(229, 9, 20, 1) 0%,
+    rgba(127, 5, 11, 1) 100%
+  );
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.profile-upgrade-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px #000;
 }
