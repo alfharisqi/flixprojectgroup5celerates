@@ -25,7 +25,7 @@ import {
   FiSettings,
   FiShare2,
   FiShield,
-  FiTrash2,
+  FiSlash,
   FiUploadCloud,
   FiUserCheck,
   FiUserX,
@@ -218,7 +218,45 @@ const reviewTabs = [
 ];
 
 const isBlockedReviewStatus = (status) =>
-  ["terblokir", "blocked", "approved"].includes(String(status || "").trim().toLowerCase());
+  ["diblokir", "terblokir", "blocked", "approved"].includes(String(status || "").trim().toLowerCase());
+
+const isBlockedCommunityStatus = (status) =>
+  ["terblokir", "diblokir", "blocked", "approved"].includes(String(status || "").trim().toLowerCase());
+
+const isRejectedCommunityStatus = (status) =>
+  ["ditolak", "rejected"].includes(String(status || "").trim().toLowerCase());
+
+const reviewReportCategoryLabels = {
+  spam: "Spam / promosi",
+  harassment: "Pelecehan",
+  hate_speech: "Ujaran kebencian",
+  violence: "Kekerasan",
+  sexual_content: "Konten seksual",
+  misinformation: "Informasi salah",
+  spoiler: "Spoiler",
+  copyright: "Hak cipta",
+  other: "Lainnya"
+};
+
+const getReviewReportReasonSummary = (review) => {
+  const categoryLabel = reviewReportCategoryLabels[String(review?.category || "").toLowerCase()];
+
+  if (categoryLabel) {
+    return categoryLabel;
+  }
+
+  const reasonText = String(review?.reason || "").trim();
+
+  if (!reasonText) {
+    return "Konten bermasalah";
+  }
+
+  if (reasonText.includes(":")) {
+    return reasonText.split(":")[0].trim() || "Konten bermasalah";
+  }
+
+  return reasonText.length > 28 ? "Laporan user" : reasonText;
+};
 
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: FiGrid },
@@ -490,6 +528,8 @@ function AdminPage() {
   const [isUserStatusLoading, setIsUserStatusLoading] = useState(false);
   const [reviewReportActionLoading, setReviewReportActionLoading] = useState({});
   const [selectedReviewReport, setSelectedReviewReport] = useState(null);
+  const [communityReportActionLoading, setCommunityReportActionLoading] = useState({});
+  const [selectedCommunityReport, setSelectedCommunityReport] = useState(null);
   const [dashboardError, setDashboardError] = useState("");
   const [moviesError, setMoviesError] = useState("");
   const [usersError, setUsersError] = useState("");
@@ -590,9 +630,6 @@ function AdminPage() {
         const reportedBlockedReviews = reportedReviews.filter((review) =>
           isBlockedReviewStatus(review.status)
         );
-        const normalizedReportedReviews = reportedReviews.filter(
-          (review) => !isBlockedReviewStatus(review.status)
-        );
         const normalizedBlockedReviews = [
           ...blockedReviews,
           ...reportedBlockedReviews.filter(
@@ -606,11 +643,11 @@ function AdminPage() {
         setAdminReviews({
           summary: {
             incoming: Number(reviewsData?.summary?.incoming || incomingReviews.length),
-            reported: normalizedReportedReviews.length,
+            reported: reportedReviews.length,
             blocked: normalizedBlockedReviews.length
           },
           incoming: incomingReviews,
-          reported: normalizedReportedReviews,
+          reported: reportedReviews,
           blocked: normalizedBlockedReviews
         });
         setReviewsError(reviewsResponse.ok ? "" : "Moderasi review belum bisa mengambil data backend.");
@@ -624,17 +661,29 @@ function AdminPage() {
         const communityBlockedPosts = Array.isArray(communityData?.posts?.blocked)
           ? communityData.posts.blocked
           : dummyCommunityBlockedPosts;
+        const communityReportedBlockedPosts = communityReportedPosts.filter((post) =>
+          isBlockedCommunityStatus(post.status)
+        );
+        const normalizedCommunityBlockedPosts = [
+          ...communityBlockedPosts,
+          ...communityReportedBlockedPosts.filter(
+            (post) =>
+              !communityBlockedPosts.some((item) =>
+                String(item.reportId || item.id) === String(post.reportId || post.id)
+              )
+          )
+        ];
 
         setAdminCommunity({
           summary: {
             totalPost: Number(communityData?.summary?.totalPost || communityAllPosts.length),
             totalReply: Number(communityData?.summary?.totalReply || 0),
             reported: communityReportedPosts.length,
-            blocked: communityBlockedPosts.length
+            blocked: normalizedCommunityBlockedPosts.length
           },
           all: communityAllPosts,
           reported: communityReportedPosts,
-          blocked: communityBlockedPosts
+          blocked: normalizedCommunityBlockedPosts
         });
         setCommunityError(communityResponse.ok ? "" : "Kelola community belum bisa mengambil data backend.");
       } catch {
@@ -836,7 +885,7 @@ function AdminPage() {
     const blockedRows = Array.isArray(adminReviews.blocked) ? adminReviews.blocked : [];
 
     if (activeReviewTab === "reported") {
-      return reportedRows.filter((review) => !isBlockedReviewStatus(review.status));
+      return reportedRows;
     }
 
     if (activeReviewTab === "blocked") {
@@ -878,9 +927,30 @@ function AdminPage() {
     currentReviewPage * reviewRowsPerPage
   );
   const reviewPaginationItems = getPaginationItems(currentReviewPage, totalReviewPages);
-  const activeCommunityRows = Array.isArray(adminCommunity[activeCommunityTab])
-    ? adminCommunity[activeCommunityTab]
-    : [];
+  const activeCommunityRows = useMemo(() => {
+    const reportedRows = Array.isArray(adminCommunity.reported) ? adminCommunity.reported : [];
+    const blockedRows = Array.isArray(adminCommunity.blocked) ? adminCommunity.blocked : [];
+
+    if (activeCommunityTab === "blocked") {
+      const reportedBlockedRows = reportedRows.filter((post) =>
+        isBlockedCommunityStatus(post.status)
+      );
+
+      return [
+        ...blockedRows,
+        ...reportedBlockedRows.filter(
+          (post) =>
+            !blockedRows.some((item) =>
+              String(item.reportId || item.id) === String(post.reportId || post.id)
+            )
+        )
+      ];
+    }
+
+    return Array.isArray(adminCommunity[activeCommunityTab])
+      ? adminCommunity[activeCommunityTab]
+      : [];
+  }, [activeCommunityTab, adminCommunity]);
   const filteredCommunityPosts = useMemo(() => {
     if (!normalizedSearch) {
       return activeCommunityRows;
@@ -1032,7 +1102,11 @@ function AdminPage() {
       const data = await response.json().catch(() => null);
 
       if (!response.ok || !data?.user) {
-        setUserStatusFeedback(data?.message || "Status user belum bisa diubah.");
+        setUserStatusFeedback(
+          data?.error
+            ? `${data?.message || "Status user belum bisa diubah."}: ${data.error}`
+            : data?.message || "Status user belum bisa diubah."
+        );
         return;
       }
 
@@ -1082,7 +1156,7 @@ function AdminPage() {
 
   const handleUpdateReviewReportStatus = async (review, status) => {
     const actionKey = String(review.reportId || review.id);
-    const nextStatusLabel = status === "blocked" ? "Terblokir" : "Ditolak";
+    const nextStatusLabel = status === "blocked" ? "Diblokir" : "Ditolak";
     const token = localStorage.getItem("token");
 
     setReviewsError("");
@@ -1133,9 +1207,7 @@ function AdminPage() {
           status === "blocked" ||
           isBlockedReviewStatus(updatedReview.status) ||
           isBlockedReviewStatus(responseData?.report?.status);
-        const nextReported = (
-          shouldMoveToBlocked ? reportedWithoutCurrent : [updatedReview, ...reportedWithoutCurrent]
-        ).filter((item) => !isBlockedReviewStatus(item.status));
+        const nextReported = [updatedReview, ...reportedWithoutCurrent];
         const nextBlocked = shouldMoveToBlocked
           ? [updatedReview, ...blockedWithoutCurrent]
           : blockedWithoutCurrent.filter((item) => !isSameReviewReport(item));
@@ -1156,6 +1228,120 @@ function AdminPage() {
       setReviewsError(error.message || "Status report review belum bisa diubah.");
     } finally {
       setReviewReportActionLoading((current) => {
+        const next = { ...current };
+        delete next[actionKey];
+        return next;
+      });
+    }
+  };
+
+  const openCommunityDetail = (post) => {
+    const hasReport = Boolean(post.reportId || post.reportReason);
+
+    setSelectedCommunityReport({
+      ...post,
+      hasReport,
+      reportReason: hasReport ? post.reportReason || "Konten community dilaporkan" : "Tidak ada report masuk",
+      reportedAt: hasReport ? post.reportedAt || "-" : "Tidak ada report masuk",
+    });
+  };
+
+  const handleUpdateCommunityReportStatus = async (post, status) => {
+    const actionKey = String(post.reportId || post.id);
+    const nextStatusLabel = status === "blocked" ? "Terblokir" : "Ditolak";
+    const token = localStorage.getItem("token");
+
+    if (!post.reportId) {
+      setCommunityError("Post ini belum memiliki report untuk dimoderasi.");
+      return;
+    }
+
+    setCommunityError("");
+    setCommunityReportActionLoading((current) => ({
+      ...current,
+      [actionKey]: status,
+    }));
+
+    try {
+      if (!token) {
+        throw new Error("Sesi admin tidak tersedia.");
+      }
+
+      const response = await fetch(`${API_URL}/api/admin/community/reports/${post.reportId}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      const responseData = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(responseData?.message || "Status report community belum bisa diubah.");
+      }
+
+      const updatedPost = {
+        ...post,
+        status: responseData?.report?.statusLabel || nextStatusLabel,
+        targetStatus: responseData?.target?.status || (status === "blocked" ? "blocked" : "active"),
+        targetStatusLabel: responseData?.target?.statusLabel || (status === "blocked" ? "Terblokir" : "Aktif"),
+      };
+
+      setAdminCommunity((currentCommunity) => {
+        const isSameReport = (item) =>
+          String(item.reportId || item.id) === String(post.reportId || post.id);
+        const isSameTarget = (item) => {
+          if (post.targetKind === "reply") {
+            return item.commentId && String(item.commentId) === String(post.commentId);
+          }
+
+          return item.postId && String(item.postId) === String(post.postId);
+        };
+        const reportedWithoutCurrent = (currentCommunity.reported || []).filter(
+          (item) => !isSameReport(item)
+        );
+        const blockedWithoutCurrent = (currentCommunity.blocked || []).filter(
+          (item) => !isSameReport(item)
+        );
+        const shouldMoveToBlocked =
+          status === "blocked" ||
+          isBlockedCommunityStatus(updatedPost.status) ||
+          isBlockedCommunityStatus(responseData?.report?.status);
+        const nextReported = [updatedPost, ...reportedWithoutCurrent];
+        const nextBlocked = shouldMoveToBlocked
+          ? [updatedPost, ...blockedWithoutCurrent]
+          : blockedWithoutCurrent;
+        const nextAll = (currentCommunity.all || []).map((item) =>
+          isSameTarget(item)
+            ? {
+                ...item,
+                status: updatedPost.targetStatusLabel,
+                targetStatus: updatedPost.targetStatus,
+                targetStatusLabel: updatedPost.targetStatusLabel,
+              }
+            : item
+        );
+
+        return {
+          ...currentCommunity,
+          all: nextAll,
+          reported: nextReported,
+          blocked: nextBlocked,
+          summary: {
+            ...currentCommunity.summary,
+            reported: nextReported.length,
+            blocked: nextBlocked.length,
+          },
+        };
+      });
+
+      setSelectedCommunityReport(null);
+    } catch (error) {
+      setCommunityError(error.message || "Status report community belum bisa diubah.");
+    } finally {
+      setCommunityReportActionLoading((current) => {
         const next = { ...current };
         delete next[actionKey];
         return next;
@@ -1869,7 +2055,7 @@ function AdminPage() {
                             <p>{review.content}</p>
                           </div>
                           <span className="admin-review-table__reason" role="cell">
-                            {review.reason || "Konten bermasalah"}
+                            {getReviewReportReasonSummary(review)}
                           </span>
                           <div className="admin-review-table__status-cell" role="cell">
                             <span
@@ -1900,6 +2086,8 @@ function AdminPage() {
                       <div
                         className={`admin-review-table__row admin-review-table__row--head${
                           activeReviewTab === "incoming" ? " admin-review-table__row--incoming" : ""
+                        }${
+                          activeReviewTab === "blocked" ? " admin-review-table__row--blocked" : ""
                         }`}
                         role="row"
                       >
@@ -1908,13 +2096,18 @@ function AdminPage() {
                         <span role="columnheader">Film</span>
                         <span role="columnheader">Review</span>
                         <span role="columnheader">Tanggal</span>
-                        {activeReviewTab === "incoming" && <span role="columnheader">Detail</span>}
+                        {activeReviewTab === "blocked" && <span role="columnheader">Status</span>}
+                        {(activeReviewTab === "incoming" || activeReviewTab === "blocked") && (
+                          <span role="columnheader">Detail</span>
+                        )}
                       </div>
 
                       {visibleAdminReviews.map((review, index) => (
                         <div
                           className={`admin-review-table__row${
                             activeReviewTab === "incoming" ? " admin-review-table__row--incoming" : ""
+                          }${
+                            activeReviewTab === "blocked" ? " admin-review-table__row--blocked" : ""
                           }`}
                           role="row"
                           key={review.id}
@@ -1943,7 +2136,17 @@ function AdminPage() {
                           <span className="admin-review-table__date" role="cell">
                             {review.date}
                           </span>
-                          {activeReviewTab === "incoming" && (
+                          {activeReviewTab === "blocked" && (
+                            <span
+                              className={`admin-review-status admin-review-status--${String(
+                                review.status || "diblokir"
+                              ).toLowerCase()}`}
+                              role="cell"
+                            >
+                              {review.status || "Diblokir"}
+                            </span>
+                          )}
+                          {(activeReviewTab === "incoming" || activeReviewTab === "blocked") && (
                             <div className="admin-review-table__detail-cell" role="cell">
                               <button
                                 type="button"
@@ -2061,11 +2264,25 @@ function AdminPage() {
                         </div>
 
                         <div className="admin-community-post__actions">
-                          <button type="button" aria-label="Lihat post">
+                          <button
+                            type="button"
+                            aria-label="Lihat detail post"
+                            onClick={() => openCommunityDetail(post)}
+                          >
                             <FiEye aria-hidden="true" />
                           </button>
-                          <button type="button" aria-label="Blokir post">
-                            <FiTrash2 aria-hidden="true" />
+                          <button
+                            type="button"
+                            className="admin-community-post__action--block"
+                            aria-label="Blokir post"
+                            disabled={
+                              !post.reportId ||
+                              isBlockedCommunityStatus(post.status) ||
+                              Boolean(communityReportActionLoading[String(post.reportId || post.id)])
+                            }
+                            onClick={() => handleUpdateCommunityReportStatus(post, "blocked")}
+                          >
+                            <FiSlash aria-hidden="true" />
                           </button>
                         </div>
                       </div>
@@ -2081,10 +2298,16 @@ function AdminPage() {
                             <strong>{post.reportReason}</strong>
                             <span>{post.reportedAt}</span>
                           </div>
-                          {post.status !== "Terblokir" && (
-                            <button type="button" aria-label="Setujui laporan">
+                          {isRejectedCommunityStatus(post.status) ? (
+                            <span
+                              className="admin-community-post__report-check"
+                              aria-label="Report ditolak"
+                              role="img"
+                            >
                               <FiCheckCircle aria-hidden="true" />
-                            </button>
+                            </span>
+                          ) : (
+                            <span aria-hidden="true" />
                           )}
                         </div>
                       )}
@@ -2827,47 +3050,206 @@ function AdminPage() {
 
             <footer className="admin-review-report-modal__actions">
               {selectedReviewReport.hasReport ? (
-                <>
+                isBlockedReviewStatus(selectedReviewReport.status) ? (
                   <button
                     type="button"
-                    className="admin-review-report-modal__action admin-review-report-modal__action--reject"
-                    disabled={
-                      Boolean(
-                        reviewReportActionLoading[
-                          String(selectedReviewReport.reportId || selectedReviewReport.id)
-                        ]
-                      ) || selectedReviewReport.status === "Ditolak"
-                    }
+                    className="admin-review-report-modal__action admin-review-report-modal__action--restore"
+                    disabled={Boolean(
+                      reviewReportActionLoading[
+                        String(selectedReviewReport.reportId || selectedReviewReport.id)
+                      ]
+                    )}
                     onClick={() => handleUpdateReviewReportStatus(selectedReviewReport, "rejected")}
                   >
                     {reviewReportActionLoading[String(selectedReviewReport.reportId || selectedReviewReport.id)] ===
                     "rejected"
                       ? "Memproses..."
-                      : "Tolak"}
+                      : "Kembalikan Review"}
                   </button>
-                  <button
-                    type="button"
-                    className="admin-review-report-modal__action admin-review-report-modal__action--block"
-                    disabled={
-                      Boolean(
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="admin-review-report-modal__action admin-review-report-modal__action--reject"
+                      disabled={
+                        Boolean(
+                          reviewReportActionLoading[
+                            String(selectedReviewReport.reportId || selectedReviewReport.id)
+                          ]
+                        ) || selectedReviewReport.status === "Ditolak"
+                      }
+                      onClick={() => handleUpdateReviewReportStatus(selectedReviewReport, "rejected")}
+                    >
+                      {reviewReportActionLoading[String(selectedReviewReport.reportId || selectedReviewReport.id)] ===
+                      "rejected"
+                        ? "Memproses..."
+                        : "Tolak"}
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-review-report-modal__action admin-review-report-modal__action--block"
+                      disabled={Boolean(
                         reviewReportActionLoading[
                           String(selectedReviewReport.reportId || selectedReviewReport.id)
                         ]
-                      ) || selectedReviewReport.status === "Terblokir"
-                    }
-                    onClick={() => handleUpdateReviewReportStatus(selectedReviewReport, "blocked")}
-                  >
-                    {reviewReportActionLoading[String(selectedReviewReport.reportId || selectedReviewReport.id)] ===
-                    "blocked"
-                      ? "Memproses..."
-                      : "Blokir Review"}
-                  </button>
-                </>
+                      )}
+                      onClick={() => handleUpdateReviewReportStatus(selectedReviewReport, "blocked")}
+                    >
+                      {reviewReportActionLoading[String(selectedReviewReport.reportId || selectedReviewReport.id)] ===
+                      "blocked"
+                        ? "Memproses..."
+                        : "Blokir Review"}
+                    </button>
+                  </>
+                )
               ) : (
                 <button
                   type="button"
                   className="admin-review-report-modal__action admin-review-report-modal__action--close"
                   onClick={() => setSelectedReviewReport(null)}
+                >
+                  Tutup
+                </button>
+              )}
+            </footer>
+          </article>
+        </div>
+      )}
+
+      {selectedCommunityReport && (
+        <div
+          className="admin-review-report-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="admin-community-report-title"
+        >
+          <article className="admin-review-report-modal__card">
+            <header className="admin-review-report-modal__head">
+              <div>
+                <span>
+                  {selectedCommunityReport.hasReport ? "Detail Report Community" : "Detail Post Community"}
+                </span>
+                <h2 id="admin-community-report-title">
+                  {selectedCommunityReport.title || "Community Post"}
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="admin-review-report-modal__close"
+                aria-label="Tutup detail report community"
+                onClick={() => setSelectedCommunityReport(null)}
+              >
+                <FiX aria-hidden="true" />
+              </button>
+            </header>
+
+            <section className="admin-review-report-modal__user">
+              <AdminAvatar
+                imageUrl={selectedCommunityReport.profileImageUrl}
+                name={selectedCommunityReport.author}
+              />
+              <div>
+                <span>{selectedCommunityReport.targetKind === "reply" ? "Pemilik Reply" : "Pemilik Post"}</span>
+                <strong>{selectedCommunityReport.author || "User FLIX"}</strong>
+              </div>
+              <span
+                className={`admin-community-status admin-community-status--${String(
+                  selectedCommunityReport.status || "aktif"
+                ).toLowerCase()}`}
+              >
+                {selectedCommunityReport.status || "Aktif"}
+              </span>
+            </section>
+
+            <dl className="admin-review-report-modal__meta">
+              <div>
+                <dt>Jenis Konten</dt>
+                <dd>{selectedCommunityReport.targetKind === "reply" ? "Reply Community" : "Post Community"}</dd>
+              </div>
+              <div>
+                <dt>{selectedCommunityReport.hasReport ? "Tanggal Report" : "Tanggal Post"}</dt>
+                <dd>{selectedCommunityReport.hasReport ? selectedCommunityReport.reportedAt : selectedCommunityReport.date}</dd>
+              </div>
+              <div>
+                <dt>Insight</dt>
+                <dd>
+                  {formatChartNumber(selectedCommunityReport.metrics?.views || 0)} view
+                </dd>
+              </div>
+            </dl>
+
+            <section className="admin-review-report-modal__section">
+              <span>Isi Konten</span>
+              <p>{selectedCommunityReport.content || "Konten belum memiliki isi."}</p>
+            </section>
+
+            <section className="admin-review-report-modal__section admin-review-report-modal__section--reason">
+              <span>Alasan Report</span>
+              <p>{selectedCommunityReport.reportReason || "Tidak ada report masuk"}</p>
+            </section>
+
+            <footer className="admin-review-report-modal__actions">
+              {selectedCommunityReport.hasReport ? (
+                isBlockedCommunityStatus(selectedCommunityReport.status) ? (
+                  <button
+                    type="button"
+                    className="admin-review-report-modal__action admin-review-report-modal__action--restore"
+                    disabled={Boolean(
+                      communityReportActionLoading[
+                        String(selectedCommunityReport.reportId || selectedCommunityReport.id)
+                      ]
+                    )}
+                    onClick={() => handleUpdateCommunityReportStatus(selectedCommunityReport, "rejected")}
+                  >
+                    {communityReportActionLoading[
+                      String(selectedCommunityReport.reportId || selectedCommunityReport.id)
+                    ] === "rejected"
+                      ? "Memproses..."
+                      : "Kembalikan Post"}
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="admin-review-report-modal__action admin-review-report-modal__action--reject"
+                      disabled={
+                        Boolean(
+                          communityReportActionLoading[
+                            String(selectedCommunityReport.reportId || selectedCommunityReport.id)
+                          ]
+                        ) || isRejectedCommunityStatus(selectedCommunityReport.status)
+                      }
+                      onClick={() => handleUpdateCommunityReportStatus(selectedCommunityReport, "rejected")}
+                    >
+                      {communityReportActionLoading[
+                        String(selectedCommunityReport.reportId || selectedCommunityReport.id)
+                      ] === "rejected"
+                        ? "Memproses..."
+                        : "Tolak Report"}
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-review-report-modal__action admin-review-report-modal__action--block"
+                      disabled={Boolean(
+                        communityReportActionLoading[
+                          String(selectedCommunityReport.reportId || selectedCommunityReport.id)
+                        ]
+                      )}
+                      onClick={() => handleUpdateCommunityReportStatus(selectedCommunityReport, "blocked")}
+                    >
+                      {communityReportActionLoading[
+                        String(selectedCommunityReport.reportId || selectedCommunityReport.id)
+                      ] === "blocked"
+                        ? "Memproses..."
+                        : "Blokir Post"}
+                    </button>
+                  </>
+                )
+              ) : (
+                <button
+                  type="button"
+                  className="admin-review-report-modal__action admin-review-report-modal__action--close"
+                  onClick={() => setSelectedCommunityReport(null)}
                 >
                   Tutup
                 </button>

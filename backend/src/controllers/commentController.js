@@ -51,6 +51,7 @@ export const getCommentsByPost = async (req, res) => {
        FROM flix.comments c
        JOIN flix.users u ON c.id_user = u.id_user
        WHERE c.id_post = $1
+         AND COALESCE(c.moderation_status, 'active') <> 'blocked'
        ORDER BY c.id_comment ASC`,
       [postId, userId],
     );
@@ -76,7 +77,10 @@ export const createComment = async (req, res) => {
     }
 
     const postCheck = await pool.query(
-      `SELECT id_post, id_user FROM flix.posts WHERE id_post = $1`,
+      `SELECT id_post, id_user
+       FROM flix.posts
+       WHERE id_post = $1
+         AND COALESCE(moderation_status, 'active') <> 'blocked'`,
       [postId],
     );
 
@@ -92,7 +96,8 @@ export const createComment = async (req, res) => {
       const parentCheck = await pool.query(
         `SELECT id_comment, id_post, id_user
          FROM flix.comments
-         WHERE id_comment = $1`,
+         WHERE id_comment = $1
+           AND COALESCE(moderation_status, 'active') <> 'blocked'`,
         [parent_comment_id],
       );
 

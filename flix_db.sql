@@ -59,6 +59,9 @@ CREATE TABLE IF NOT EXISTS flix.comments
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     parent_comment_id bigint,
     gif_url character varying(500) COLLATE pg_catalog."default",
+    moderation_status character varying(20) COLLATE pg_catalog."default" NOT NULL DEFAULT 'active'::character varying,
+    blocked_at timestamp without time zone,
+    blocked_by_user_id bigint,
     CONSTRAINT comments_pkey PRIMARY KEY (id_comment)
 );
 
@@ -221,6 +224,9 @@ CREATE TABLE IF NOT EXISTS flix.posts
     title character varying(300) COLLATE pg_catalog."default",
     tags text[] COLLATE pg_catalog."default" DEFAULT '{}'::text[],
     post_type character varying(20) COLLATE pg_catalog."default" DEFAULT 'post'::character varying,
+    moderation_status character varying(20) COLLATE pg_catalog."default" NOT NULL DEFAULT 'active'::character varying,
+    blocked_at timestamp without time zone,
+    blocked_by_user_id bigint,
     CONSTRAINT posts_pkey PRIMARY KEY (id_post)
 );
 

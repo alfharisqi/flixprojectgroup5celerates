@@ -1528,6 +1528,11 @@
   grid-template-columns: 70px minmax(220px, 1.15fr) minmax(145px, 0.8fr) minmax(280px, 1.6fr) 130px 104px;
 }
 
+.admin-review-table__row--blocked {
+  min-width: 1060px;
+  grid-template-columns: 70px minmax(220px, 1.15fr) minmax(145px, 0.8fr) minmax(260px, 1.5fr) 130px 118px 104px;
+}
+
 .admin-review-table__row--head {
   min-height: 38px;
   border-bottom: 0;
@@ -1649,7 +1654,8 @@
   color: #39d66d;
 }
 
-.admin-review-status--terblokir {
+.admin-review-status--terblokir,
+.admin-review-status--diblokir {
   border: 1px solid #e50914;
   background: rgba(229, 9, 20, 0.22);
   color: #ff5a62;
@@ -1934,6 +1940,11 @@
   box-shadow: 0 12px 28px rgba(229, 9, 20, 0.24);
 }
 
+.admin-review-report-modal__action--restore {
+  background: #e50914;
+  box-shadow: 0 12px 28px rgba(229, 9, 20, 0.24);
+}
+
 .admin-review-report-modal__action--close {
   background: #e50914;
 }
@@ -2026,33 +2037,61 @@
 }
 
 .admin-community-tabs {
+  position: relative;
+  width: max-content;
+  max-width: 100%;
   display: flex;
   align-items: center;
   gap: 36px;
-  max-width: 620px;
   margin-bottom: 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.admin-community-tabs::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .admin-community-tabs button {
+  position: relative;
   min-height: 38px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  padding: 0 0 10px;
   border: 0;
-  border-bottom: 2px solid transparent;
   background: transparent;
   color: #979797;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  transition: color 180ms ease, border-color 180ms ease;
+  transition: color 180ms ease;
+}
+
+.admin-community-tabs button::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  height: 2px;
+  background: transparent;
+  border-radius: 0;
 }
 
 .admin-community-tabs button:hover,
 .admin-community-tabs__item--active {
-  border-bottom-color: #e50914 !important;
   color: #ffffff !important;
+}
+
+.admin-community-tabs button:hover::after,
+.admin-community-tabs__item--active::after {
+  background: #e50914;
 }
 
 .admin-community-tabs small {
@@ -2155,11 +2194,14 @@
   height: 30px;
   display: grid;
   place-items: center;
+  box-sizing: border-box;
+  padding: 0;
   border: 0;
   border-radius: 50%;
   background: #333333;
   color: #d2d2d2;
   cursor: pointer;
+  line-height: 0;
   transition: background 180ms ease, color 180ms ease, transform 180ms ease;
 }
 
@@ -2169,7 +2211,23 @@
   transform: translateY(-1px);
 }
 
+.admin-community-post__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+}
+
+.admin-community-post__actions .admin-community-post__action--block {
+  color: #e50914;
+}
+
+.admin-community-post__actions .admin-community-post__action--block:hover {
+  background: #3b3b3b;
+  color: #ff2630;
+}
+
 .admin-community-post__actions svg {
+  display: block;
   width: 15px;
   height: 15px;
 }
@@ -2227,21 +2285,61 @@
   font-weight: 600;
 }
 
-.admin-community-post__report button {
+.admin-community-post__report-check {
   width: 28px;
   height: 28px;
   display: grid;
   place-items: center;
+  box-sizing: border-box;
+  padding: 0;
   border: 0;
   border-radius: 50%;
   background: rgba(70, 211, 105, 0.26);
   color: #46d369;
-  cursor: pointer;
+  line-height: 0;
 }
 
-.admin-community-post__report button svg {
+.admin-community-post__report-check svg {
+  display: block;
   width: 18px;
   height: 18px;
+}
+
+.admin-community-status {
+  min-width: 82px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.admin-community-status--aktif {
+  border: 1px solid #24a44c;
+  background: rgba(36, 164, 76, 0.22);
+  color: #39d66d;
+}
+
+.admin-community-status--dilaporkan {
+  border: 1px solid #c6a100;
+  background: rgba(255, 212, 0, 0.18);
+  color: #ffd400;
+}
+
+.admin-community-status--ditolak {
+  border: 1px solid #24a44c;
+  background: rgba(70, 211, 105, 0.22);
+  color: #46d369;
+}
+
+.admin-community-status--terblokir,
+.admin-community-status--diblokir {
+  border: 1px solid #e50914;
+  background: rgba(229, 9, 20, 0.22);
+  color: #ff5a62;
 }
 
 .admin-community-post__metrics {
@@ -3249,6 +3347,10 @@
   .admin-review-table__row--report,
   .admin-review-table__empty--report {
     min-width: 1080px;
+  }
+
+  .admin-review-table__row--blocked {
+    min-width: 1060px;
   }
 
   .admin-review-report-modal {

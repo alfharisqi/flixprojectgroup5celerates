@@ -4,6 +4,11 @@ export const initializeUserStatusColumns = async () => {
   // Tambah kolom is_active jika belum ada
   await pool.query(`
     ALTER TABLE flix.users
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  `);
+
+  await pool.query(`
+    ALTER TABLE flix.users
     ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE NOT NULL
   `);
 
