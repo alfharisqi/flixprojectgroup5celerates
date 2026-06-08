@@ -13,9 +13,29 @@ export const getMyProfile = async (req, res) => {
           u.banner_image_url,
           u.is_premium,
           r.role_name,
-          u.created_at
+          u.created_at,
+          active_package.package_code AS current_package_code,
+          active_package.package_name AS current_package_name,
+          active_package.premium_started_at,
+          active_package.premium_expired_at
        FROM flix.users u
        JOIN flix.roles r ON u.id_role = r.id_role
+       LEFT JOIN LATERAL (
+         SELECT
+           pt.package_code,
+           pt.package_name,
+           pt.premium_started_at,
+           pt.premium_expired_at
+         FROM flix.payment_transactions pt
+         WHERE pt.id_user = u.id_user
+           AND pt.status = 'approved'
+           AND (
+             pt.premium_expired_at IS NULL
+             OR pt.premium_expired_at > CURRENT_TIMESTAMP
+           )
+         ORDER BY pt.verified_at DESC NULLS LAST, pt.created_at DESC
+         LIMIT 1
+       ) active_package ON TRUE
        WHERE u.id_user = $1`,
       [req.user.id_user]
     );

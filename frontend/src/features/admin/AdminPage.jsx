@@ -93,6 +93,21 @@ const summarizeTransactions = (items) =>
     }
   );
 
+const formatSubscriptionDuration = (durationMonths) => {
+  const months = Number(durationMonths || 1);
+
+  if (!Number.isFinite(months) || months <= 0) {
+    return "1 bulan";
+  }
+
+  if (months >= 12 && months % 12 === 0) {
+    const years = months / 12;
+    return `${years} tahun`;
+  }
+
+  return `${months} bulan`;
+};
+
 const fallbackDashboard = {
   stats: [
     { value: "0", label: "Film dan Series Direview" },
@@ -137,6 +152,7 @@ const dummyTransactions = Array.from({ length: 5 }, (_, index) => ({
   method: "GoPay",
   amount: 249000,
   amountLabel: "Rp 249.000",
+  durationMonths: 12,
   status: "Pending",
   paymentProof: null,
   date: "29 Apr 2026, 14.32"
@@ -650,6 +666,7 @@ function AdminPage() {
   const [communityReportActionLoading, setCommunityReportActionLoading] = useState({});
   const [selectedCommunityReport, setSelectedCommunityReport] = useState(null);
   const [transactionActionLoading, setTransactionActionLoading] = useState({});
+  const [selectedTransactionDetail, setSelectedTransactionDetail] = useState(null);
   const [dashboardError, setDashboardError] = useState("");
   const [moviesError, setMoviesError] = useState("");
   const [usersError, setUsersError] = useState("");
@@ -1327,6 +1344,9 @@ function AdminPage() {
           items: nextItems
         };
       });
+      setSelectedTransactionDetail((currentTransaction) =>
+        currentTransaction?.id === transactionId ? data.transaction : currentTransaction
+      );
       setTransactionsError("");
     } catch {
       setTransactionsError("Status transaksi gagal diperbarui.");
@@ -3077,6 +3097,7 @@ function AdminPage() {
                     <span role="columnheader">ID Transaksi</span>
                     <span role="columnheader">User</span>
                     <span role="columnheader">Paket</span>
+                    <span role="columnheader">Durasi</span>
                     <span role="columnheader">Metode</span>
                     <span role="columnheader">Jumlah</span>
                     <span role="columnheader">Status</span>
@@ -3097,6 +3118,7 @@ function AdminPage() {
                         </div>
                       </div>
                       <span role="cell">{transaction.package}</span>
+                      <span role="cell">{formatSubscriptionDuration(transaction.durationMonths)}</span>
                       <span role="cell">{transaction.method}</span>
                       <strong role="cell">{transaction.amountLabel}</strong>
                       <span role="cell">
@@ -3111,33 +3133,10 @@ function AdminPage() {
                       <div className="admin-transaction-actions" role="cell">
                         <button
                           type="button"
-                          aria-label="Lihat bukti transaksi"
-                          disabled={!transaction.paymentProof}
-                          onClick={() => openTransactionProof(transaction.paymentProof)}
+                          aria-label="Lihat detail transaksi"
+                          onClick={() => setSelectedTransactionDetail(transaction)}
                         >
                           <FiEye aria-hidden="true" />
-                        </button>
-                        <button
-                          type="button"
-                          aria-label="Setujui transaksi"
-                          disabled={
-                            transaction.status !== "Pending" ||
-                            Boolean(transactionActionLoading[transaction.id])
-                          }
-                          onClick={() => updateTransactionStatus(transaction.id, "approved")}
-                        >
-                          <FiCheck aria-hidden="true" />
-                        </button>
-                        <button
-                          type="button"
-                          aria-label="Tolak transaksi"
-                          disabled={
-                            transaction.status !== "Pending" ||
-                            Boolean(transactionActionLoading[transaction.id])
-                          }
-                          onClick={() => updateTransactionStatus(transaction.id, "rejected")}
-                        >
-                          <FiX aria-hidden="true" />
                         </button>
                       </div>
                     </div>
@@ -3781,6 +3780,138 @@ function AdminPage() {
           )}
         </div>
       </section>
+
+      {selectedTransactionDetail && (
+        <div
+          className="admin-review-report-modal admin-transaction-detail-modal"
+          role="presentation"
+          onClick={() => setSelectedTransactionDetail(null)}
+        >
+          <article
+            className="admin-review-report-modal__card admin-transaction-detail-modal__card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-transaction-detail-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="admin-review-report-modal__head">
+              <div>
+                <span>Detail Transaksi Premium</span>
+                <h2 id="admin-transaction-detail-title">
+                  {selectedTransactionDetail.transactionId}
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="admin-review-report-modal__close"
+                aria-label="Tutup detail transaksi"
+                onClick={() => setSelectedTransactionDetail(null)}
+              >
+                <FiX aria-hidden="true" />
+              </button>
+            </header>
+
+            <section className="admin-review-report-modal__user">
+              <AdminAvatar
+                imageUrl={selectedTransactionDetail.user?.profileImageUrl}
+                name={selectedTransactionDetail.user?.name}
+                isPremium={selectedTransactionDetail.user?.isPremium}
+              />
+              <div>
+                <span>User</span>
+                <strong>{selectedTransactionDetail.user?.name || "User FLIX"}</strong>
+                <small>{selectedTransactionDetail.user?.email || "-"}</small>
+              </div>
+              <span
+                className={`admin-transaction-status admin-transaction-status--${String(
+                  selectedTransactionDetail.status || "pending"
+                ).toLowerCase()}`}
+              >
+                {selectedTransactionDetail.status || "Pending"}
+              </span>
+            </section>
+
+            <dl className="admin-review-report-modal__meta admin-transaction-detail-modal__meta">
+              <div>
+                <dt>Paket</dt>
+                <dd>{selectedTransactionDetail.package || "-"}</dd>
+              </div>
+              <div>
+                <dt>Durasi Langganan</dt>
+                <dd>{formatSubscriptionDuration(selectedTransactionDetail.durationMonths)}</dd>
+              </div>
+              <div>
+                <dt>Metode Pembayaran</dt>
+                <dd>{selectedTransactionDetail.method || "-"}</dd>
+              </div>
+              <div>
+                <dt>Jumlah</dt>
+                <dd>{selectedTransactionDetail.amountLabel || "-"}</dd>
+              </div>
+              <div>
+                <dt>Tanggal Transaksi</dt>
+                <dd>{selectedTransactionDetail.date || "-"}</dd>
+              </div>
+              <div>
+                <dt>Berakhir Premium</dt>
+                <dd>{selectedTransactionDetail.premiumExpiredAt || "-"}</dd>
+              </div>
+            </dl>
+
+            <section className="admin-review-report-modal__section">
+              <span>Bukti Pembayaran</span>
+              <div className="admin-transaction-detail-modal__proof">
+                {selectedTransactionDetail.paymentProof ? (
+                  <>
+                    <img
+                      src={resolveMediaUrl(selectedTransactionDetail.paymentProof)}
+                      alt="Bukti pembayaran"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => openTransactionProof(selectedTransactionDetail.paymentProof)}
+                    >
+                      <FiEye aria-hidden="true" />
+                      Lihat bukti penuh
+                    </button>
+                  </>
+                ) : (
+                  <p>Bukti pembayaran belum tersedia.</p>
+                )}
+              </div>
+            </section>
+
+            <footer className="admin-review-report-modal__actions">
+              <button
+                type="button"
+                className="admin-review-report-modal__action admin-review-report-modal__action--reject"
+                disabled={
+                  selectedTransactionDetail.status !== "Pending" ||
+                  Boolean(transactionActionLoading[selectedTransactionDetail.id])
+                }
+                onClick={() => updateTransactionStatus(selectedTransactionDetail.id, "rejected")}
+              >
+                {transactionActionLoading[selectedTransactionDetail.id] === "rejected"
+                  ? "Memproses..."
+                  : "Tolak"}
+              </button>
+              <button
+                type="button"
+                className="admin-review-report-modal__action admin-review-report-modal__action--restore"
+                disabled={
+                  selectedTransactionDetail.status !== "Pending" ||
+                  Boolean(transactionActionLoading[selectedTransactionDetail.id])
+                }
+                onClick={() => updateTransactionStatus(selectedTransactionDetail.id, "approved")}
+              >
+                {transactionActionLoading[selectedTransactionDetail.id] === "approved"
+                  ? "Memproses..."
+                  : "Setuju"}
+              </button>
+            </footer>
+          </article>
+        </div>
+      )}
 
       {selectedReviewReport && (
         <div

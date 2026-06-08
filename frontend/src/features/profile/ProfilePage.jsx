@@ -21,6 +21,7 @@ import {
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import PremiumAvatar from "@/components/ui/PremiumAvatar";
 import diamondIcon from "@/assets/icon/bluediamond-icon.png";
+import galleryAddIcon from "@/assets/icon/gallery-add.svg";
 import santaiIcon from "@/assets/emoticon/santai-emoticon.png";
 import seruIcon from "@/assets/emoticon/seru-emoticon.png";
 import sedihIcon from "@/assets/emoticon/sedih-emoticon.png";
@@ -35,6 +36,88 @@ const apiUrl = import.meta.env.VITE_API_URL;
 
 const fallbackPoster =
   "https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg";
+
+const cropConfig = {
+  profile_image_url: {
+    title: "Crop Foto Profile",
+    outputWidth: 512,
+    outputHeight: 512,
+  },
+  banner_image_url: {
+    title: "Crop Banner",
+    outputWidth: 1116,
+    outputHeight: 300,
+  },
+};
+
+const loadImage = (source) =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = source;
+  });
+
+const cropImageToBlob = async ({
+  source,
+  zoom,
+  pan = { x: 0, y: 0 },
+  stageSize = { width: 1, height: 1 },
+  outputWidth,
+  outputHeight,
+  type,
+}) => {
+  const image = await loadImage(source);
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  const stageWidth = stageSize.width || outputWidth || 1;
+  const stageHeight = stageSize.height || outputHeight || 1;
+  const baseScale = Math.max(
+    stageWidth / image.naturalWidth,
+    stageHeight / image.naturalHeight,
+  );
+  const renderedWidth = image.naturalWidth * baseScale * zoom;
+  const renderedHeight = image.naturalHeight * baseScale * zoom;
+  const sourceScale = 1 / (baseScale * zoom);
+  const sourceWidth = Math.min(stageWidth * sourceScale, image.naturalWidth);
+  const sourceHeight = Math.min(stageHeight * sourceScale, image.naturalHeight);
+  const sourceX = Math.min(
+    Math.max(0, ((renderedWidth - stageWidth) / 2 - pan.x) * sourceScale),
+    image.naturalWidth - sourceWidth,
+  );
+  const sourceY = Math.min(
+    Math.max(0, ((renderedHeight - stageHeight) / 2 - pan.y) * sourceScale),
+    image.naturalHeight - sourceHeight,
+  );
+
+  canvas.width = outputWidth;
+  canvas.height = outputHeight;
+  context.drawImage(
+    image,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    outputWidth,
+    outputHeight,
+  );
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("Gagal crop gambar"));
+        }
+      },
+      type === "image/png" ? "image/png" : "image/jpeg",
+      0.92,
+    );
+  });
+};
 
 const movieGenreLookup = {
   12: "Adventure",
@@ -405,7 +488,19 @@ function ProfileFriendSearchResult({ user, disabled, onAdd }) {
   );
 }
 
-function EditProfileModal({ open, form, saving, onClose, onChange, onSubmit }) {
+function EditProfileModal({
+  open,
+  form,
+  saving,
+  profileImageUrl,
+  bannerImageUrl,
+  uploadingTarget,
+  onClose,
+  onChange,
+  onSubmit,
+  onPickAvatar,
+  onPickBanner,
+}) {
   if (!open) {
     return null;
   }
@@ -418,17 +513,65 @@ function EditProfileModal({ open, form, saving, onClose, onChange, onSubmit }) {
         onClick={(event) => event.stopPropagation()}
       >
         <div className="profile-edit-modal__header">
-          <h2>Edit Profil</h2>
           <button
             type="button"
+            className="profile-edit-modal__close"
             onClick={onClose}
             aria-label="Tutup edit profil"
           >
             <FaTimes />
           </button>
+          <h2>Edit Profile</h2>
+          <button type="submit" className="profile-edit-modal__save" disabled={saving}>
+            {saving ? "Menyimpan..." : "Simpan"}
+          </button>
         </div>
 
-        <label>
+        <section
+          className={`profile-edit-modal__banner${bannerImageUrl ? " has-image" : ""}`}
+          style={
+            bannerImageUrl
+              ? { "--profile-edit-banner": `url(${bannerImageUrl})` }
+              : undefined
+          }
+        >
+          <button
+            type="button"
+            className="profile-edit-modal__media-button profile-edit-modal__media-button--banner"
+            onClick={onPickBanner}
+            disabled={uploadingTarget === "banner_image_url"}
+            aria-label="Ganti banner profile"
+          >
+            <img src={galleryAddIcon} alt="" />
+            <span>
+              {uploadingTarget === "banner_image_url" ? "Mengupload..." : "Ganti banner"}
+            </span>
+          </button>
+        </section>
+
+        <div className="profile-edit-modal__avatar-row">
+          <div className="profile-edit-modal__avatar">
+            {profileImageUrl ? (
+              <img src={profileImageUrl} alt={form.username || "Foto profile"} />
+            ) : (
+              <span>{getInitial(form.username || "U")}</span>
+            )}
+          </div>
+          <button
+            type="button"
+            className="profile-edit-modal__media-button profile-edit-modal__media-button--avatar"
+            onClick={onPickAvatar}
+            disabled={uploadingTarget === "profile_image_url"}
+            aria-label="Ganti foto profile"
+          >
+            <img src={galleryAddIcon} alt="" />
+            <span>
+              {uploadingTarget === "profile_image_url" ? "Mengupload..." : "Ganti foto"}
+            </span>
+          </button>
+        </div>
+
+        <label className="profile-edit-modal__field">
           Username
           <input
             type="text"
@@ -437,30 +580,216 @@ function EditProfileModal({ open, form, saving, onClose, onChange, onSubmit }) {
             onChange={onChange}
           />
         </label>
-        <label>
-          Email
-          <input
-            type="email"
-            name="email"
-            value={form.email}
-            onChange={onChange}
-          />
-        </label>
-        <label>
-          Password Baru
-          <input
-            type="password"
-            name="password"
-            value={form.password}
-            onChange={onChange}
-            placeholder="Kosongkan jika tidak ingin ganti password"
-          />
-        </label>
-
-        <button type="submit" disabled={saving}>
-          {saving ? "Menyimpan..." : "Simpan Perubahan"}
-        </button>
       </form>
+    </div>
+  );
+}
+
+function CropImageModal({
+  cropData,
+  saving,
+  onClose,
+  onZoomChange,
+  onPanChange,
+  onStageSizeChange,
+  onImageLoad,
+  onUseImage,
+}) {
+  const stageRef = useRef(null);
+  const dragRef = useRef(null);
+
+  if (!cropData) {
+    return null;
+  }
+
+  const config = cropConfig[cropData.field] || cropConfig.profile_image_url;
+  const isBanner = cropData.field === "banner_image_url";
+  const zoomPercent = Math.round(cropData.zoom * 100);
+  const pan = cropData.pan || { x: 0, y: 0 };
+  const naturalSize = cropData.naturalSize;
+  const stageSize = cropData.stageSize;
+  const canCalculatePreview =
+    naturalSize?.width > 0 &&
+    naturalSize?.height > 0 &&
+    stageSize?.width > 1 &&
+    stageSize?.height > 1;
+  const baseScale = canCalculatePreview
+    ? Math.max(stageSize.width / naturalSize.width, stageSize.height / naturalSize.height)
+    : 1;
+  const imageStyle = canCalculatePreview
+    ? {
+        width: `${naturalSize.width * baseScale}px`,
+        height: `${naturalSize.height * baseScale}px`,
+        transform: `translate(${pan.x}px, ${pan.y}px) scale(${cropData.zoom})`,
+      }
+    : {
+        transform: `translate(${pan.x}px, ${pan.y}px) scale(${cropData.zoom})`,
+      };
+
+  const getPanLimit = () => {
+    const stage = stageRef.current;
+    const rect = stage?.getBoundingClientRect();
+    const width = rect?.width || 1;
+    const height = rect?.height || 1;
+    const size = cropData.naturalSize;
+
+    if (!size?.width || !size?.height) {
+      const fallbackLimit = Math.max(width, height) * Math.max(0.2, (cropData.zoom - 1) / 2);
+
+      return {
+        x: fallbackLimit,
+        y: fallbackLimit,
+      };
+    }
+
+    const scale = Math.max(width / size.width, height / size.height) * cropData.zoom;
+    const renderedWidth = size.width * scale;
+    const renderedHeight = size.height * scale;
+
+    return {
+      x: Math.max(0, (renderedWidth - width) / 2),
+      y: Math.max(0, (renderedHeight - height) / 2),
+    };
+  };
+
+  const clampPan = (nextPan) => {
+    const limit = getPanLimit();
+
+    return {
+      x: Math.min(Math.max(nextPan.x, -limit.x), limit.x),
+      y: Math.min(Math.max(nextPan.y, -limit.y), limit.y),
+    };
+  };
+
+  const handlePointerDown = (event) => {
+    const stage = stageRef.current;
+
+    if (!stage) {
+      return;
+    }
+
+    const rect = stage.getBoundingClientRect();
+    onStageSizeChange({ width: rect.width, height: rect.height });
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      pan,
+    };
+    event.preventDefault();
+    stage.setPointerCapture?.(event.pointerId);
+  };
+
+  const handleImageLoad = (event) => {
+    const stage = stageRef.current;
+    const rect = stage?.getBoundingClientRect();
+
+    onImageLoad({
+      naturalSize: {
+        width: event.currentTarget.naturalWidth,
+        height: event.currentTarget.naturalHeight,
+      },
+      stageSize: {
+        width: rect?.width || 1,
+        height: rect?.height || 1,
+      },
+    });
+  };
+
+  const handlePointerMove = (event) => {
+    const drag = dragRef.current;
+
+    if (!drag) {
+      return;
+    }
+
+    event.preventDefault();
+    onPanChange(
+      clampPan({
+        x: drag.pan.x + event.clientX - drag.startX,
+        y: drag.pan.y + event.clientY - drag.startY,
+      }),
+    );
+  };
+
+  const handlePointerUp = (event) => {
+    const stage = stageRef.current;
+
+    if (dragRef.current?.pointerId === event.pointerId) {
+      stage?.releasePointerCapture?.(event.pointerId);
+      dragRef.current = null;
+    }
+  };
+
+  return (
+    <div className="profile-crop-modal" role="presentation" onClick={onClose}>
+      <section
+        className={`profile-crop-modal__dialog${
+          isBanner ? " profile-crop-modal__dialog--banner" : " profile-crop-modal__dialog--profile"
+        }`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="profile-crop-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="profile-crop-modal__header">
+          <h2 id="profile-crop-title">{config.title}</h2>
+          <button type="button" onClick={onClose} aria-label="Tutup crop gambar">
+            <FaTimes />
+          </button>
+        </header>
+
+        <div
+          ref={stageRef}
+          className={`profile-crop-modal__stage${
+            isBanner ? " profile-crop-modal__stage--banner" : " profile-crop-modal__stage--profile"
+          }`}
+          role="presentation"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+        >
+          <img
+            src={cropData.previewUrl}
+            alt="Preview crop"
+            draggable="false"
+            onLoad={handleImageLoad}
+            onDragStart={(event) => event.preventDefault()}
+            style={imageStyle}
+          />
+          {!isBanner && <span className="profile-crop-modal__circle-mask" aria-hidden="true" />}
+        </div>
+
+        <div className="profile-crop-modal__zoom" aria-label="Zoom gambar">
+          <button
+            type="button"
+            onClick={() => onZoomChange(Math.max(1, Number((cropData.zoom - 0.1).toFixed(2))))}
+            disabled={cropData.zoom <= 1}
+            aria-label="Perkecil gambar"
+          >
+            <span aria-hidden="true">-</span>
+          </button>
+          <span>{zoomPercent} %</span>
+          <button
+            type="button"
+            onClick={() => onZoomChange(Math.min(3, Number((cropData.zoom + 0.1).toFixed(2))))}
+            disabled={cropData.zoom >= 3}
+            aria-label="Perbesar gambar"
+          >
+            <span aria-hidden="true">+</span>
+          </button>
+        </div>
+
+        <footer className="profile-crop-modal__actions">
+          <button type="button" onClick={onClose} disabled={saving}>
+            Batal
+          </button>
+          <button type="button" onClick={onUseImage} disabled={saving}>
+            {saving ? "Mengupload..." : "Gunakan Gambar"}
+          </button>
+        </footer>
+      </section>
     </div>
   );
 }
@@ -622,6 +951,7 @@ function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingTarget, setUploadingTarget] = useState("");
+  const [cropData, setCropData] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [reviewSaving, setReviewSaving] = useState(false);
@@ -777,6 +1107,15 @@ function ProfilePage() {
   const initial = getInitial(profile?.username || storedUser?.username);
   const profileImageUrl = resolveMediaUrl(profile?.profile_image_url);
   const bannerImageUrl = resolveMediaUrl(profile?.banner_image_url);
+
+  useEffect(
+    () => () => {
+      if (cropData?.previewUrl) {
+        URL.revokeObjectURL(cropData.previewUrl);
+      }
+    },
+    [cropData?.previewUrl],
+  );
 
   useEffect(() => {
     const tab = profileSearchParams.get("tab");
@@ -1027,12 +1366,61 @@ function ProfilePage() {
       return;
     }
 
+    const previewUrl = URL.createObjectURL(file);
+    setCropData((currentCropData) => {
+      if (currentCropData?.previewUrl) {
+        URL.revokeObjectURL(currentCropData.previewUrl);
+      }
+
+      return {
+        field,
+        file,
+        previewUrl,
+        naturalSize: null,
+        pan: { x: 0, y: 0 },
+        stageSize: { width: 1, height: 1 },
+        zoom: 1,
+      };
+    });
+  };
+
+  const closeCropModal = () => {
+    setCropData((currentCropData) => {
+      if (currentCropData?.previewUrl) {
+        URL.revokeObjectURL(currentCropData.previewUrl);
+      }
+
+      return null;
+    });
+  };
+
+  const handleUseCroppedImage = async () => {
+    if (!cropData) {
+      return;
+    }
+
+    const config = cropConfig[cropData.field] || cropConfig.profile_image_url;
+
     try {
-      setUploadingTarget(field);
+      setUploadingTarget(cropData.field);
       setErrorMessage("");
 
+      const croppedBlob = await cropImageToBlob({
+        source: cropData.previewUrl,
+        zoom: cropData.zoom,
+        pan: cropData.pan,
+        stageSize: cropData.stageSize,
+        outputWidth: config.outputWidth,
+        outputHeight: config.outputHeight,
+        type: cropData.file.type,
+      });
       const formData = new FormData();
-      formData.append("image", file);
+      formData.append(
+        "image",
+        new File([croppedBlob], cropData.file.name || "profile-image.jpg", {
+          type: croppedBlob.type || "image/jpeg",
+        }),
+      );
 
       const uploadResponse = await axios.post(
         `${apiUrl}/api/uploads/editor-image`,
@@ -1048,7 +1436,7 @@ function ProfilePage() {
       const mediaResponse = await axios.put(
         `${apiUrl}/api/profile/media`,
         {
-          field,
+          field: cropData.field,
           image_url: uploadResponse.data.imageUrl,
         },
         {
@@ -1061,10 +1449,11 @@ function ProfilePage() {
         ...mediaResponse.data.user,
       }));
       updateStoredUser(mediaResponse.data.user);
+      closeCropModal();
     } catch (error) {
       setErrorMessage(
         error.response?.data?.message ||
-          (field === "profile_image_url"
+          (cropData.field === "profile_image_url"
             ? "Gagal upload foto profile"
             : "Gagal upload banner profile"),
       );
@@ -1687,9 +2076,49 @@ function ProfilePage() {
         open={isEditOpen}
         form={form}
         saving={saving}
+        profileImageUrl={profileImageUrl}
+        bannerImageUrl={bannerImageUrl}
+        uploadingTarget={uploadingTarget}
         onClose={() => setIsEditOpen(false)}
         onChange={handleFormChange}
         onSubmit={handleSubmitProfile}
+        onPickAvatar={() => avatarInputRef.current?.click()}
+        onPickBanner={() => bannerInputRef.current?.click()}
+      />
+
+      <CropImageModal
+        cropData={cropData}
+        saving={Boolean(uploadingTarget)}
+        onClose={closeCropModal}
+        onZoomChange={(zoom) =>
+          setCropData((currentCropData) =>
+            currentCropData ? { ...currentCropData, zoom } : currentCropData,
+          )
+        }
+        onPanChange={(pan) =>
+          setCropData((currentCropData) =>
+            currentCropData ? { ...currentCropData, pan } : currentCropData,
+          )
+        }
+        onStageSizeChange={(stageSize) =>
+          setCropData((currentCropData) =>
+            currentCropData ? { ...currentCropData, stageSize } : currentCropData,
+          )
+        }
+        onImageLoad={({ naturalSize, stageSize }) =>
+          setCropData((currentCropData) =>
+            currentCropData
+              ? {
+                  ...currentCropData,
+                  naturalSize,
+                  stageSize,
+                  pan: { x: 0, y: 0 },
+                  zoom: 1,
+                }
+              : currentCropData,
+          )
+        }
+        onUseImage={handleUseCroppedImage}
       />
 
       <EditReviewModal

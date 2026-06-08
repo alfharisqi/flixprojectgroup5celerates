@@ -181,6 +181,24 @@
   transform: translateY(-8px) scale(1.01);
 }
 
+.upgrade-card--current {
+  border-color: rgba(70, 211, 105, 0.75);
+  box-shadow: 0 0 0 1px rgba(70, 211, 105, 0.22);
+}
+
+.upgrade-card--current::after {
+  content: "Aktif";
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: #46d369;
+  background: rgba(70, 211, 105, 0.13);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 /* Badging "Paling Populer" */
 .popular-badge {
   position: absolute;
@@ -309,6 +327,11 @@
   border: 1.5px solid rgba(255, 255, 255, 0.15);
   color: var(--text-secondary);
   cursor: not-allowed;
+}
+
+.btn-disabled:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 /* Tombol Premium (Mulai Premium) - Merah Menyala */

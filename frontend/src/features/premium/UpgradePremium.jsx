@@ -1,9 +1,122 @@
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import flixLogo from "../../assets/flix-logo.png";
 import "./UpgradePremium.css";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+const getStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user")) || {};
+  } catch {
+    return {};
+  }
+};
+
 function UpgradePage() {
   const navigate = useNavigate();
+  const token = localStorage.getItem("token");
+  const [user, setUser] = useState(() => getStoredUser());
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    let shouldIgnore = false;
+
+    const fetchProfile = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/profile/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (shouldIgnore) {
+          return;
+        }
+
+        const nextUser = {
+          ...getStoredUser(),
+          ...response.data,
+          role: response.data.role_name || getStoredUser().role
+        };
+
+        setUser(nextUser);
+        localStorage.setItem("user", JSON.stringify(nextUser));
+      } catch {
+        setUser(getStoredUser());
+      }
+    };
+
+    fetchProfile();
+
+    return () => {
+      shouldIgnore = true;
+    };
+  }, [token]);
+
+  const currentPackageId = useMemo(() => {
+    if (!user?.is_premium) {
+      return "free";
+    }
+
+    const packageCode = String(user.current_package_code || "").toLowerCase();
+    const packageName = String(user.current_package_name || "").toLowerCase();
+
+    if (
+      packageCode.includes("year") ||
+      packageName.includes("tahunan") ||
+      packageName.includes("exclusive") ||
+      packageName.includes("eksklusif")
+    ) {
+      return "annual";
+    }
+
+    return "premium";
+  }, [user]);
+
+  const packageRank = {
+    free: 0,
+    premium: 1,
+    annual: 2
+  };
+
+  const getPackageAction = (pkg) => {
+    if (pkg.id === currentPackageId) {
+      return {
+        text: "Paket Saat Ini",
+        className: "btn-disabled",
+        disabled: true,
+        hasArrow: false
+      };
+    }
+
+    if (packageRank[currentPackageId] > packageRank[pkg.id]) {
+      return {
+        text: "Paket Lebih Rendah",
+        className: "btn-disabled",
+        disabled: true,
+        hasArrow: false
+      };
+    }
+
+    if (pkg.id === "annual" && currentPackageId === "premium") {
+      return {
+        text: "Upgrade Tahunan",
+        className: "btn-secondary",
+        disabled: false,
+        hasArrow: true
+      };
+    }
+
+    return {
+      text: pkg.buttonText,
+      className: pkg.buttonClass,
+      disabled: pkg.id === "free",
+      hasArrow: Boolean(pkg.hasArrow)
+    };
+  };
 
   // Data Paket untuk mempermudah perulangan (looping)
   const packages = [
@@ -23,7 +136,7 @@ function UpgradePage() {
         { text: "Community Film", active: false },
         { text: "Bebas Iklan", active: false },
       ],
-      buttonText: "Paket Saat Ini",
+      buttonText: "Paket Gratis",
       buttonClass: "btn-disabled",
     },
     {
@@ -68,8 +181,9 @@ function UpgradePage() {
         { text: "Bebas sponsored", active: true },
         { text: "Hemat Rp 99K/tahun", active: true },
       ],
-      buttonText: "Paket Saat Ini",
+      buttonText: "Pilih Tahunan",
       buttonClass: "btn-secondary",
+      hasArrow: true,
     },
   ];
 
@@ -121,10 +235,15 @@ function UpgradePage() {
       {/* 3. Kartu Paket */}
       <section className="upgrade-cards-container">
         <div className="upgrade-cards">
-          {packages.map((pkg) => (
+          {packages.map((pkg) => {
+            const packageAction = getPackageAction(pkg);
+
+            return (
             <div
               key={pkg.id}
-              className={`upgrade-card ${pkg.popular ? "upgrade-card--popular" : ""}`}
+              className={`upgrade-card ${pkg.popular ? "upgrade-card--popular" : ""} ${
+                pkg.id === currentPackageId ? "upgrade-card--current" : ""
+              }`}
             >
               {/* Badge Paling Populer di atas kartu Premium */}
               {pkg.popular && (
@@ -202,9 +321,10 @@ function UpgradePage() {
 
               {/* Tombol Aksi */}
               <button
-                className={`card-button ${pkg.buttonClass}`}
+                className={`card-button ${packageAction.className}`}
+                disabled={packageAction.disabled}
                 onClick={() => {
-                  if (pkg.id === "free") return; // Paket free tidak perlu diarahkan ke pembayaran
+                  if (packageAction.disabled || pkg.id === "free") return; // Paket free tidak perlu diarahkan ke pembayaran
 
                   // Konfigurasi data paket untuk dibawa ke halaman pembayaran
                   const selectedPkg = {
@@ -223,8 +343,8 @@ function UpgradePage() {
                   navigate("/payment", { state: { package: selectedPkg } });
                 }}
               >
-                {pkg.buttonText}
-                {pkg.hasArrow && (
+                {packageAction.text}
+                {packageAction.hasArrow && (
                   <svg
                     className="icon-arrow"
                     width="16"
@@ -240,7 +360,8 @@ function UpgradePage() {
                 )}
               </button>
             </div>
-          ))}
+          );
+          })}
         </div>
       </section>
     </div>

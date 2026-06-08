@@ -91,7 +91,6 @@ function App() {
           element={
             <ProtectedRoute
               allowedRoles={["registered_user"]}
-              allowedPlans={["regular"]}
               redirectTo="/profile"
             >
               <PaymentPage />
@@ -103,7 +102,6 @@ function App() {
           element={
             <ProtectedRoute
               allowedRoles={["registered_user"]}
-              allowedPlans={["regular"]}
               redirectTo="/profile"
             >
               <UpgradePremium />
