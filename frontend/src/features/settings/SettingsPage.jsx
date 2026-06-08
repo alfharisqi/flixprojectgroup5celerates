@@ -1,73 +1,66 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import {
-  FaEnvelope,
-  FaFacebookF,
-  FaLock,
-  FaPaperPlane,
-  FaTimes,
-  FaTrash,
-  FaTwitter,
-  FaYoutube,
-} from "react-icons/fa";
+import { FiCheck, FiImage, FiTrash2 } from "react-icons/fi";
 import SiteNavbar from "@/components/layout/SiteNavbar";
+import { resolveMediaUrl } from "@/utils/media";
 import "./SettingsPage.css";
 
-const apiUrl = import.meta.env.VITE_API_URL;
+const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+const preferenceDefaults = {
+  displayName: "",
+  gender: "",
+  country: "",
+  language: "",
+  timezone: ""
+};
 
 const getStoredUser = () => {
   try {
-    return JSON.parse(localStorage.getItem("user"));
+    return JSON.parse(localStorage.getItem("user")) || null;
   } catch {
     return null;
   }
 };
 
-function SettingsModal({ title, children, onClose }) {
-  return (
-    <div className="settings-modal" role="presentation" onClick={onClose}>
-      <section
-        className="settings-modal__dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settings-modal-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="settings-modal__header">
-          <h2 id="settings-modal-title">{title}</h2>
-          <button type="button" onClick={onClose} aria-label="Tutup modal">
-            <FaTimes />
-          </button>
-        </div>
-        {children}
-      </section>
-    </div>
-  );
-}
+const getStoredPreferences = () => {
+  try {
+    return {
+      ...preferenceDefaults,
+      ...(JSON.parse(localStorage.getItem("flix_user_settings")) || {})
+    };
+  } catch {
+    return preferenceDefaults;
+  }
+};
 
 function SettingsPage() {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const storedUser = useMemo(() => getStoredUser(), []);
-  const [user, setUser] = useState(storedUser);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [activeModal, setActiveModal] = useState("");
-  const [message, setMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [emailForm, setEmailForm] = useState({
-    email: "",
-    password: "",
+  const [profile, setProfile] = useState(storedUser);
+  const [accountForm, setAccountForm] = useState({
+    username: storedUser?.username || "",
+    email: storedUser?.email || "",
+    ...getStoredPreferences()
   });
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
+    newPassword: ""
   });
+  const [loading, setLoading] = useState(true);
+  const [savingSection, setSavingSection] = useState("");
+  const [message, setMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
+  const role = profile?.role_name || storedUser?.role;
+  const isAdmin = role === "admin";
+  const profileImageUrl = resolveMediaUrl(profile?.profile_image_url);
 
   useEffect(() => {
-    const fetchAccount = async () => {
+    const fetchProfile = async () => {
       if (!token) {
         navigate("/login");
         return;
@@ -75,109 +68,168 @@ function SettingsPage() {
 
       try {
         setLoading(true);
-        setErrorMessage("");
         const response = await axios.get(`${apiUrl}/api/profile/me`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${token}` }
         });
+        const nextProfile = response.data;
+        const preferences = getStoredPreferences();
 
-        setUser(response.data);
+        setProfile(nextProfile);
+        setAccountForm({
+          username: nextProfile.username || "",
+          email: nextProfile.email || "",
+          ...preferences
+        });
         localStorage.setItem(
           "user",
           JSON.stringify({
             ...(getStoredUser() || {}),
-            ...response.data,
-            role: response.data.role_name || storedUser?.role,
-          }),
+            ...nextProfile,
+            role: nextProfile.role_name || getStoredUser()?.role
+          })
         );
       } catch (error) {
-        setErrorMessage(error.response?.data?.message || "Gagal mengambil data akun");
+        setErrorMessage(error.response?.data?.message || "Gagal mengambil data settings");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAccount();
-  }, [navigate, storedUser?.role, token]);
-
-  const closeModal = () => {
-    if (saving) {
-      return;
-    }
-
-    setActiveModal("");
-    setEmailForm({ email: "", password: "" });
-    setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    setErrorMessage("");
-  };
+    fetchProfile();
+  }, [navigate, token]);
 
   const updateStoredUser = (nextUser) => {
-    const nextStoredUser = {
-      ...(getStoredUser() || {}),
+    const stored = getStoredUser() || {};
+    const nextStored = {
+      ...stored,
       ...nextUser,
-      role: nextUser.role_name || getStoredUser()?.role,
+      role: nextUser.role_name || stored.role
     };
 
-    localStorage.setItem("user", JSON.stringify(nextStoredUser));
-    setUser((currentUser) => ({
-      ...currentUser,
-      ...nextUser,
+    localStorage.setItem("user", JSON.stringify(nextStored));
+    setProfile((currentProfile) => ({
+      ...currentProfile,
+      ...nextUser
     }));
   };
 
-  const handleEmailSubmit = async (event) => {
-    event.preventDefault();
+  const handleAccountChange = (field, value) => {
+    setAccountForm((currentForm) => ({
+      ...currentForm,
+      [field]: value
+    }));
+  };
 
+  const handleProfileSave = async () => {
     try {
-      setSaving(true);
+      setSavingSection("profile");
       setMessage("");
       setErrorMessage("");
-      const response = await axios.put(`${apiUrl}/api/profile/email`, emailForm, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await axios.put(
+        `${apiUrl}/api/profile/me`,
+        {
+          username: accountForm.username,
+          email: accountForm.email
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
 
       updateStoredUser(response.data.user);
-      setMessage(response.data.message || "Email berhasil diperbarui");
-      setActiveModal("");
-      setEmailForm({ email: "", password: "" });
+      setMessage(response.data.message || "Informasi profile berhasil disimpan");
     } catch (error) {
-      setErrorMessage(error.response?.data?.message || "Gagal update email");
+      setErrorMessage(error.response?.data?.message || "Gagal menyimpan informasi profile");
     } finally {
-      setSaving(false);
+      setSavingSection("");
     }
   };
 
-  const handlePasswordSubmit = async (event) => {
-    event.preventDefault();
+  const handlePreferenceSave = () => {
+    const preferences = {
+      displayName: accountForm.displayName,
+      gender: accountForm.gender,
+      country: accountForm.country,
+      language: accountForm.language,
+      timezone: accountForm.timezone
+    };
 
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setErrorMessage("Konfirmasi kata sandi baru tidak sama");
+    localStorage.setItem("flix_user_settings", JSON.stringify(preferences));
+    setMessage("Informasi data diri berhasil disimpan");
+    setErrorMessage("");
+  };
+
+  const handlePasswordSave = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+      setErrorMessage("Kata sandi lama dan kata sandi baru wajib diisi");
       return;
     }
 
     try {
-      setSaving(true);
+      setSavingSection("password");
       setMessage("");
       setErrorMessage("");
       const response = await axios.put(`${apiUrl}/api/profile/password`, passwordForm, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` }
       });
 
-      setMessage(response.data.message || "Password berhasil diperbarui");
-      setActiveModal("");
-      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setPasswordForm({ currentPassword: "", newPassword: "" });
+      setMessage(response.data.message || "Kata sandi berhasil diperbarui");
     } catch (error) {
-      setErrorMessage(error.response?.data?.message || "Gagal update password");
+      setErrorMessage(error.response?.data?.message || "Gagal memperbarui kata sandi");
     } finally {
-      setSaving(false);
+      setSavingSection("");
+    }
+  };
+
+  const handleMediaUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      setSavingSection("media");
+      setMessage("");
+      setErrorMessage("");
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const uploadResponse = await axios.post(`${apiUrl}/api/uploads/editor-image`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data"
+        }
+      });
+
+      const mediaResponse = await axios.put(
+        `${apiUrl}/api/profile/media`,
+        {
+          field: "profile_image_url",
+          image_url: uploadResponse.data.imageUrl
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      updateStoredUser(mediaResponse.data.user);
+      setMessage("Foto profile berhasil diperbarui");
+    } catch (error) {
+      setErrorMessage(error.response?.data?.message || "Gagal upload foto profile");
+    } finally {
+      setSavingSection("");
     }
   };
 
   const handleDeleteAccount = async () => {
     try {
-      setSaving(true);
+      setSavingSection("delete");
       setErrorMessage("");
       await axios.delete(`${apiUrl}/api/profile/me`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       localStorage.removeItem("token");
@@ -185,7 +237,8 @@ function SettingsPage() {
       navigate("/login", { replace: true });
     } catch (error) {
       setErrorMessage(error.response?.data?.message || "Gagal menghapus akun");
-      setSaving(false);
+      setSavingSection("");
+      setDeleteConfirmOpen(false);
     }
   };
 
@@ -193,7 +246,7 @@ function SettingsPage() {
     return (
       <main className="settings-page settings-page--state">
         <SiteNavbar mode="fixed" />
-        <p>Loading settings...</p>
+        <p>Memuat settings...</p>
       </main>
     );
   }
@@ -201,174 +254,170 @@ function SettingsPage() {
   return (
     <main className="settings-page">
       <SiteNavbar mode="fixed" />
-
       <section className="settings-shell">
-        <div className="settings-card">
-          <h1>Informasi Akun</h1>
+        <header className="settings-hero">
+          <span>Account Settings</span>
+          <h1>Pengaturan Akun</h1>
+          <p>Kelola informasi profil, data diri, dan keamanan akun FLIX.</p>
+        </header>
 
-          {message && <p className="settings-alert settings-alert--success">{message}</p>}
-          {errorMessage && !activeModal && <p className="settings-alert">{errorMessage}</p>}
+        {message && <p className="settings-alert settings-alert--success">{message}</p>}
+        {errorMessage && <p className="settings-alert">{errorMessage}</p>}
 
-          <div className="settings-account-list">
-            <div className="settings-account-row">
-              <span>Nama Pengguna</span>
-              <strong>{user?.username || "-"}</strong>
-            </div>
-            <div className="settings-account-row">
-              <span>Email</span>
-              <strong>{user?.email || "-"}</strong>
-            </div>
-            <button type="button" onClick={() => setActiveModal("email")}>
-              <FaEnvelope />
-              Ubah Email
-            </button>
-            <button type="button" onClick={() => setActiveModal("password")}>
-              <FaLock />
-              Ubah Password
-            </button>
-            <button
-              type="button"
-              className="settings-account-row--danger"
-              onClick={() => setActiveModal("delete")}
-            >
-              <FaTrash />
-              Hapus Akun
-            </button>
-            <Link className="settings-contact-link" to="/contact-us">
-              <FaPaperPlane />
-              Contact Us
-            </Link>
+        <section className="settings-panel settings-profile-panel">
+          <div className="settings-panel__head">
+            <h2>Informasi Profil</h2>
           </div>
-        </div>
-      </section>
+          <div className="settings-profile-upload">
+            <div className="settings-profile-upload__avatar">
+              {profileImageUrl ? (
+                <img src={profileImageUrl} alt={profile?.username || "Profile"} />
+              ) : (
+                <FiImage aria-hidden="true" />
+              )}
+            </div>
+            <label className="settings-file-button">
+              Pilih File
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleMediaUpload} />
+            </label>
+            <div className="settings-file-copy">
+              <span>{savingSection === "media" ? "Mengupload foto..." : "Tidak ada berkas yang dipilih"}</span>
+              <small>JPG, PNG, atau WebP. Maks 2MB. Akan dipotong ke ukuran profile.</small>
+            </div>
+            <button type="button" className="settings-save-button" onClick={handleProfileSave} disabled={savingSection !== ""}>
+              <FiCheck aria-hidden="true" />
+              {savingSection === "profile" ? "Menyimpan..." : "Simpan Perubahan"}
+            </button>
+          </div>
+        </section>
 
-      <footer className="settings-footer">
-        <nav aria-label="Footer navigation">
-          <Link to="/">Home</Link>
-          <Link to="/movies">Movie</Link>
-          <Link to="/tv-series">TV Series</Link>
-          <Link to="/genre">Genre</Link>
-          <Link to="/community">Community</Link>
-          <Link to="/contact-us">Contact Us</Link>
-        </nav>
-        <div>
-          <FaFacebookF />
-          <FaTwitter />
-          <FaYoutube />
-        </div>
-        <p>Copyright 2026 - Kelompok 5</p>
-      </footer>
-
-      {activeModal === "email" && (
-        <SettingsModal title="Ubah Email" onClose={closeModal}>
-          <form className="settings-modal-form" onSubmit={handleEmailSubmit}>
-            {errorMessage && <p className="settings-alert">{errorMessage}</p>}
+        <section className="settings-panel">
+          <div className="settings-panel__head">
+            <h2>Informasi Data Diri</h2>
+            <p>Isi data diri secara lengkap</p>
+          </div>
+          <div className="settings-form-grid">
             <label>
-              Email Saat Ini
-              <input type="email" value={user?.email || ""} disabled />
+              Nama Lengkap
+              <input
+                type="text"
+                value={accountForm.username}
+                onChange={(event) => handleAccountChange("username", event.target.value)}
+              />
             </label>
             <label>
-              Email Baru
+              Nama panggilan
+              <input
+                type="text"
+                value={accountForm.displayName}
+                onChange={(event) => handleAccountChange("displayName", event.target.value)}
+              />
+            </label>
+            <label>
+              Email
               <input
                 type="email"
-                value={emailForm.email}
-                onChange={(event) =>
-                  setEmailForm((currentForm) => ({
-                    ...currentForm,
-                    email: event.target.value,
-                  }))
-                }
-                required
+                value={accountForm.email}
+                onChange={(event) => handleAccountChange("email", event.target.value)}
               />
             </label>
             <label>
-              Masukkan Kata Sandi
-              <input
-                type="password"
-                value={emailForm.password}
-                onChange={(event) =>
-                  setEmailForm((currentForm) => ({
-                    ...currentForm,
-                    password: event.target.value,
-                  }))
-                }
-                required
-              />
+              Jenis Kelamin
+              <select value={accountForm.gender} onChange={(event) => handleAccountChange("gender", event.target.value)}>
+                <option value="">Pilih jenis kelamin</option>
+                <option value="Laki-laki">Laki-laki</option>
+                <option value="Perempuan">Perempuan</option>
+                <option value="Lainnya">Lainnya</option>
+              </select>
             </label>
-            <div className="settings-modal-actions">
-              <button type="button" onClick={closeModal} disabled={saving}>
-                Batal
-              </button>
-              <button type="submit" disabled={saving}>
-                {saving ? "Menyimpan..." : "Simpan"}
-              </button>
-            </div>
-          </form>
-        </SettingsModal>
-      )}
+            <label>
+              Negara
+              <select value={accountForm.country} onChange={(event) => handleAccountChange("country", event.target.value)}>
+                <option value="">Pilih negara</option>
+                <option value="Indonesia">Indonesia</option>
+                <option value="Malaysia">Malaysia</option>
+                <option value="Singapura">Singapura</option>
+              </select>
+            </label>
+            <label>
+              Bahasa
+              <select value={accountForm.language} onChange={(event) => handleAccountChange("language", event.target.value)}>
+                <option value="">Pilih bahasa</option>
+                <option value="Indonesia">Indonesia</option>
+                <option value="English">English</option>
+              </select>
+            </label>
+            <label>
+              Zona Waktu
+              <select value={accountForm.timezone} onChange={(event) => handleAccountChange("timezone", event.target.value)}>
+                <option value="">Pilih zona waktu</option>
+                <option value="WIB">WIB</option>
+                <option value="WITA">WITA</option>
+                <option value="WIT">WIT</option>
+              </select>
+            </label>
+          </div>
+          <button type="button" className="settings-save-button settings-save-button--right" onClick={handlePreferenceSave}>
+            <FiCheck aria-hidden="true" />
+            Simpan Perubahan
+          </button>
+        </section>
 
-      {activeModal === "password" && (
-        <SettingsModal title="Ubah Password" onClose={closeModal}>
-          <form className="settings-modal-form" onSubmit={handlePasswordSubmit}>
-            {errorMessage && <p className="settings-alert">{errorMessage}</p>}
+        <section className="settings-panel">
+          <div className="settings-panel__head">
+            <h2>Perbarui Kata Sandi</h2>
+            <p>Pastikan akun Anda menggunakan kata sandi yang panjang dan acak agar tetap aman.</p>
+          </div>
+          <div className="settings-form-grid settings-form-grid--password">
             <label>
-              Kata Sandi Saat Ini
+              Kata Sandi Saat Ini*
               <input
                 type="password"
                 value={passwordForm.currentPassword}
                 onChange={(event) =>
                   setPasswordForm((currentForm) => ({
                     ...currentForm,
-                    currentPassword: event.target.value,
+                    currentPassword: event.target.value
                   }))
                 }
-                required
               />
             </label>
             <label>
-              Kata Sandi Baru
+              Kata Sandi Baru*
               <input
                 type="password"
                 value={passwordForm.newPassword}
                 onChange={(event) =>
                   setPasswordForm((currentForm) => ({
                     ...currentForm,
-                    newPassword: event.target.value,
+                    newPassword: event.target.value
                   }))
                 }
-                minLength={6}
-                required
               />
             </label>
-            <label>
-              Konfirmasi Kata Sandi Baru
-              <input
-                type="password"
-                value={passwordForm.confirmPassword}
-                onChange={(event) =>
-                  setPasswordForm((currentForm) => ({
-                    ...currentForm,
-                    confirmPassword: event.target.value,
-                  }))
-                }
-                minLength={6}
-                required
-              />
-            </label>
-            <div className="settings-modal-actions">
-              <button type="button" onClick={closeModal} disabled={saving}>
-                Batal
-              </button>
-              <button type="submit" disabled={saving}>
-                {saving ? "Menyimpan..." : "Simpan"}
-              </button>
-            </div>
-          </form>
-        </SettingsModal>
-      )}
+          </div>
+          <button type="button" className="settings-save-button settings-save-button--right" onClick={handlePasswordSave} disabled={savingSection !== ""}>
+            <FiCheck aria-hidden="true" />
+            {savingSection === "password" ? "Menyimpan..." : "Simpan Perubahan"}
+          </button>
+        </section>
 
-      {activeModal === "delete" && (
-        <div className="settings-modal" role="presentation" onClick={closeModal}>
+        {!isAdmin && (
+          <section className="settings-panel settings-panel--danger">
+            <div className="settings-panel__head">
+              <h2>Hapus Akun</h2>
+              <p>Apakah Anda yakin ingin menghapus akun Anda? Tindakan ini tidak dapat dibatalkan.</p>
+            </div>
+            <button type="button" className="settings-delete-button" onClick={() => setDeleteConfirmOpen(true)}>
+              <FiTrash2 aria-hidden="true" />
+              Hapus Akun
+            </button>
+          </section>
+        )}
+      </section>
+
+      {deleteConfirmOpen && (
+        <div className="settings-modal" role="presentation" onClick={() => setDeleteConfirmOpen(false)}>
           <section
             className="settings-delete-dialog"
             role="dialog"
@@ -376,14 +425,13 @@ function SettingsPage() {
             aria-labelledby="settings-delete-title"
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 id="settings-delete-title">Apakah Anda yakin ingin Hapus akun?</h2>
-            {errorMessage && <p className="settings-alert">{errorMessage}</p>}
+            <h2 id="settings-delete-title">Apakah Anda yakin ingin menghapus akun?</h2>
             <div className="settings-delete-actions">
-              <button type="button" onClick={closeModal} disabled={saving}>
+              <button type="button" onClick={() => setDeleteConfirmOpen(false)} disabled={savingSection === "delete"}>
                 Batal
               </button>
-              <button type="button" onClick={handleDeleteAccount} disabled={saving}>
-                {saving ? "Menghapus..." : "Ya, Hapus"}
+              <button type="button" onClick={handleDeleteAccount} disabled={savingSection === "delete"}>
+                {savingSection === "delete" ? "Menghapus..." : "Hapus Akun"}
               </button>
             </div>
           </section>

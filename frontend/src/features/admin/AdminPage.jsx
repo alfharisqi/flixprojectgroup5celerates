@@ -42,6 +42,7 @@ import communityIcon from "@/assets/icon/community.png";
 import emptyWalletIcon from "@/assets/icon/empty-wallet.png";
 import reviewIcon from "@/assets/icon/review-icon.png";
 import PremiumAvatar from "@/components/ui/PremiumAvatar";
+import AdminSettingsPanel from "@/features/settings/AdminSettingsPanel";
 import { resolveMediaUrl } from "@/utils/media";
 import "./AdminPage.css";
 
@@ -3185,6 +3186,8 @@ function AdminPage() {
                 </div>
               </article>
             </section>
+          ) : activeAdminPage === "settings" ? (
+            <AdminSettingsPanel />
           ) : activeAdminPage === "users" ? (
             <section className="admin-user-management" aria-label="Kelola user">
               {usersError && <p className="admin-dashboard-alert">{usersError}</p>}

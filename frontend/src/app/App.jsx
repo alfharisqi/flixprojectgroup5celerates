@@ -24,6 +24,7 @@ import WatchlistPage from "@/features/watchlist/WatchlistPage";
 import ContactUsPage from "@/features/contact/ContactUsPage";
 import PaymentPage from "@/features/payment/PaymentPage";
 import UpgradePremium from "@/features/premium/UpgradePremium";
+import SettingsPage from "@/features/settings/SettingsPage";
 
 function App() {
   const location = useLocation();
@@ -41,6 +42,7 @@ function App() {
     "/create-post",
     "/watchlist",
     "/profile",
+    "/settings",
     "/admin",
     "/payment",
     "/premium",
@@ -116,6 +118,17 @@ function App() {
               allowedRoles={["registered_user", "moderator", "admin"]}
             >
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute
+              allowedRoles={["registered_user", "moderator", "admin"]}
+            >
+              <SettingsPage />
             </ProtectedRoute>
           }
         />

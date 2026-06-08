@@ -1,5 +1,6 @@
 import pool from "../config/db.js";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 
 export const getMyProfile = async (req, res) => {
   try {
@@ -250,6 +251,108 @@ export const updateMyProfileMedia = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Gagal update media profile",
+      error: error.message
+    });
+  }
+};
+
+export const updateMyPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        message: "Kata sandi lama dan kata sandi baru wajib diisi"
+      });
+    }
+
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({
+        message: "Kata sandi baru minimal 6 karakter"
+      });
+    }
+
+    const userResult = await pool.query(
+      `SELECT password
+       FROM flix.users
+       WHERE id_user = $1`,
+      [req.user.id_user]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        message: "User tidak ditemukan"
+      });
+    }
+
+    const isPasswordMatch = await bcrypt.compare(currentPassword, userResult.rows[0].password);
+
+    if (!isPasswordMatch) {
+      return res.status(401).json({
+        message: "Kata sandi lama tidak sesuai"
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await pool.query(
+      `UPDATE flix.users
+       SET password = $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id_user = $2`,
+      [hashedPassword, req.user.id_user]
+    );
+
+    return res.json({
+      message: "Kata sandi berhasil diperbarui"
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal memperbarui kata sandi",
+      error: error.message
+    });
+  }
+};
+
+export const deleteMyAccount = async (req, res) => {
+  try {
+    const roleResult = await pool.query(
+      `SELECT r.role_name
+       FROM flix.users u
+       JOIN flix.roles r ON r.id_role = u.id_role
+       WHERE u.id_user = $1`,
+      [req.user.id_user]
+    );
+
+    if (roleResult.rows[0]?.role_name === "admin") {
+      return res.status(403).json({
+        message: "Akun admin tidak bisa dihapus dari halaman settings"
+      });
+    }
+
+    const deletedEmail = `deleted-user-${req.user.id_user}-${Date.now()}@flix.local`;
+    const deletedUsername = `deleted_user_${req.user.id_user}_${Date.now()}`;
+    const deletedPassword = await bcrypt.hash(crypto.randomUUID?.() || `${Date.now()}-${req.user.id_user}`, 10);
+
+    await pool.query(
+      `UPDATE flix.users
+       SET username = $1,
+           email = $2,
+           password = $3,
+           profile_image_url = NULL,
+           banner_image_url = NULL,
+           is_active = FALSE,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id_user = $4`,
+      [deletedUsername, deletedEmail, deletedPassword, req.user.id_user]
+    );
+
+    return res.json({
+      message: "Akun berhasil dihapus"
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal menghapus akun",
       error: error.message
     });
   }
