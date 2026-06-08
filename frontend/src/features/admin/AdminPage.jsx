@@ -640,7 +640,6 @@ function AdminPage() {
   const [activeCommunityTab, setActiveCommunityTab] = useState("all");
   const [activeTransactionTab, setActiveTransactionTab] = useState("all");
   const [activeTransactionPanel, setActiveTransactionPanel] = useState("list");
-  const [selectedPaymentPackage, setSelectedPaymentPackage] = useState("premium");
   const [paymentMethods, setPaymentMethods] = useState(defaultPaymentMethods);
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState(defaultPaymentMethods[0].id);
   const [paymentPrices, setPaymentPrices] = useState(defaultPaymentPrices);
@@ -1191,9 +1190,6 @@ function AdminPage() {
   const transactionPaginationItems = getPaginationItems(currentTransactionPage, totalTransactionPages);
   const selectedPaymentMethod =
     paymentMethods.find((method) => method.id === selectedPaymentMethodId) || paymentMethods[0];
-  const selectedPaymentPackageData =
-    paymentPackageOptions.find((paymentPackage) => paymentPackage.id === selectedPaymentPackage) ||
-    paymentPackageOptions[0];
 
   const chartItems = useMemo(() => {
     const values = dashboard.chart.map((item) => Number(item.value || 0));
@@ -2744,38 +2740,9 @@ function AdminPage() {
               )}
 
               <article className="admin-payment-step">
-                <div className="admin-payment-step__title">
-                  <span>1</span>
-                  <div>
-                    <h3>Pilih Paket</h3>
-                  </div>
-                </div>
-
-                <div className="admin-payment-package-grid">
-                  {paymentPackageOptions.map((paymentPackage) => (
-                    <button
-                      type="button"
-                      key={paymentPackage.id}
-                      className={`admin-payment-package${
-                        selectedPaymentPackage === paymentPackage.id ? " admin-payment-package--active" : ""
-                      }`}
-                      onClick={() => setSelectedPaymentPackage(paymentPackage.id)}
-                    >
-                      <span className="admin-payment-package__radio" aria-hidden="true" />
-                      <span className="admin-payment-package__icon">{paymentPackage.icon}</span>
-                      <span>
-                        <strong>{paymentPackage.name}</strong>
-                        <small>{paymentPackage.description}</small>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </article>
-
-              <article className="admin-payment-step">
                 <div className="admin-payment-step__header">
                   <div className="admin-payment-step__title">
-                    <span>2</span>
+                    <span>1</span>
                     <div>
                       <h3>Kelola Metode Pembayaran</h3>
                       <p>Tambah, edit, atau hapus metode pembayaran yang tersedia.</p>
@@ -2930,7 +2897,7 @@ function AdminPage() {
 
               <article className="admin-payment-step">
                 <div className="admin-payment-step__title">
-                  <span>3</span>
+                  <span>2</span>
                   <div>
                     <h3>Edit Harga</h3>
                     <p>Atur harga untuk setiap paket.</p>
@@ -2978,11 +2945,11 @@ function AdminPage() {
 
               <article className="admin-payment-step admin-payment-save">
                 <div className="admin-payment-step__title">
-                  <span>4</span>
+                  <span>3</span>
                   <div>
                     <h3>Simpan Perubahan</h3>
                     <p>
-                      Pastikan semua data {selectedPaymentPackageData.name} sudah sesuai sebelum disimpan.
+                      Pastikan semua metode pembayaran dan harga paket sudah sesuai sebelum disimpan.
                     </p>
                   </div>
                 </div>
