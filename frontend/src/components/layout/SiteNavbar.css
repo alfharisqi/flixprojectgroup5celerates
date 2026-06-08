@@ -138,8 +138,8 @@
 
 .site-navbar__chat {
   position: relative;
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
 }
 
 .site-navbar__chat-panel {
@@ -687,14 +687,14 @@
 
 .site-navbar__notification {
   position: relative;
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
 }
 
 .site-navbar__notification-badge {
   position: absolute;
-  top: 7px;
-  right: 8px;
+  top: 9px;
+  right: 9px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
