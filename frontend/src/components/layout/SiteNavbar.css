@@ -272,10 +272,14 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
+.site-navbar__chat-avatar-wrap,
 .site-navbar__chat-avatar {
   position: relative;
   width: 60px;
   height: 60px;
+}
+
+.site-navbar__chat-avatar {
   border-radius: 50%;
   background: linear-gradient(135deg, #3d4652 0%, #0f0f0f 100%);
   display: grid;

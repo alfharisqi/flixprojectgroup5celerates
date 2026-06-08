@@ -9,6 +9,7 @@ import {
   FiCheckCircle,
   FiChevronDown,
   FiClock,
+  FiCreditCard,
   FiEdit3,
   FiEye,
   FiFilm,
@@ -26,6 +27,7 @@ import {
   FiShare2,
   FiShield,
   FiSlash,
+  FiTrash2,
   FiUploadCloud,
   FiUserCheck,
   FiUserX,
@@ -39,6 +41,7 @@ import flixAdminLogo from "@/assets/flixadmin-logo.png";
 import communityIcon from "@/assets/icon/community.png";
 import emptyWalletIcon from "@/assets/icon/empty-wallet.png";
 import reviewIcon from "@/assets/icon/review-icon.png";
+import PremiumAvatar from "@/components/ui/PremiumAvatar";
 import { resolveMediaUrl } from "@/utils/media";
 import "./AdminPage.css";
 
@@ -52,6 +55,42 @@ const chartActivityOptions = [
 ];
 const chartYearOptions = Array.from({ length: 6 }, (_, index) => currentAdminYear - index);
 const tableLimitOptions = [5, 10, 20];
+
+const transactionTabs = [
+  { id: "all", label: "Semua", countKey: "all" },
+  { id: "success", label: "Berhasil", countKey: "success" },
+  { id: "pending", label: "Pending", countKey: "pending" },
+  { id: "failed", label: "Ditolak", countKey: "failed" }
+];
+
+const transactionStatusMap = {
+  success: "Berhasil",
+  pending: "Pending",
+  failed: "Ditolak"
+};
+
+const summarizeTransactions = (items) =>
+  items.reduce(
+    (summary, transaction) => {
+      summary.all += 1;
+
+      if (transaction.status === "Berhasil") {
+        summary.success += 1;
+      } else if (transaction.status === "Pending") {
+        summary.pending += 1;
+      } else {
+        summary.failed += 1;
+      }
+
+      return summary;
+    },
+    {
+      all: 0,
+      success: 0,
+      pending: 0,
+      failed: 0
+    }
+  );
 
 const fallbackDashboard = {
   stats: [
@@ -83,6 +122,89 @@ const fallbackUsersSummary = {
   admin: 0,
   moderator: 0,
   registeredUser: 0
+};
+
+const dummyTransactions = Array.from({ length: 5 }, (_, index) => ({
+  id: `dummy-transaction-${index + 1}`,
+  transactionId: "#TRX-20260429-001",
+  user: {
+    name: "Marsyanda F.",
+    email: "marsyanda@gmail.com",
+    profileImageUrl: null
+  },
+  package: "Premium Tahunan",
+  method: "GoPay",
+  amount: 249000,
+  amountLabel: "Rp 249.000",
+  status: "Pending",
+  paymentProof: null,
+  date: "29 Apr 2026, 14.32"
+}));
+
+const fallbackTransactions = {
+  summary: {
+    all: dummyTransactions.length,
+    success: 0,
+    pending: dummyTransactions.length,
+    failed: 0
+  },
+  items: dummyTransactions
+};
+
+const paymentPackageOptions = [
+  {
+    id: "premium",
+    name: "Premium",
+    description: "Akses fitur premium untuk semua konten",
+    icon: <FiShield aria-hidden="true" />
+  },
+  {
+    id: "premium_yearly",
+    name: "Premium Tahunan",
+    description: "Paket premium tahunan dengan harga hemat",
+    icon: <FiKey aria-hidden="true" />
+  }
+];
+
+const paymentMethodTypes = [
+  { id: "bank", label: "Bank", icon: <FiGrid aria-hidden="true" /> },
+  { id: "qris", label: "QRIS", icon: <FiGrid aria-hidden="true" /> },
+  { id: "ewallet", label: "E-Wallet", icon: <FiCreditCard aria-hidden="true" /> }
+];
+
+const defaultPaymentMethods = [
+  {
+    id: "bca",
+    type: "bank",
+    name: "Bank BCA",
+    category: "Bank",
+    accountNumber: "1234567890",
+    accountName: "FLIX Entertainment",
+    imageName: "bank-bca.png"
+  },
+  {
+    id: "qris",
+    type: "qris",
+    name: "QRIS All Payment",
+    category: "QRIS",
+    accountNumber: "123456789012345",
+    accountName: "FLIX Entertainment",
+    imageName: "qris-flix.png"
+  },
+  {
+    id: "dana",
+    type: "ewallet",
+    name: "Dana",
+    category: "E-Wallet",
+    accountNumber: "08123456789",
+    accountName: "FLIX Entertainment",
+    imageName: "dana-flix.png"
+  }
+];
+
+const defaultPaymentPrices = {
+  premium: "25.000",
+  premium_yearly: "249.000"
 };
 
 const dummyCommunityReportedPosts = [
@@ -285,28 +407,15 @@ function getStoredUser() {
   }
 }
 
-const getAvatarInitial = (name) =>
-  String(name || "U").trim().charAt(0).toUpperCase() || "U";
-
-function AdminAvatar({ imageUrl, name }) {
-  const resolvedImageUrl = useMemo(() => resolveMediaUrl(imageUrl), [imageUrl]);
-  const [hasImageError, setHasImageError] = useState(false);
-
-  useEffect(() => {
-    setHasImageError(false);
-  }, [resolvedImageUrl]);
-
-  if (resolvedImageUrl && !hasImageError) {
-    return (
-      <img
-        src={resolvedImageUrl}
-        alt={name || "User FLIX"}
-        onError={() => setHasImageError(true)}
-      />
-    );
-  }
-
-  return <span>{getAvatarInitial(name)}</span>;
+function AdminAvatar({ imageUrl, name, isPremium }) {
+  return (
+    <PremiumAvatar
+      imageUrl={imageUrl}
+      name={name || "User FLIX"}
+      isPremium={Boolean(isPremium)}
+      alt={name || "User FLIX"}
+    />
+  );
 }
 
 const decodeHtmlEntities = (value = "") =>
@@ -506,11 +615,19 @@ function AdminPage() {
   const [adminUsersSummary, setAdminUsersSummary] = useState(fallbackUsersSummary);
   const [adminReviews, setAdminReviews] = useState(fallbackReviews);
   const [adminCommunity, setAdminCommunity] = useState(fallbackCommunity);
+  const [adminTransactions, setAdminTransactions] = useState(fallbackTransactions);
   const [activeAdminPage, setActiveAdminPage] = useState("dashboard");
   const [activeMoviePanel, setActiveMoviePanel] = useState("list");
   const [activeUserPanel, setActiveUserPanel] = useState("list");
   const [activeReviewTab, setActiveReviewTab] = useState("incoming");
   const [activeCommunityTab, setActiveCommunityTab] = useState("all");
+  const [activeTransactionTab, setActiveTransactionTab] = useState("all");
+  const [activeTransactionPanel, setActiveTransactionPanel] = useState("list");
+  const [selectedPaymentPackage, setSelectedPaymentPackage] = useState("premium");
+  const [paymentMethods, setPaymentMethods] = useState(defaultPaymentMethods);
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState(defaultPaymentMethods[0].id);
+  const [paymentPrices, setPaymentPrices] = useState(defaultPaymentPrices);
+  const [paymentSettingsFeedback, setPaymentSettingsFeedback] = useState("");
   const [selectedUserDetail, setSelectedUserDetail] = useState(null);
   const [isUserDetailLoading, setIsUserDetailLoading] = useState(false);
   const [addMovieForm, setAddMovieForm] = useState(defaultAddMovieForm);
@@ -524,22 +641,29 @@ function AdminPage() {
   const [userPage, setUserPage] = useState(1);
   const [reviewPage, setReviewPage] = useState(1);
   const [communityPage, setCommunityPage] = useState(1);
+  const [transactionPage, setTransactionPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isUserStatusLoading, setIsUserStatusLoading] = useState(false);
   const [reviewReportActionLoading, setReviewReportActionLoading] = useState({});
   const [selectedReviewReport, setSelectedReviewReport] = useState(null);
   const [communityReportActionLoading, setCommunityReportActionLoading] = useState({});
   const [selectedCommunityReport, setSelectedCommunityReport] = useState(null);
+  const [transactionActionLoading, setTransactionActionLoading] = useState({});
   const [dashboardError, setDashboardError] = useState("");
   const [moviesError, setMoviesError] = useState("");
   const [usersError, setUsersError] = useState("");
   const [reviewsError, setReviewsError] = useState("");
   const [communityError, setCommunityError] = useState("");
+  const [transactionsError, setTransactionsError] = useState("");
   const [userDetailError, setUserDetailError] = useState("");
   const [userStatusFeedback, setUserStatusFeedback] = useState("");
   const [selectedChartActivity, setSelectedChartActivity] = useState("login");
   const [selectedChartYear, setSelectedChartYear] = useState(currentAdminYear);
   const [openChartFilter, setOpenChartFilter] = useState(null);
+  const [openTransactionFilter, setOpenTransactionFilter] = useState(null);
+  const [transactionPackageFilter, setTransactionPackageFilter] = useState("Semua Paket");
+  const [transactionPaymentFilter, setTransactionPaymentFilter] = useState("Semua Pembayaran");
+  const [transactionDateFilter, setTransactionDateFilter] = useState("Bulan ini");
   const [isTableLimitOpen, setIsTableLimitOpen] = useState(false);
   const didSkipInitialChartFetch = useRef(false);
 
@@ -569,7 +693,14 @@ function AdminPage() {
 
     const loadAdminData = async () => {
       try {
-        const [dashboardResponse, moviesResponse, usersResponse, reviewsResponse, communityResponse] = await Promise.all([
+        const [
+          dashboardResponse,
+          moviesResponse,
+          usersResponse,
+          reviewsResponse,
+          communityResponse,
+          transactionsResponse
+        ] = await Promise.all([
           fetch(dashboardUrl, {
             headers: {
               Authorization: `Bearer ${token}`
@@ -594,6 +725,11 @@ function AdminPage() {
             headers: {
               Authorization: `Bearer ${token}`
             }
+          }),
+          fetch(`${API_URL}/api/admin/transactions`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
           })
         ]);
 
@@ -606,6 +742,7 @@ function AdminPage() {
         const usersData = usersResponse.ok ? await usersResponse.json() : null;
         const reviewsData = reviewsResponse.ok ? await reviewsResponse.json() : null;
         const communityData = communityResponse.ok ? await communityResponse.json() : null;
+        const transactionsData = transactionsResponse.ok ? await transactionsResponse.json() : null;
 
         setDashboard(normalizeDashboard(dashboardData?.dashboard || dashboardData));
         setDashboardError(dashboardResponse.ok ? "" : "Dashboard belum bisa mengambil data backend.");
@@ -686,6 +823,16 @@ function AdminPage() {
           blocked: normalizedCommunityBlockedPosts
         });
         setCommunityError(communityResponse.ok ? "" : "Kelola community belum bisa mengambil data backend.");
+
+        const transactionItems = Array.isArray(transactionsData?.transactions)
+          ? transactionsData.transactions
+          : fallbackTransactions.items;
+
+        setAdminTransactions({
+          summary: transactionsData?.summary || summarizeTransactions(transactionItems),
+          items: transactionItems
+        });
+        setTransactionsError(transactionsResponse.ok ? "" : "Riwayat transaksi belum bisa mengambil data backend.");
       } catch {
         if (isMounted) {
           setDashboard(fallbackDashboard);
@@ -700,6 +847,8 @@ function AdminPage() {
           setReviewsError("Moderasi review belum bisa mengambil data backend.");
           setAdminCommunity(fallbackCommunity);
           setCommunityError("Kelola community belum bisa mengambil data backend.");
+          setAdminTransactions(fallbackTransactions);
+          setTransactionsError("Riwayat transaksi belum bisa mengambil data backend.");
         }
       } finally {
         if (isMounted) {
@@ -777,13 +926,18 @@ function AdminPage() {
             ? "Moderasi Review"
             : activeAdminPage === "community"
               ? "Kelola Community"
-          : activeNavItem.label;
+              : activeAdminPage === "transactions"
+                ? activeTransactionPanel === "payment-settings"
+                  ? "Kelola Pembayaran Premium"
+                  : "Transaksi"
+                : activeNavItem.label;
 
   useEffect(() => {
     setFilmPage(1);
     setUserPage(1);
     setReviewPage(1);
     setCommunityPage(1);
+    setTransactionPage(1);
   }, [normalizedSearch, activeAdminPage]);
 
   useEffect(() => {
@@ -793,6 +947,10 @@ function AdminPage() {
   useEffect(() => {
     setCommunityPage(1);
   }, [activeCommunityTab]);
+
+  useEffect(() => {
+    setTransactionPage(1);
+  }, [activeTransactionTab, transactionPackageFilter, transactionPaymentFilter, transactionDateFilter]);
 
   const filteredActivities = useMemo(() => {
     if (!normalizedSearch) {
@@ -977,6 +1135,48 @@ function AdminPage() {
     { value: adminCommunity.summary?.blocked || 0, label: "Post Terblokir" }
   ];
 
+  const filteredTransactions = useMemo(() => {
+    const activeStatus = transactionStatusMap[activeTransactionTab];
+    const items = Array.isArray(adminTransactions.items) ? adminTransactions.items : [];
+
+    return items.filter((transaction) => {
+      const matchesTab = !activeStatus || transaction.status === activeStatus;
+      const matchesPackage =
+        transactionPackageFilter === "Semua Paket" ||
+        transaction.package === transactionPackageFilter;
+      const matchesPayment =
+        transactionPaymentFilter === "Semua Pembayaran" ||
+        transaction.method === transactionPaymentFilter;
+      const matchesSearch =
+        !normalizedSearch ||
+        `${transaction.transactionId} ${transaction.user?.name} ${transaction.user?.email} ${transaction.package} ${transaction.method} ${transaction.status}`
+          .toLowerCase()
+          .includes(normalizedSearch);
+
+      return matchesTab && matchesPackage && matchesPayment && matchesSearch;
+    });
+  }, [
+    activeTransactionTab,
+    adminTransactions.items,
+    normalizedSearch,
+    transactionPackageFilter,
+    transactionPaymentFilter
+  ]);
+
+  const transactionRowsPerPage = 5;
+  const totalTransactionPages = Math.max(1, Math.ceil(filteredTransactions.length / transactionRowsPerPage));
+  const currentTransactionPage = Math.min(transactionPage, totalTransactionPages);
+  const visibleTransactions = filteredTransactions.slice(
+    (currentTransactionPage - 1) * transactionRowsPerPage,
+    currentTransactionPage * transactionRowsPerPage
+  );
+  const transactionPaginationItems = getPaginationItems(currentTransactionPage, totalTransactionPages);
+  const selectedPaymentMethod =
+    paymentMethods.find((method) => method.id === selectedPaymentMethodId) || paymentMethods[0];
+  const selectedPaymentPackageData =
+    paymentPackageOptions.find((paymentPackage) => paymentPackage.id === selectedPaymentPackage) ||
+    paymentPackageOptions[0];
+
   const chartItems = useMemo(() => {
     const values = dashboard.chart.map((item) => Number(item.value || 0));
     const maxValue = Math.max(...values, 1);
@@ -1015,9 +1215,136 @@ function AdminPage() {
       setActiveCommunityTab("all");
     }
 
+    if (itemId === "transactions") {
+      setActiveTransactionTab("all");
+      setActiveTransactionPanel("list");
+      setOpenTransactionFilter(null);
+      setPaymentSettingsFeedback("");
+    }
+
     if (itemId !== "reviews") {
       setSelectedReviewReport(null);
     }
+  };
+
+  const updateSelectedPaymentMethod = (field, value) => {
+    setPaymentSettingsFeedback("");
+    setPaymentMethods((methods) =>
+      methods.map((method) =>
+        method.id === selectedPaymentMethodId
+          ? {
+              ...method,
+              [field]: value,
+              ...(field === "type"
+                ? {
+                    category:
+                      paymentMethodTypes.find((type) => type.id === value)?.label ||
+                      method.category
+                  }
+                : {})
+            }
+          : method
+      )
+    );
+  };
+
+  const addPaymentMethod = () => {
+    const nextId = `method-${Date.now()}`;
+    const nextMethod = {
+      id: nextId,
+      type: "bank",
+      name: "Metode Baru",
+      category: "Bank",
+      accountNumber: "",
+      accountName: "FLIX Entertainment",
+      imageName: ""
+    };
+
+    setPaymentMethods((methods) => [...methods, nextMethod]);
+    setSelectedPaymentMethodId(nextId);
+    setPaymentSettingsFeedback("Metode baru ditambahkan. Lengkapi datanya sebelum disimpan.");
+  };
+
+  const removePaymentMethod = (methodId) => {
+    setPaymentMethods((methods) => {
+      if (methods.length <= 1) {
+        setPaymentSettingsFeedback("Minimal harus ada satu metode pembayaran.");
+        return methods;
+      }
+
+      const nextMethods = methods.filter((method) => method.id !== methodId);
+
+      if (selectedPaymentMethodId === methodId) {
+        setSelectedPaymentMethodId(nextMethods[0]?.id || "");
+      }
+
+      return nextMethods;
+    });
+  };
+
+  const savePaymentSettings = () => {
+    setPaymentSettingsFeedback("Perubahan pembayaran tersimpan sementara di halaman admin.");
+  };
+
+  const updateTransactionStatus = async (transactionId, nextStatus) => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setTransactionsError("Sesi admin tidak tersedia.");
+      return;
+    }
+
+    setTransactionActionLoading((current) => ({
+      ...current,
+      [transactionId]: nextStatus
+    }));
+
+    try {
+      const response = await fetch(`${API_URL}/api/admin/transactions/${transactionId}/status`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ status: nextStatus })
+      });
+
+      const data = response.ok ? await response.json() : null;
+
+      if (!response.ok || !data?.transaction) {
+        setTransactionsError(data?.message || "Status transaksi gagal diperbarui.");
+        return;
+      }
+
+      setAdminTransactions((current) => {
+        const nextItems = current.items.map((item) =>
+          item.id === transactionId ? data.transaction : item
+        );
+
+        return {
+          summary: summarizeTransactions(nextItems),
+          items: nextItems
+        };
+      });
+      setTransactionsError("");
+    } catch {
+      setTransactionsError("Status transaksi gagal diperbarui.");
+    } finally {
+      setTransactionActionLoading((current) => {
+        const nextState = { ...current };
+        delete nextState[transactionId];
+        return nextState;
+      });
+    }
+  };
+
+  const openTransactionProof = (paymentProof) => {
+    if (!paymentProof) {
+      setTransactionsError("Bukti pembayaran belum tersedia.");
+      return;
+    }
+
+    window.open(resolveMediaUrl(paymentProof), "_blank", "noopener,noreferrer");
   };
 
   const loadAdminUserDetail = async (userId) => {
@@ -1560,7 +1887,7 @@ function AdminPage() {
 
           <div className="admin-profile">
             <div className="admin-profile__avatar">
-              <AdminAvatar imageUrl={adminProfileImageUrl} name={adminName} />
+              <AdminAvatar imageUrl={adminProfileImageUrl} name={adminName} isPremium={user?.is_premium} />
             </div>
             <div className="admin-profile__meta">
               <strong>{adminName}</strong>
@@ -1591,6 +1918,8 @@ function AdminPage() {
                           ? "Cari review..."
                           : activeAdminPage === "community"
                             ? "Cari post..."
+                            : activeAdminPage === "transactions"
+                              ? "Cari transaksi..."
                         : "Cari..."
                   }
                   value={searchQuery}
@@ -2045,7 +2374,7 @@ function AdminPage() {
                             {(currentReviewPage - 1) * reviewRowsPerPage + index + 1}
                           </span>
                           <div className="admin-review-table__user" role="cell">
-                            <AdminAvatar imageUrl={review.user?.profileImageUrl} name={review.user?.name} />
+                            <AdminAvatar imageUrl={review.user?.profileImageUrl} name={review.user?.name} isPremium={review.user?.isPremium} />
                             <strong>{review.user?.name || "User FLIX"}</strong>
                           </div>
                           <strong className="admin-review-table__film" role="cell">
@@ -2116,7 +2445,7 @@ function AdminPage() {
                             {(currentReviewPage - 1) * reviewRowsPerPage + index + 1}
                           </span>
                           <div className="admin-review-table__user" role="cell">
-                            <AdminAvatar imageUrl={review.user?.profileImageUrl} name={review.user?.name} />
+                            <AdminAvatar imageUrl={review.user?.profileImageUrl} name={review.user?.name} isPremium={review.user?.isPremium} />
                             <strong>{review.user?.name || "User FLIX"}</strong>
                           </div>
                           <strong className="admin-review-table__film" role="cell">
@@ -2256,7 +2585,7 @@ function AdminPage() {
                     >
                       <div className="admin-community-post__top">
                         <div className="admin-community-post__author">
-                          <AdminAvatar imageUrl={post.profileImageUrl} name={post.author} />
+                          <AdminAvatar imageUrl={post.profileImageUrl} name={post.author} isPremium={post.isPremium} />
                           <div>
                             <strong>{post.author || "User FLIX"}</strong>
                             <small>{post.time || post.date || "-"}</small>
@@ -2372,6 +2701,490 @@ function AdminPage() {
                 </div>
               </article>
             </section>
+          ) : activeAdminPage === "transactions" && activeTransactionPanel === "payment-settings" ? (
+            <section className="admin-payment-settings" aria-label="Kelola pembayaran premium">
+              <div className="admin-payment-settings__head">
+                <button
+                  type="button"
+                  className="admin-payment-settings__back"
+                  onClick={() => setActiveTransactionPanel("list")}
+                >
+                  <FiArrowLeft aria-hidden="true" />
+                  Kembali
+                </button>
+                <div>
+                  <h2>Kelola Metode Pembayaran & Harga Paket</h2>
+                  <p>Kelola paket, metode pembayaran, dan harga untuk paket Premium dan Premium Tahunan.</p>
+                </div>
+              </div>
+
+              {paymentSettingsFeedback && (
+                <p className="admin-payment-settings__feedback">{paymentSettingsFeedback}</p>
+              )}
+
+              <article className="admin-payment-step">
+                <div className="admin-payment-step__title">
+                  <span>1</span>
+                  <div>
+                    <h3>Pilih Paket</h3>
+                    <p>Pilih paket yang akan dikelola.</p>
+                  </div>
+                </div>
+
+                <div className="admin-payment-package-grid">
+                  {paymentPackageOptions.map((paymentPackage) => (
+                    <button
+                      type="button"
+                      key={paymentPackage.id}
+                      className={`admin-payment-package${
+                        selectedPaymentPackage === paymentPackage.id ? " admin-payment-package--active" : ""
+                      }`}
+                      onClick={() => setSelectedPaymentPackage(paymentPackage.id)}
+                    >
+                      <span className="admin-payment-package__radio" aria-hidden="true" />
+                      <span className="admin-payment-package__icon">{paymentPackage.icon}</span>
+                      <span>
+                        <strong>{paymentPackage.name}</strong>
+                        <small>{paymentPackage.description}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </article>
+
+              <article className="admin-payment-step">
+                <div className="admin-payment-step__header">
+                  <div className="admin-payment-step__title">
+                    <span>2</span>
+                    <div>
+                      <h3>Kelola Metode Pembayaran</h3>
+                      <p>Tambah, edit, atau hapus metode pembayaran yang tersedia.</p>
+                    </div>
+                  </div>
+                  <button type="button" className="admin-payment-secondary-button" onClick={addPaymentMethod}>
+                    <FiPlus aria-hidden="true" />
+                    Tambah Metode
+                  </button>
+                </div>
+
+                <div className="admin-payment-method-layout">
+                  <section className="admin-payment-method-list">
+                    <h4>Daftar Metode Pembayaran</h4>
+                    <div className="admin-payment-method-list__items">
+                      {paymentMethods.map((method) => (
+                        <div
+                          className={`admin-payment-method-card${
+                            selectedPaymentMethodId === method.id ? " admin-payment-method-card--active" : ""
+                          }`}
+                          key={method.id}
+                        >
+                          <button
+                            type="button"
+                            className="admin-payment-method-card__main"
+                            onClick={() => setSelectedPaymentMethodId(method.id)}
+                          >
+                            <span className="admin-payment-method-card__icon">
+                              {method.type === "ewallet" ? (
+                                <FiCreditCard aria-hidden="true" />
+                              ) : method.type === "qris" ? (
+                                <FiGrid aria-hidden="true" />
+                              ) : (
+                                <FiShield aria-hidden="true" />
+                              )}
+                            </span>
+                            <span>
+                              <strong>{method.name}</strong>
+                              <small>{method.category}</small>
+                              <small>
+                                {method.type === "qris" ? "QRIS ID" : "Nomor"}:{" "}
+                                {method.accountNumber || "-"}
+                              </small>
+                            </span>
+                          </button>
+                          <div className="admin-payment-method-card__actions">
+                            <button type="button" onClick={() => setSelectedPaymentMethodId(method.id)}>
+                              <FiEdit3 aria-hidden="true" />
+                              Edit
+                            </button>
+                            <button type="button" onClick={() => removePaymentMethod(method.id)}>
+                              <FiTrash2 aria-hidden="true" />
+                              Hapus
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      <button type="button" className="admin-payment-add-line" onClick={addPaymentMethod}>
+                        <FiPlus aria-hidden="true" />
+                        Tambah Metode
+                      </button>
+                    </div>
+                  </section>
+
+                  <section className="admin-payment-method-editor">
+                    <h4>Edit Metode Pembayaran</h4>
+                    <p>Ubah informasi metode pembayaran yang dipilih.</p>
+
+                    <div className="admin-payment-field-group">
+                      <label>Jenis Metode</label>
+                      <div className="admin-payment-type-grid">
+                        {paymentMethodTypes.map((type) => (
+                          <button
+                            type="button"
+                            key={type.id}
+                            className={`admin-payment-type${
+                              selectedPaymentMethod?.type === type.id ? " admin-payment-type--active" : ""
+                            }`}
+                            onClick={() => updateSelectedPaymentMethod("type", type.id)}
+                          >
+                            <span className="admin-payment-type__radio" aria-hidden="true" />
+                            {type.icon}
+                            {type.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <label className="admin-payment-field">
+                      <span>Nama Metode</span>
+                      <input
+                        type="text"
+                        value={selectedPaymentMethod?.name || ""}
+                        onChange={(event) => updateSelectedPaymentMethod("name", event.target.value)}
+                      />
+                    </label>
+
+                    <div className="admin-payment-field-row">
+                      <label className="admin-payment-field">
+                        <span>Nomor Rekening / Nomor Kode</span>
+                        <input
+                          type="text"
+                          value={selectedPaymentMethod?.accountNumber || ""}
+                          onChange={(event) =>
+                            updateSelectedPaymentMethod("accountNumber", event.target.value)
+                          }
+                        />
+                      </label>
+                      <label className="admin-payment-field">
+                        <span>Atas Nama</span>
+                        <input
+                          type="text"
+                          value={selectedPaymentMethod?.accountName || ""}
+                          onChange={(event) => updateSelectedPaymentMethod("accountName", event.target.value)}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="admin-payment-upload">
+                      <div>
+                        <span className="admin-payment-upload__preview">
+                          <FiUploadCloud aria-hidden="true" />
+                        </span>
+                        <div>
+                          <strong>{selectedPaymentMethod?.imageName || "Belum ada gambar"}</strong>
+                          <small>PNG, JPG maks. 2MB</small>
+                        </div>
+                      </div>
+                      <label className="admin-payment-upload__button">
+                        <FiUploadCloud aria-hidden="true" />
+                        Ganti Gambar
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/webp"
+                          onChange={(event) =>
+                            updateSelectedPaymentMethod("imageName", event.target.files?.[0]?.name || "")
+                          }
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        aria-label="Hapus gambar metode pembayaran"
+                        onClick={() => updateSelectedPaymentMethod("imageName", "")}
+                      >
+                        <FiX aria-hidden="true" />
+                      </button>
+                    </div>
+                  </section>
+                </div>
+              </article>
+
+              <article className="admin-payment-step">
+                <div className="admin-payment-step__title">
+                  <span>3</span>
+                  <div>
+                    <h3>Edit Harga</h3>
+                    <p>Atur harga untuk setiap paket.</p>
+                  </div>
+                </div>
+
+                <div className="admin-payment-price-grid">
+                  {paymentPackageOptions.map((paymentPackage) => (
+                    <section className="admin-payment-price-card" key={paymentPackage.id}>
+                      <div className="admin-payment-price-card__label">
+                        <span>{paymentPackage.icon}</span>
+                        <div>
+                          <strong>{paymentPackage.name}</strong>
+                          <small>
+                            {paymentPackage.id === "premium_yearly"
+                              ? "Paket tahunan"
+                              : "Paket bulanan"}
+                          </small>
+                        </div>
+                      </div>
+                      <div className="admin-payment-price-card__current">
+                        <small>Harga saat ini</small>
+                        <strong>Rp{defaultPaymentPrices[paymentPackage.id]}</strong>
+                      </div>
+                      <label className="admin-payment-price-card__new">
+                        <span>Harga Baru</span>
+                        <div>
+                          <small>Rp</small>
+                          <input
+                            type="text"
+                            value={paymentPrices[paymentPackage.id] || ""}
+                            onChange={(event) =>
+                              setPaymentPrices((prices) => ({
+                                ...prices,
+                                [paymentPackage.id]: event.target.value
+                              }))
+                            }
+                          />
+                        </div>
+                      </label>
+                    </section>
+                  ))}
+                </div>
+              </article>
+
+              <article className="admin-payment-step admin-payment-save">
+                <div className="admin-payment-step__title">
+                  <span>4</span>
+                  <div>
+                    <h3>Simpan Perubahan</h3>
+                    <p>
+                      Pastikan semua data {selectedPaymentPackageData.name} sudah sesuai sebelum disimpan.
+                    </p>
+                  </div>
+                </div>
+                <button type="button" className="admin-payment-save__button" onClick={savePaymentSettings}>
+                  <FiKey aria-hidden="true" />
+                  Simpan Perubahan
+                </button>
+              </article>
+            </section>
+          ) : activeAdminPage === "transactions" ? (
+            <section className="admin-transaction-page" aria-label="Riwayat transaksi premium">
+              {transactionsError && <p className="admin-dashboard-alert">{transactionsError}</p>}
+
+              <article className="admin-panel admin-transaction-card">
+                <div className="admin-transaction-card__header">
+                  <div>
+                    <h2>Riwayat Transaksi</h2>
+                    <p>Semua transaksi upgrade Premium</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="admin-transaction-edit"
+                    onClick={() => setActiveTransactionPanel("payment-settings")}
+                  >
+                    <FiEdit3 aria-hidden="true" />
+                    Edit Pembayaran
+                  </button>
+                </div>
+
+                <div className="admin-transaction-tabs" role="tablist" aria-label="Filter status transaksi">
+                  {transactionTabs.map((tab) => (
+                    <button
+                      type="button"
+                      key={tab.id}
+                      className={activeTransactionTab === tab.id ? "admin-transaction-tabs__item--active" : ""}
+                      role="tab"
+                      aria-selected={activeTransactionTab === tab.id}
+                      onClick={() => setActiveTransactionTab(tab.id)}
+                    >
+                      <span>{tab.label}</span>
+                      <small>{formatChartNumber(adminTransactions.summary?.[tab.countKey] || 0)}</small>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="admin-transaction-filters" aria-label="Filter transaksi">
+                  {[
+                    {
+                      id: "package",
+                      value: transactionPackageFilter,
+                      options: ["Semua Paket", "Premium Tahunan"],
+                      onSelect: setTransactionPackageFilter
+                    },
+                    {
+                      id: "payment",
+                      value: transactionPaymentFilter,
+                      options: [
+                        "Semua Pembayaran",
+                        "QRIS",
+                        "Transfer Bank (BCA)",
+                        "Transfer Bank (MANDIRI)",
+                        "E-Wallet (GOPAY)",
+                        "E-Wallet (DANA)"
+                      ],
+                      onSelect: setTransactionPaymentFilter
+                    },
+                    {
+                      id: "date",
+                      value: transactionDateFilter,
+                      options: ["Bulan ini", "Tahun ini", "Semua Waktu"],
+                      onSelect: setTransactionDateFilter
+                    }
+                  ].map((filter) => (
+                    <div className="admin-transaction-filter" key={filter.id}>
+                      <button
+                        type="button"
+                        aria-expanded={openTransactionFilter === filter.id}
+                        onClick={() =>
+                          setOpenTransactionFilter((currentFilter) =>
+                            currentFilter === filter.id ? null : filter.id
+                          )
+                        }
+                      >
+                        {filter.value}
+                        <FiChevronDown aria-hidden="true" />
+                      </button>
+                      {openTransactionFilter === filter.id && (
+                        <div className="admin-transaction-filter__menu" role="menu">
+                          {filter.options.map((option) => (
+                            <button
+                              type="button"
+                              role="menuitem"
+                              key={option}
+                              className={filter.value === option ? "is-active" : ""}
+                              onClick={() => {
+                                filter.onSelect(option);
+                                setOpenTransactionFilter(null);
+                              }}
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="admin-transaction-table" role="table" aria-label="Riwayat transaksi premium">
+                  <div className="admin-transaction-table__row admin-transaction-table__row--head" role="row">
+                    <span role="columnheader">ID Transaksi</span>
+                    <span role="columnheader">User</span>
+                    <span role="columnheader">Paket</span>
+                    <span role="columnheader">Metode</span>
+                    <span role="columnheader">Jumlah</span>
+                    <span role="columnheader">Status</span>
+                    <span role="columnheader">Aksi</span>
+                  </div>
+
+                  {visibleTransactions.map((transaction) => (
+                    <div className="admin-transaction-table__row" role="row" key={transaction.id}>
+                      <div className="admin-transaction-id" role="cell">
+                        <strong>{transaction.transactionId}</strong>
+                        <small>{transaction.date}</small>
+                      </div>
+                      <div className="admin-transaction-user" role="cell">
+                        <AdminAvatar imageUrl={transaction.user?.profileImageUrl} name={transaction.user?.name} isPremium={transaction.user?.isPremium} />
+                        <div>
+                          <strong>{transaction.user?.name || "User FLIX"}</strong>
+                          <small>{transaction.user?.email || "-"}</small>
+                        </div>
+                      </div>
+                      <span role="cell">{transaction.package}</span>
+                      <span role="cell">{transaction.method}</span>
+                      <strong role="cell">{transaction.amountLabel}</strong>
+                      <span role="cell">
+                        <span
+                          className={`admin-transaction-status admin-transaction-status--${String(
+                            transaction.status || "pending"
+                          ).toLowerCase()}`}
+                        >
+                          {transaction.status}
+                        </span>
+                      </span>
+                      <div className="admin-transaction-actions" role="cell">
+                        <button
+                          type="button"
+                          aria-label="Lihat bukti transaksi"
+                          disabled={!transaction.paymentProof}
+                          onClick={() => openTransactionProof(transaction.paymentProof)}
+                        >
+                          <FiEye aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Setujui transaksi"
+                          disabled={
+                            transaction.status !== "Pending" ||
+                            Boolean(transactionActionLoading[transaction.id])
+                          }
+                          onClick={() => updateTransactionStatus(transaction.id, "approved")}
+                        >
+                          <FiCheck aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Tolak transaksi"
+                          disabled={
+                            transaction.status !== "Pending" ||
+                            Boolean(transactionActionLoading[transaction.id])
+                          }
+                          onClick={() => updateTransactionStatus(transaction.id, "rejected")}
+                        >
+                          <FiX aria-hidden="true" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {!visibleTransactions.length && (
+                    <div className="admin-transaction-table__empty">
+                      {isLoading ? "Memuat transaksi..." : "Belum ada transaksi premium."}
+                    </div>
+                  )}
+                </div>
+
+                <div className="admin-manage-pagination" aria-label="Pagination transaksi">
+                  <button
+                    type="button"
+                    aria-label="Halaman transaksi sebelumnya"
+                    disabled={currentTransactionPage === 1}
+                    onClick={() => setTransactionPage((page) => Math.max(1, page - 1))}
+                  >
+                    &lt;
+                  </button>
+                  {transactionPaginationItems.map((item, index) =>
+                    typeof item === "string" ? (
+                      <span key={`${item}-${index}`} className="admin-manage-pagination__ellipsis">
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        key={item}
+                        className={currentTransactionPage === item ? "admin-manage-pagination__active" : ""}
+                        onClick={() => setTransactionPage(item)}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Halaman transaksi berikutnya"
+                    disabled={currentTransactionPage === totalTransactionPages}
+                    onClick={() => setTransactionPage((page) => Math.min(totalTransactionPages, page + 1))}
+                  >
+                    &gt;
+                  </button>
+                </div>
+              </article>
+            </section>
           ) : activeAdminPage === "users" ? (
             <section className="admin-user-management" aria-label="Kelola user">
               {usersError && <p className="admin-dashboard-alert">{usersError}</p>}
@@ -2430,7 +3243,7 @@ function AdminPage() {
                       <article className="admin-panel admin-user-detail__profile-card">
                         <div className="admin-user-detail__identity">
                           <div className="admin-user-detail__avatar">
-                            <AdminAvatar imageUrl={detailUser.profileImageUrl} name={detailUser.username} />
+                            <AdminAvatar imageUrl={detailUser.profileImageUrl} name={detailUser.username} isPremium={detailUser.isPremium} />
                             <small className="admin-user-detail__premium-badge">💎 Premium</small>
                           </div>
                           <div className="admin-user-detail__meta">
@@ -2660,7 +3473,7 @@ function AdminPage() {
                         {(currentUserPage - 1) * userRowsPerPage + index + 1}
                       </span>
                       <div className="admin-user-table__profile" role="cell">
-                        <AdminAvatar imageUrl={item.profileImageUrl} name={item.username} />
+                        <AdminAvatar imageUrl={item.profileImageUrl} name={item.username} isPremium={item.isPremium} />
                         <div>
                           <strong>{item.username}</strong>
                           <small>{item.email}</small>
@@ -3000,6 +3813,7 @@ function AdminPage() {
               <AdminAvatar
                 imageUrl={selectedReviewReport.user?.profileImageUrl}
                 name={selectedReviewReport.user?.name}
+                isPremium={selectedReviewReport.user?.isPremium}
               />
               <div>
                 <span>User Pelapor</span>
@@ -3147,6 +3961,7 @@ function AdminPage() {
               <AdminAvatar
                 imageUrl={selectedCommunityReport.profileImageUrl}
                 name={selectedCommunityReport.author}
+                isPremium={selectedCommunityReport.isPremium}
               />
               <div>
                 <span>{selectedCommunityReport.targetKind === "reply" ? "Pemilik Reply" : "Pemilik Post"}</span>

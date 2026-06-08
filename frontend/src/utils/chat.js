@@ -10,6 +10,7 @@ export const createChatThreadFromUser = (user) => ({
   time: user.time || "Sekarang",
   unreadCount: Number(user.unreadCount || 0),
   isOnline: Boolean(user.isOnline),
+  isPremium: Boolean(user.is_premium || user.isPremium),
   avatarUrl: resolveMediaUrl(user.profile_image_url) || user.avatarUrl || "",
 });
 

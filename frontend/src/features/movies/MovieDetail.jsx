@@ -15,6 +15,7 @@ import {
   FaYoutube,
 } from "react-icons/fa";
 import SiteNavbar from "@/components/layout/SiteNavbar";
+import PremiumAvatar from "@/components/ui/PremiumAvatar";
 import ReportModal from "@/components/ui/ReportModal";
 import ReviewModal from "@/components/ui/ReviewModal";
 import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
@@ -26,7 +27,6 @@ import disneyHotstarIcon from "@/assets/platformstream-logo/disneyhotstar-icon.p
 import hboMaxIcon from "@/assets/platformstream-logo/HBOmax-icon.png";
 import netflixIcon from "@/assets/platformstream-logo/netflix-icon.png";
 import { requireLogin } from "@/utils/authPrompt";
-import { resolveMediaUrl } from "@/utils/media";
 import { submitReport } from "@/utils/report";
 import "@/features/movies/MovieDetail.css";
 
@@ -169,25 +169,17 @@ const buildReviewTree = (reviews) => {
   return roots;
 };
 
-const getReviewInitial = (username = "") =>
-  username.trim().charAt(0).toUpperCase() || "?";
-
 function ReviewAvatar({ review, user }) {
   const username = review?.username || user?.username || "";
-  const avatarUrl = resolveMediaUrl(
-    review?.profile_image_url || user?.profile_image_url,
-  );
 
   return (
-    <div
-      className={avatarUrl ? "movie-review-avatar has-image" : "movie-review-avatar"}
-    >
-      {avatarUrl ? (
-        <img src={avatarUrl} alt={username || "Profile"} />
-      ) : (
-        getReviewInitial(username)
-      )}
-    </div>
+    <PremiumAvatar
+      className="movie-review-avatar"
+      imageUrl={review?.profile_image_url || user?.profile_image_url}
+      name={username || "?"}
+      isPremium={Boolean(review?.is_premium || (!review && user?.is_premium))}
+      alt={username || "Profile"}
+    />
   );
 }
 

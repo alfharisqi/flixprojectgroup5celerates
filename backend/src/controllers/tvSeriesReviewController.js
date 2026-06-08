@@ -37,6 +37,7 @@ export const getTvSeriesReviews = async (req, res) => {
           tsr.updated_at,
           u.username,
           u.profile_image_url,
+          u.is_premium,
           COALESCE(COUNT(tsrl.id_like), 0)::INTEGER AS like_count
        FROM flix.tv_series_reviews tsr
        JOIN flix.users u ON tsr.id_user = u.id_user
@@ -49,7 +50,7 @@ export const getTvSeriesReviews = async (req, res) => {
            WHERE report.tv_series_review_id = tsr.id_review
              AND report.status = 'approved'
          )
-       GROUP BY tsr.id_review, u.username, u.profile_image_url
+       GROUP BY tsr.id_review, u.username, u.profile_image_url, u.is_premium
        ORDER BY tsr.created_at ASC, tsr.id_review ASC`,
       [seriesId],
     );

@@ -2362,6 +2362,966 @@
   height: 14px;
 }
 
+.admin-payment-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.admin-payment-settings__head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 4px;
+}
+
+.admin-payment-settings__head h2 {
+  margin: 0 0 6px;
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.admin-payment-settings__head p,
+.admin-payment-step__title p,
+.admin-payment-method-editor p {
+  margin: 0;
+  color: #979797;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.admin-payment-settings__back,
+.admin-payment-secondary-button,
+.admin-payment-save__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  color: #ffffff;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+}
+
+.admin-payment-settings__back {
+  min-height: 40px;
+  padding: 9px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 13px;
+}
+
+.admin-payment-secondary-button {
+  min-height: 42px;
+  padding: 9px 16px;
+  background: rgba(0, 0, 0, 0.38);
+  font-size: 13px;
+}
+
+.admin-payment-settings__back:hover,
+.admin-payment-secondary-button:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.admin-payment-settings__feedback {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(70, 211, 105, 0.28);
+  border-radius: 14px;
+  background: rgba(70, 211, 105, 0.1);
+  color: #a6f7b8;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-payment-step {
+  padding: 18px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 4px 4px rgba(0, 0, 0, 0.2);
+}
+
+.admin-payment-step__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.admin-payment-step__title {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+}
+
+.admin-payment-step__title > span {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #141414;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.admin-payment-step__title h3 {
+  margin: 0 0 3px;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.admin-payment-package-grid,
+.admin-payment-price-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.admin-payment-package {
+  min-height: 78px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  background: rgba(20, 20, 20, 0.72);
+  color: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.admin-payment-package:hover,
+.admin-payment-package--active {
+  border-color: rgba(229, 9, 20, 0.75);
+  background: rgba(229, 9, 20, 0.1);
+  transform: translateY(-1px);
+}
+
+.admin-payment-package__radio,
+.admin-payment-type__radio {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border: 2px solid rgba(255, 255, 255, 0.56);
+  border-radius: 50%;
+}
+
+.admin-payment-package--active .admin-payment-package__radio,
+.admin-payment-type--active .admin-payment-type__radio {
+  border: 5px solid #ffffff;
+  background: #e50914;
+}
+
+.admin-payment-package__icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #d2d2d2;
+  font-size: 24px;
+}
+
+.admin-payment-package strong,
+.admin-payment-method-card strong,
+.admin-payment-price-card strong {
+  display: block;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.admin-payment-package small,
+.admin-payment-method-card small,
+.admin-payment-price-card small {
+  display: block;
+  margin-top: 4px;
+  color: #979797;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.admin-payment-method-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.78fr) minmax(420px, 1fr);
+  gap: 18px;
+}
+
+.admin-payment-method-list,
+.admin-payment-method-editor {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(20, 20, 20, 0.74);
+}
+
+.admin-payment-method-list h4,
+.admin-payment-method-editor h4 {
+  margin: 0 0 12px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.admin-payment-method-editor h4 {
+  margin-bottom: 4px;
+}
+
+.admin-payment-method-list__items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-payment-method-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.36);
+}
+
+.admin-payment-method-card--active {
+  border-color: rgba(229, 9, 20, 0.72);
+}
+
+.admin-payment-method-card__main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-payment-method-card__icon {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #d2d2d2;
+  font-size: 22px;
+}
+
+.admin-payment-method-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-payment-method-card__actions button,
+.admin-payment-add-line {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-payment-method-card__actions button:hover,
+.admin-payment-add-line:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.admin-payment-method-card__actions button:nth-child(2) {
+  color: #ff5a62;
+}
+
+.admin-payment-add-line {
+  width: 100%;
+  border-style: dashed;
+  background: transparent;
+}
+
+.admin-payment-field-group,
+.admin-payment-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-payment-field-group {
+  margin-top: 16px;
+}
+
+.admin-payment-field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-payment-field,
+.admin-payment-field-row,
+.admin-payment-upload {
+  margin-top: 14px;
+}
+
+.admin-payment-field-group label,
+.admin-payment-field > span {
+  color: #d2d2d2;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-payment-field input,
+.admin-payment-price-card input {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  outline: none;
+  background: rgba(0, 0, 0, 0.46);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.admin-payment-field input:focus,
+.admin-payment-price-card input:focus {
+  border-color: rgba(229, 9, 20, 0.85);
+}
+
+.admin-payment-type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-payment-type {
+  min-height: 45px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.36);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-payment-type--active {
+  border-color: rgba(229, 9, 20, 0.8);
+  background: rgba(229, 9, 20, 0.12);
+}
+
+.admin-payment-upload {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  border-radius: 12px;
+}
+
+.admin-payment-upload > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-payment-upload__preview {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #d2d2d2;
+}
+
+.admin-payment-upload strong {
+  display: block;
+  overflow: visible;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-payment-upload small {
+  display: block;
+  margin-top: 3px;
+  color: #979797;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.admin-payment-upload__button,
+.admin-payment-upload > button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-payment-upload__button input {
+  display: none;
+}
+
+.admin-payment-upload > button {
+  width: 38px;
+  padding: 0;
+}
+
+.admin-payment-price-card {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) 118px 200px;
+  align-items: center;
+  column-gap: 18px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(20, 20, 20, 0.74);
+}
+
+.admin-payment-price-card__label {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-payment-price-card__label > span {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #d2d2d2;
+  font-size: 22px;
+}
+
+.admin-payment-price-card__current {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-payment-price-card__current small {
+  margin: 0;
+  color: #979797;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.admin-payment-price-card__current strong {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.admin-payment-price-card__new {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.admin-payment-price-card__new > span {
+  color: #d2d2d2;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.admin-payment-price-card__new > div {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  max-width: 200px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.46);
+}
+
+.admin-payment-price-card__new small {
+  width: 48px;
+  min-height: 40px;
+  flex: 0 0 48px;
+  display: grid;
+  place-items: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-payment-price-card input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  flex: 1 1 auto;
+  padding-inline: 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.admin-payment-price-card__new > div:focus-within {
+  border-color: rgba(229, 9, 20, 0.85);
+}
+
+.admin-payment-save {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-payment-save__button {
+  min-width: 220px;
+  min-height: 48px;
+  padding: 12px 22px;
+  border-color: rgba(229, 9, 20, 0.55);
+  background: #e50914;
+  box-shadow: 0 10px 20px rgba(229, 9, 20, 0.18);
+  font-size: 14px;
+}
+
+.admin-payment-save__button:hover {
+  background: #f11b24;
+  transform: translateY(-1px);
+}
+
+.admin-transaction-page {
+  min-width: 0;
+}
+
+.admin-transaction-card {
+  min-height: 720px;
+  padding: 20px 24px 28px;
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 4px 4px rgba(0, 0, 0, 0.25);
+}
+
+.admin-transaction-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.admin-transaction-card__header h2 {
+  margin: 0 0 4px;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.admin-transaction-card__header p {
+  margin: 0;
+  color: #d2d2d2;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.admin-transaction-edit {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: #e50914;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+.admin-transaction-edit:hover {
+  background: #f11b24;
+  transform: translateY(-1px);
+}
+
+.admin-transaction-tabs {
+  position: relative;
+  width: max-content;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 44px;
+  margin-bottom: 18px;
+}
+
+.admin-transaction-tabs::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.admin-transaction-tabs button {
+  position: relative;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 0 10px;
+  border: 0;
+  background: transparent;
+  color: #808080;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 180ms ease;
+}
+
+.admin-transaction-tabs button::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  height: 2px;
+  background: transparent;
+}
+
+.admin-transaction-tabs button:hover,
+.admin-transaction-tabs__item--active {
+  color: #ffffff !important;
+}
+
+.admin-transaction-tabs button:hover::after,
+.admin-transaction-tabs__item--active::after {
+  background: #ffffff;
+}
+
+.admin-transaction-tabs small {
+  min-width: 26px;
+  min-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.44);
+  color: #d2d2d2;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.admin-transaction-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.admin-transaction-filter {
+  position: relative;
+}
+
+.admin-transaction-filter > button {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-transaction-filter__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 8;
+  min-width: 170px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: #141414;
+  box-shadow: 0 18px 32px rgba(0, 0, 0, 0.34);
+}
+
+.admin-transaction-filter__menu button {
+  min-height: 32px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #d2d2d2;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-transaction-filter__menu button:hover,
+.admin-transaction-filter__menu .is-active {
+  background: rgba(229, 9, 20, 0.18);
+  color: #ffffff;
+}
+
+.admin-transaction-table {
+  overflow-x: auto;
+}
+
+.admin-transaction-table__row {
+  min-width: 1080px;
+  display: grid;
+  grid-template-columns: 160px minmax(250px, 1.2fr) 150px 120px 130px 112px 130px;
+  align-items: center;
+  min-height: 94px;
+  padding: 0 18px;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.65);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-transaction-table__row--head {
+  min-height: 54px;
+  border: 1px solid #404040;
+  background: #404040;
+  font-size: 13px;
+}
+
+.admin-transaction-id,
+.admin-transaction-user {
+  min-width: 0;
+}
+
+.admin-transaction-id {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.admin-transaction-id strong {
+  color: #979797;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.admin-transaction-id small,
+.admin-transaction-user small {
+  color: #979797;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.admin-transaction-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-transaction-user img,
+.admin-transaction-user > span {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.admin-transaction-user img {
+  object-fit: cover;
+}
+
+.admin-transaction-user > span {
+  display: grid;
+  place-items: center;
+  background: #e50914;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.admin-transaction-user div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.admin-transaction-user strong {
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-transaction-status {
+  min-width: 78px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.admin-transaction-status--pending {
+  border: 1px solid #ffcc00;
+  background: rgba(255, 204, 0, 0.3);
+  color: #ffcc00;
+}
+
+.admin-transaction-status--berhasil {
+  border: 1px solid #46d369;
+  background: rgba(70, 211, 105, 0.2);
+  color: #46d369;
+}
+
+.admin-transaction-status--gagal {
+  border: 1px solid #e50914;
+  background: rgba(229, 9, 20, 0.22);
+  color: #ff5a62;
+}
+
+.admin-transaction-status--ditolak {
+  border: 1px solid #e50914;
+  background: rgba(229, 9, 20, 0.22);
+  color: #ff5a62;
+}
+
+.admin-transaction-status--expired {
+  border: 1px solid #979797;
+  background: rgba(151, 151, 151, 0.18);
+  color: #d2d2d2;
+}
+
+.admin-transaction-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-transaction-actions button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  line-height: 0;
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+.admin-transaction-actions button:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
+}
+
+.admin-transaction-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.36;
+  transform: none;
+}
+
+.admin-transaction-actions button:nth-child(2) {
+  color: #46d369;
+}
+
+.admin-transaction-actions button:nth-child(3) {
+  color: #e50914;
+}
+
+.admin-transaction-table__empty {
+  min-width: 1080px;
+  padding: 58px 16px;
+  color: #979797;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
 .admin-user-management {
   display: flex;
   flex-direction: column;
@@ -2785,6 +3745,7 @@
 }
 
 .admin-user-detail__premium-badge {
+  display: none;
   min-height: 18px;
   max-width: 78px;
   margin-top: -8px;
@@ -3178,6 +4139,15 @@
   .admin-user-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .admin-payment-method-layout,
+  .admin-payment-price-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-payment-price-card {
+    grid-template-columns: minmax(190px, 1fr) 118px 200px;
+  }
 }
 
 @media (max-width: 760px) {
@@ -3246,6 +4216,40 @@
   .admin-community-summary,
   .admin-user-summary {
     grid-template-columns: 1fr;
+  }
+
+  .admin-payment-settings__head,
+  .admin-payment-step__header,
+  .admin-payment-save {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-payment-package-grid,
+  .admin-payment-method-layout,
+  .admin-payment-price-grid,
+  .admin-payment-type-grid,
+  .admin-payment-field-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-payment-step {
+    padding: 16px;
+  }
+
+  .admin-payment-method-card,
+  .admin-payment-upload,
+  .admin-payment-price-card {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-payment-method-card__actions {
+    flex-direction: row;
+  }
+
+  .admin-payment-save__button,
+  .admin-payment-secondary-button {
+    width: 100%;
   }
 
   .admin-stat-card {

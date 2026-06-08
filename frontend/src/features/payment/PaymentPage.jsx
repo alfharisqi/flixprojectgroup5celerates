@@ -112,6 +112,14 @@ function PaymentPage() {
     return expiry.toLocaleDateString("id-ID", options);
   };
 
+  const getPackageCode = () => (Number(durationMonths) === 12 ? "premium_yearly" : "premium");
+
+  const getPaymentMethodLabel = () => {
+    if (paymentMethod === "qris") return "QRIS";
+    if (paymentMethod === "bank") return `Transfer Bank (${selectedBank.toUpperCase()})`;
+    return `E-Wallet (${selectedEwallet.toUpperCase()})`;
+  };
+
   // Ketika klik tombol "Bayar Sekarang"
   const handleOpenUploadModal = () => {
     if (!fullName.trim() || !email.trim() || !phoneNumber.trim()) {
@@ -149,6 +157,21 @@ function PaymentPage() {
       // Siapkan FormData untuk dikirim ke API Express
       const formData = new FormData();
       formData.append("payment_proof", paymentProofFile);
+      formData.append("packageCode", getPackageCode());
+      formData.append(
+        "packageName",
+        Number(durationMonths) === 12 ? "Premium Tahunan" : "Premium Bulanan",
+      );
+      formData.append("durationMonths", String(durationMonths));
+      formData.append("paymentMethod", paymentMethod);
+      formData.append("paymentMethodDetail", getPaymentMethodLabel());
+      formData.append("amount", String(subtotal));
+      formData.append("adminFee", String(adminFee));
+      formData.append("totalAmount", String(totalPayment));
+      formData.append("payerName", fullName);
+      formData.append("payerEmail", email);
+      formData.append("payerPhone", phoneNumber);
+      formData.append("ewalletPhone", ewalletPhone);
 
       const res = await axios.post(
         `${API_URL}/api/payment/checkout`,
@@ -161,22 +184,9 @@ function PaymentPage() {
         }
       );
 
-      // Perbarui info status user di localStorage agar is_premium langsung bernilai true
-      const updatedUser = {
-        ...storedUser,
-        is_premium: true,
-      };
-      localStorage.setItem("user", JSON.stringify(updatedUser));
+      setTransactionId(res.data?.transaction?.transactionId || "-");
 
-      // Buat Kode Transaksi tiruan yang rapi
-      const today = new Date();
-      const dateString = today.getFullYear().toString() + 
-                         ((today.getMonth() + 1).toString().padStart(2, "0")) + 
-                         (today.getDate().toString().padStart(2, "0"));
-      const randomNum = Math.floor(1000 + Math.random() * 9000);
-      setTransactionId(`#TRX-${dateString}-${randomNum}`);
-
-      // Tutup modal upload, langsung buka modal sukses
+      // Tutup modal upload, lalu tampilkan status pending verifikasi admin.
       setShowUploadModal(false);
       setShowSuccessModal(true);
     } catch (err) {
@@ -600,7 +610,7 @@ function PaymentPage() {
         </div>
       )}
 
-      {/* POPUP MODAL 2: PEMBAYARAN BERHASIL (MOCKUP) */}
+      {/* POPUP MODAL 2: BUKTI PEMBAYARAN TERKIRIM */}
       {showSuccessModal && (
         <div className="modal-backdrop-blur">
           <div className="payment-success-card">
@@ -611,12 +621,14 @@ function PaymentPage() {
               </svg>
             </div>
 
-            <h2>Pembayaran Berhasil</h2>
-            <p className="success-subtext">Selamat! Akun kamu sudah aktif sebagai FLIX Premium. Nikmati semua fitur tanpa batas sekarang!</p>
+            <h2>Bukti Pembayaran Terkirim</h2>
+            <p className="success-subtext">
+              Transaksi kamu sedang menunggu verifikasi admin. Akses premium akan aktif setelah pembayaran disetujui.
+            </p>
 
             {/* Badge Premium */}
             <div className="premium-active-badge-card">
-              <span className="premium-star-icon">💎</span> FLIX Premium Aktif
+              <span className="premium-star-icon">💎</span> Status: Pending Verifikasi
             </div>
 
             {/* Tabel Detail Transaksi */}
@@ -627,25 +639,25 @@ function PaymentPage() {
               </div>
               <div className="table-row">
                 <span>Paket</span>
-                <strong>💎 {durationMonths === 12 ? "Premium Tahunan" : "Premium Bulanan"}</strong>
+                <strong>{durationMonths === 12 ? "Premium Tahunan" : "Premium Bulanan"}</strong>
               </div>
               <div className="table-row">
                 <span>Metode</span>
-                <strong className="text-uppercase">{paymentMethod === "qris" ? "QRIS" : (paymentMethod === "bank" ? `Transfer Bank (${selectedBank.toUpperCase()})` : `E-Wallet (${selectedEwallet.toUpperCase()})`)}</strong>
+                <strong className="text-uppercase">{getPaymentMethodLabel()}</strong>
               </div>
               <div className="table-row">
                 <span>Total Bayar</span>
                 <strong>{formatRupiah(totalPayment)}</strong>
               </div>
               <div className="table-row">
-                <span>Aktif Hingga</span>
-                <strong>{getExpiryDate()}</strong>
+                <span>Status</span>
+                <strong>Menunggu Admin</strong>
               </div>
             </div>
 
-            {/* Fitur Aktif */}
+            {/* Fitur Akan Aktif */}
             <div className="features-checklist-group">
-              <h5>FITUR YANG SUDAH AKTIF:</h5>
+              <h5>FITUR AKAN AKTIF SETELAH DISETUJUI:</h5>
               <ul>
                 <li>
                   <span className="feat-check-icon">✓</span> Rekomendasi mood <strong>unlimited</strong>
@@ -654,10 +666,7 @@ function PaymentPage() {
                   <span className="feat-check-icon">✓</span> Watchlist unlimited
                 </li>
                 <li>
-                  <span className="feat-check-icon">✓</span> Tulis & edit review
-                </li>
-                <li>
-                  <span className="feat-check-icon">✓</span> Filter lanjutan
+                  <span className="feat-check-icon">✓</span> Tulis review
                 </li>
                 <li>
                   <span className="feat-check-icon">✓</span> Community
@@ -682,10 +691,9 @@ function PaymentPage() {
               onClick={() => {
                 setShowSuccessModal(false);
                 navigate("/profile");
-                window.location.reload();
               }}
             >
-              Mulai Sekarang →
+              Lihat Profil →
             </button>
           </div>
         </div>

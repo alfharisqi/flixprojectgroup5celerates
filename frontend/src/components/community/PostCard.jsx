@@ -8,9 +8,9 @@ import {
 } from "react-icons/fi";
 import CommunityUserPopover from "@/components/community/CommunityUserPopover";
 import RichContent from "@/components/editor/RichContent";
+import PremiumAvatar from "@/components/ui/PremiumAvatar";
 import reportIcon from "@/assets/icon/report-icon.svg";
 import shareIcon from "@/assets/icon/share-icon.svg";
-import { resolveMediaUrl } from "@/utils/media";
 import "./PostCard.css";
 
 const reactionOptions = [
@@ -66,8 +66,6 @@ function PostCard({
     Number(post.total_reactions || 0) +
     totalPollVotes;
   const totalInsight = Number(post.total_insight ?? fallbackTotalInsight);
-  const authorInitial = (post.username || "F").slice(0, 1).toUpperCase();
-  const authorAvatarUrl = resolveMediaUrl(post.profile_image_url);
 
   const handleCardAction = (event, action) => {
     event.stopPropagation();
@@ -96,19 +94,13 @@ function PostCard({
     >
       <div className="community-post-card__header">
         <div className="community-post-card__author">
-          <span
-            className={
-              authorAvatarUrl
-                ? "community-post-card__avatar has-image"
-                : "community-post-card__avatar"
-            }
-          >
-            {authorAvatarUrl ? (
-              <img src={authorAvatarUrl} alt={post.username || "Profile"} />
-            ) : (
-              authorInitial
-            )}
-          </span>
+          <PremiumAvatar
+            className="community-post-card__avatar"
+            imageUrl={post.profile_image_url}
+            name={post.username || "F"}
+            isPremium={Boolean(post.is_premium)}
+            alt={post.username || "Profile"}
+          />
           <div>
             <h3>{post.title || "Untitled Post"}</h3>
             <p>
@@ -118,6 +110,7 @@ function PostCard({
                   id_user: post.id_user,
                   username: post.username,
                   profile_image_url: post.profile_image_url,
+                  is_premium: post.is_premium,
                 }}
                 currentUser={user}
                 isFriend={Boolean(post.is_friend)}
@@ -127,15 +120,17 @@ function PostCard({
                     id_user: post.id_user,
                     username: post.username,
                     profile_image_url: post.profile_image_url,
+                    is_premium: post.is_premium,
                   })
                 }
                 onMessage={() => handleMessageUser?.(post)}
                 onReportUser={() =>
                   handleReportUser?.({
-                    id_user: post.id_user,
-                    username: post.username,
-                    profile_image_url: post.profile_image_url,
-                  })
+                        id_user: post.id_user,
+                        username: post.username,
+                        profile_image_url: post.profile_image_url,
+                        is_premium: post.is_premium,
+                      })
                 }
               />
               <span />{" "}

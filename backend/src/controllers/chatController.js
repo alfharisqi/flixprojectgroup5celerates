@@ -12,6 +12,7 @@ const mapConversationRow = (row) => ({
     username: row.friend_username,
     email: row.friend_email,
     profile_image_url: row.friend_profile_image_url,
+    is_premium: row.friend_is_premium,
   },
   last_message: row.last_message || "",
   last_message_at: row.last_message_at || row.updated_at || row.created_at,
@@ -32,6 +33,7 @@ const getConversationForUser = async (conversationId, userId) => {
         friend.username AS friend_username,
         friend.email AS friend_email,
         friend.profile_image_url AS friend_profile_image_url,
+        friend.is_premium AS friend_is_premium,
         lm.content AS last_message,
         lm.created_at AS last_message_at,
         COALESCE(uc.unread_count, 0) AS unread_count
@@ -93,6 +95,7 @@ export const getMyConversations = async (req, res) => {
           friend.username AS friend_username,
           friend.email AS friend_email,
           friend.profile_image_url AS friend_profile_image_url,
+          friend.is_premium AS friend_is_premium,
           lm.content AS last_message,
           lm.created_at AS last_message_at,
           COALESCE(uc.unread_count, 0) AS unread_count
@@ -231,7 +234,8 @@ export const getConversationMessages = async (req, res) => {
           cm.is_read,
           cm.created_at,
           u.username AS sender_username,
-          u.profile_image_url AS sender_profile_image_url
+          u.profile_image_url AS sender_profile_image_url,
+          u.is_premium AS sender_is_premium
        FROM flix.chat_messages cm
        JOIN flix.users u ON u.id_user = cm.sender_user_id
        WHERE cm.id_conversation = $1

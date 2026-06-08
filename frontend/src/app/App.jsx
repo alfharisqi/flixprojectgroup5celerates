@@ -84,8 +84,30 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path="/payment" element={<PaymentPage />} />
-        <Route path="/premium" element={<UpgradePremium />} />
+        <Route
+          path="/payment"
+          element={
+            <ProtectedRoute
+              allowedRoles={["registered_user"]}
+              allowedPlans={["regular"]}
+              redirectTo="/profile"
+            >
+              <PaymentPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/premium"
+          element={
+            <ProtectedRoute
+              allowedRoles={["registered_user"]}
+              allowedPlans={["regular"]}
+              redirectTo="/profile"
+            >
+              <UpgradePremium />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/profile"

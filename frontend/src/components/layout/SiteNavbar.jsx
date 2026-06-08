@@ -16,6 +16,7 @@ import messageCircleIcon from "@/assets/icon/message-circle-icon.svg";
 import sendIcon from "@/assets/icon/send-icon.svg";
 import smileIcon from "@/assets/icon/smile-icon.svg";
 import blueDiamondIcon from "@/assets/icon/bluediamond-icon.png";
+import PremiumAvatar from "@/components/ui/PremiumAvatar";
 import SearchModal from "@/components/ui/SearchModal";
 import { requireLogin } from "@/utils/authPrompt";
 import { resolveMediaUrl } from "@/utils/media";
@@ -135,6 +136,7 @@ const normalizeConversation = (conversation) => {
       resolveMediaUrl(friend.profile_image_url) ||
       conversation.avatarUrl ||
       "",
+    isPremium: Boolean(friend.is_premium || conversation.isPremium),
   };
 };
 
@@ -163,7 +165,6 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const currentActiveKey = getActiveKey(location.pathname, activeKey);
-  const userInitial = (user?.username || user?.email || "M").slice(0, 1).toUpperCase();
   const userProfileImageUrl = resolveMediaUrl(user?.profile_image_url);
 
   const handleLogout = () => {
@@ -395,6 +396,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
           ...sentMessage,
           sender_username: user?.username,
           sender_profile_image_url: user?.profile_image_url,
+          sender_is_premium: user?.is_premium,
         },
       ]);
       setChatMessage("");
@@ -654,13 +656,14 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
                             <img src={arrowLeftIcon} alt="" />
                           </button>
 
-                          <span className="site-navbar__private-chat-avatar">
-                            {activeChatThread.avatarUrl ? (
-                              <img src={activeChatThread.avatarUrl} alt="" />
-                            ) : (
-                              <span>{(activeChatThread.name || "U").slice(0, 1)}</span>
-                            )}
-                          </span>
+                          <PremiumAvatar
+                            className="site-navbar__private-chat-avatar"
+                            imageUrl={activeChatThread.avatarUrl}
+                            name={activeChatThread.name || "U"}
+                            isPremium={Boolean(activeChatThread.isPremium)}
+                            alt=""
+                            ariaHidden
+                          />
 
                           <h2>{activeChatThread.name}</h2>
 
@@ -708,6 +711,12 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
                                   ? userProfileImageUrl
                                   : activeChatThread.avatarUrl ||
                                     resolveMediaUrl(message.sender_profile_image_url);
+                                const senderIsPremium = isMine
+                                  ? Boolean(user?.is_premium)
+                                  : Boolean(
+                                      activeChatThread.isPremium ||
+                                        message.sender_is_premium,
+                                    );
 
                                 return (
                                   <div
@@ -719,13 +728,14 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
                                     key={message.id_message}
                                   >
                                     {!isMine && (
-                                      <span className="site-navbar__private-chat-message-avatar">
-                                        {senderAvatarUrl ? (
-                                          <img src={senderAvatarUrl} alt="" />
-                                        ) : (
-                                          (activeChatThread.name || "U").slice(0, 1)
-                                        )}
-                                      </span>
+                                      <PremiumAvatar
+                                        className="site-navbar__private-chat-message-avatar"
+                                        imageUrl={senderAvatarUrl}
+                                        name={activeChatThread.name || "U"}
+                                        isPremium={senderIsPremium}
+                                        alt=""
+                                        ariaHidden
+                                      />
                                     )}
                                     <span className="site-navbar__private-chat-message-content">
                                       <span className="site-navbar__private-chat-message-bubble">
@@ -823,12 +833,15 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
                                 key={thread.id}
                                 onClick={() => handleOpenChatThread(thread)}
                               >
-                                <span className="site-navbar__chat-avatar">
-                                  {thread.avatarUrl ? (
-                                    <img src={thread.avatarUrl} alt="" />
-                                  ) : (
-                                    <span>{(thread.name || "U").slice(0, 1)}</span>
-                                  )}
+                                <span className="site-navbar__chat-avatar-wrap">
+                                  <PremiumAvatar
+                                    className="site-navbar__chat-avatar"
+                                    imageUrl={thread.avatarUrl}
+                                    name={thread.name || "U"}
+                                    isPremium={Boolean(thread.isPremium)}
+                                    alt=""
+                                    ariaHidden
+                                  />
                                   {thread.isOnline && (
                                     <span
                                       className="site-navbar__chat-online"
@@ -965,19 +978,13 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
 
               <details className="site-navbar__user-menu">
                 <summary aria-label="User menu">
-                  <span
-                    className={
-                      userProfileImageUrl
-                        ? "site-navbar__avatar has-image"
-                        : "site-navbar__avatar"
-                    }
-                  >
-                    {userProfileImageUrl ? (
-                      <img src={userProfileImageUrl} alt={user?.username || "Profile"} />
-                    ) : (
-                      userInitial
-                    )}
-                  </span>
+                  <PremiumAvatar
+                    className="site-navbar__avatar"
+                    imageUrl={userProfileImageUrl}
+                    name={user?.username || user?.email || "M"}
+                    isPremium={Boolean(user?.is_premium)}
+                    alt={user?.username || "Profile"}
+                  />
                 </summary>
                 <div className="site-navbar__user-popover">
                   <Link className="site-navbar__profile-item" to="/profile">

@@ -10,6 +10,7 @@ export const getMyProfile = async (req, res) => {
           u.email,
           u.profile_image_url,
           u.banner_image_url,
+          u.is_premium,
           r.role_name,
           u.created_at
        FROM flix.users u

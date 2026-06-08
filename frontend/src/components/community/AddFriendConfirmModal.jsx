@@ -1,13 +1,10 @@
-import { resolveMediaUrl } from "@/utils/media";
+import PremiumAvatar from "@/components/ui/PremiumAvatar";
 import "./AddFriendConfirmModal.css";
 
 function AddFriendConfirmModal({ open, user, saving, onCancel, onConfirm }) {
   if (!open || !user) {
     return null;
   }
-
-  const avatarUrl = resolveMediaUrl(user.profile_image_url);
-  const initial = (user.username || "F").slice(0, 1).toUpperCase();
 
   return (
     <div className="add-friend-modal" role="presentation" onClick={onCancel}>
@@ -18,9 +15,13 @@ function AddFriendConfirmModal({ open, user, saving, onCancel, onConfirm }) {
         aria-labelledby="add-friend-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <span className={avatarUrl ? "add-friend-modal__avatar has-image" : "add-friend-modal__avatar"}>
-          {avatarUrl ? <img src={avatarUrl} alt={user.username || "User FLIX"} /> : initial}
-        </span>
+        <PremiumAvatar
+          className="add-friend-modal__avatar"
+          imageUrl={user.profile_image_url}
+          name={user.username || "F"}
+          isPremium={Boolean(user.is_premium)}
+          alt={user.username || "User FLIX"}
+        />
 
         <div className="add-friend-modal__content">
           <h2 id="add-friend-title">

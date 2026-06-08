@@ -19,10 +19,10 @@ import PostCard from "@/components/community/PostCard";
 import PostInsightModal from "@/components/community/PostInsightModal";
 import PostSearchModal from "@/components/community/PostSearchModal";
 import FilterPopup from "@/components/ui/FilterPopup";
+import PremiumAvatar from "@/components/ui/PremiumAvatar";
 import ReportModal from "@/components/ui/ReportModal";
 import { createChatThreadFromUser, openChatThread } from "@/utils/chat";
 import { requireLogin } from "@/utils/authPrompt";
-import { resolveMediaUrl } from "@/utils/media";
 import { submitReport } from "@/utils/report";
 import "./Community.css";
 
@@ -104,7 +104,6 @@ function Community() {
   const activeTag = searchParams.get("tag") || "";
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user"));
-  const userProfileImageUrl = resolveMediaUrl(user?.profile_image_url);
   const totalReplies = Object.values(comments).reduce(
     (total, item) => total + (Array.isArray(item) ? item.length : 0),
     0
@@ -636,6 +635,7 @@ function Community() {
         id_user: post.id_user,
         username: post.username,
         profile_image_url: post.profile_image_url,
+        is_premium: post.is_premium,
         lastMessage: "Mulai obrolan tentang film",
       }),
     );
@@ -709,19 +709,13 @@ function Community() {
       <section className="community-shell">
         <aside className="community-sidebar" aria-label="Community sidebar">
           <div className="community-profile-panel">
-            <span
-              className={
-                userProfileImageUrl
-                  ? "community-avatar has-image"
-                  : "community-avatar"
-              }
-            >
-              {userProfileImageUrl ? (
-                <img src={userProfileImageUrl} alt={user?.username || "Profile"} />
-              ) : (
-                (user?.username || user?.email || "F").slice(0, 1).toUpperCase()
-              )}
-            </span>
+            <PremiumAvatar
+              className="community-avatar"
+              imageUrl={user?.profile_image_url}
+              name={user?.username || user?.email || "F"}
+              isPremium={Boolean(user?.is_premium)}
+              alt={user?.username || "Profile"}
+            />
             <div>
               <h2>{user?.username || "Guest FLIX"}</h2>
               <p>{token ? "Siap berbagi post baru" : "Login untuk membuat post"}</p>

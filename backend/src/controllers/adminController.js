@@ -1,5 +1,6 @@
 import pool from "../config/db.js";
 import { initializeUserStatusColumns } from "../config/initUserStatus.js";
+import { initializePaymentTransactionsTable } from "../config/initPaymentTransactions.js";
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w92";
@@ -44,6 +45,34 @@ const chartActivityOptions = {
 
 const formatNumber = (value) =>
   new Intl.NumberFormat("id-ID").format(Number(value || 0));
+
+const formatCurrency = (value) => `Rp ${formatNumber(value)}`;
+
+const paymentTransactionStatusLabels = {
+  pending: "Pending",
+  approved: "Berhasil",
+  rejected: "Ditolak",
+  expired: "Expired",
+};
+
+const paymentTransactionStatusFromLabel = {
+  pending: "pending",
+  berhasil: "approved",
+  approved: "approved",
+  ditolak: "rejected",
+  rejected: "rejected",
+  gagal: "rejected",
+  expired: "expired",
+};
+
+const formatPaymentTransactionId = (id, createdAt) => {
+  const date = new Date(createdAt);
+  const dateToken = Number.isNaN(date.getTime())
+    ? "00000000"
+    : `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
+
+  return `#TRX-${dateToken}-${String(id).padStart(3, "0")}`;
+};
 
 const formatDate = (dateValue) => {
   const date = new Date(dateValue);
@@ -555,6 +584,7 @@ const getAdminUserRows = async () =>
       u.email,
       u.email_verified,
       u.is_active,
+      u.is_premium,
       u.profile_image_url,
       u.created_at,
       r.role_name,
@@ -607,6 +637,7 @@ const mapAdminUsers = (rows) =>
     roleLabel: normalizeUserRole(row.role_name),
     status: formatAdminUserStatus(row),
     isActive: row.is_active !== false,
+    isPremium: Boolean(row.is_premium),
     joinedAt: formatDate(row.created_at),
     profileImageUrl: row.profile_image_url,
     activities: {
@@ -616,6 +647,69 @@ const mapAdminUsers = (rows) =>
       reply: Number(row.reply_count || 0),
     },
   }));
+
+const getAdminTransactionRows = async () =>
+  safeRows(`
+    SELECT
+      pt.id_transaction,
+      pt.id_user,
+      pt.package_code,
+      pt.package_name,
+      pt.duration_months,
+      pt.payment_method,
+      pt.payment_method_detail,
+      pt.amount,
+      pt.admin_fee,
+      pt.total_amount,
+      pt.payment_proof,
+      pt.status,
+      pt.admin_note,
+      pt.verified_at,
+      pt.premium_started_at,
+      pt.premium_expired_at,
+      pt.created_at,
+      pt.updated_at,
+      u.id_user,
+      u.username,
+      u.email,
+      u.profile_image_url,
+      u.is_premium
+    FROM flix.payment_transactions pt
+    JOIN flix.users u ON u.id_user = pt.id_user
+    ORDER BY pt.created_at DESC, pt.id_transaction DESC
+    LIMIT 300
+  `);
+
+const mapAdminTransactions = (rows) =>
+  rows.map((row) => ({
+      id: Number(row.id_transaction),
+      transactionId: formatPaymentTransactionId(row.id_transaction, row.created_at),
+      user: {
+        id: Number(row.id_user),
+        name: row.username || "User FLIX",
+        email: row.email || "-",
+        profileImageUrl: row.profile_image_url || null,
+        isPremium: Boolean(row.is_premium),
+      },
+      package: row.package_name || "Premium Bulanan",
+      packageCode: row.package_code || "premium",
+      durationMonths: Number(row.duration_months || 1),
+      method: row.payment_method_detail || row.payment_method || "-",
+      methodCode: row.payment_method || null,
+      amount: Number(row.total_amount || row.amount || 0),
+      amountLabel: formatCurrency(row.total_amount || row.amount || 0),
+      baseAmount: Number(row.amount || 0),
+      adminFee: Number(row.admin_fee || 0),
+      status: paymentTransactionStatusLabels[row.status] || "Pending",
+      statusCode: row.status || "pending",
+      paymentProof: row.payment_proof || null,
+      adminNote: row.admin_note || "",
+      date: formatDateTime(row.created_at),
+      createdAt: row.created_at,
+      verifiedAt: row.verified_at ? formatDateTime(row.verified_at) : null,
+      premiumStartedAt: row.premium_started_at ? formatDateTime(row.premium_started_at) : null,
+      premiumExpiredAt: row.premium_expired_at ? formatDateTime(row.premium_expired_at) : null,
+    }));
 
 const mapReviewMediaRows = async (rows) =>
   Promise.all(
@@ -681,6 +775,7 @@ const mapAdminReviewRows = async (rows) =>
           id: Number(row.id_user || row.actor_user_id || 0),
           name: row.username || row.actor_username || "User FLIX",
           profileImageUrl: row.profile_image_url || row.actor_profile_image_url || null,
+          isPremium: Boolean(row.is_premium || row.actor_is_premium),
         },
       };
     }),
@@ -732,7 +827,8 @@ const getAdminIncomingReviewRows = async () =>
     SELECT
       reviews.*,
       users.username,
-      users.profile_image_url
+      users.profile_image_url,
+      users.is_premium
     FROM reviews
     JOIN flix.users users ON reviews.id_user = users.id_user
     ORDER BY reviews.created_at DESC, reviews.id_review DESC
@@ -791,7 +887,8 @@ const getAdminReportedReviewRows = async () =>
         ELSE 'Pending'
       END AS status,
       actor.username AS actor_username,
-      actor.profile_image_url AS actor_profile_image_url
+      actor.profile_image_url AS actor_profile_image_url,
+      actor.is_premium AS actor_is_premium
     FROM reported_reviews
     JOIN flix.users actor ON reported_reviews.actor_user_id = actor.id_user
     ORDER BY reported_reviews.created_at DESC
@@ -808,6 +905,7 @@ const mapAdminCommunityRows = (rows) =>
     targetKind: row.target_kind || "post",
     author: row.username || "User FLIX",
     profileImageUrl: row.profile_image_url || null,
+    isPremium: Boolean(row.is_premium),
     time: getRelativeTime(row.created_at),
     date: formatDate(row.created_at),
     title: row.title || "",
@@ -846,6 +944,7 @@ const getAdminCommunityRows = async () =>
       'post' AS target_kind,
       u.username,
       u.profile_image_url,
+      u.is_premium,
       COALESCE(v.view_count, 0)::INTEGER AS view_count,
       COALESCE(c.reply_count, 0)::INTEGER AS reply_count,
       COALESCE(s.share_count, 0)::INTEGER AS share_count,
@@ -933,6 +1032,7 @@ const getAdminReportedCommunityRows = async () =>
       reported_community.*,
       target_user.username,
       target_user.profile_image_url,
+      target_user.is_premium,
       reporter.username AS reporter_username,
       CASE
         WHEN reported_community.report_status = 'approved'
@@ -994,6 +1094,7 @@ const getAdminUserDetailRows = async (userId) => {
         u.email,
         u.email_verified,
         u.is_active,
+        u.is_premium,
         u.profile_image_url,
         u.banner_image_url,
         u.deactivated_at,
@@ -1519,6 +1620,178 @@ export const getAdminUsers = async (req, res) => {
   }
 };
 
+export const getAdminTransactions = async (req, res) => {
+  try {
+    await initializeUserStatusColumns();
+    await initializePaymentTransactionsTable();
+
+    const transactions = mapAdminTransactions(await getAdminTransactionRows());
+    const summary = transactions.reduce(
+      (accumulator, transaction) => {
+        accumulator.all += 1;
+
+        if (transaction.status === "Berhasil") {
+          accumulator.success += 1;
+        } else if (transaction.status === "Pending") {
+          accumulator.pending += 1;
+        } else {
+          accumulator.failed += 1;
+        }
+
+        return accumulator;
+      },
+      {
+        all: 0,
+        success: 0,
+        pending: 0,
+        failed: 0,
+      },
+    );
+
+    return res.json({
+      message: "Riwayat transaksi admin berhasil dimuat",
+      summary,
+      transactions,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal mengambil transaksi admin",
+      error: error.message,
+    });
+  }
+};
+
+export const updateAdminTransactionStatus = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const transactionId = Number(req.params.id);
+    const requestedStatus = String(req.body?.status || req.body?.action || "").trim().toLowerCase();
+    const nextStatus = paymentTransactionStatusFromLabel[requestedStatus] || requestedStatus;
+
+    if (!Number.isInteger(transactionId) || transactionId <= 0) {
+      return res.status(400).json({
+        message: "ID transaksi tidak valid",
+      });
+    }
+
+    if (!["approved", "rejected"].includes(nextStatus)) {
+      return res.status(400).json({
+        message: "Status transaksi harus approved atau rejected",
+      });
+    }
+
+    await initializeUserStatusColumns();
+    await initializePaymentTransactionsTable();
+
+    await client.query("BEGIN");
+
+    const transactionResult = await client.query(
+      `SELECT pt.*, u.username, u.email, u.profile_image_url, u.is_premium
+       FROM flix.payment_transactions pt
+       JOIN flix.users u ON u.id_user = pt.id_user
+       WHERE pt.id_transaction = $1
+       FOR UPDATE`,
+      [transactionId],
+    );
+
+    if (transactionResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        message: "Transaksi tidak ditemukan",
+      });
+    }
+
+    const transaction = transactionResult.rows[0];
+
+    if (transaction.status !== "pending") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: "Status transaksi yang sudah diproses tidak bisa diubah ulang",
+      });
+    }
+
+    const adminNote = String(req.body?.admin_note || req.body?.adminNote || "").trim();
+    let updatedTransaction;
+
+    if (nextStatus === "approved") {
+      const updateResult = await client.query(
+        `UPDATE flix.payment_transactions
+         SET status = 'approved',
+             admin_note = NULLIF($1, ''),
+             verified_by_user_id = $2,
+             verified_at = CURRENT_TIMESTAMP,
+             premium_started_at = CURRENT_TIMESTAMP,
+             premium_expired_at = CURRENT_TIMESTAMP + ($3::TEXT || ' months')::INTERVAL,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id_transaction = $4
+         RETURNING *`,
+        [
+          adminNote,
+          req.user.id_user,
+          Number(transaction.duration_months || 1),
+          transactionId,
+        ],
+      );
+
+      updatedTransaction = updateResult.rows[0];
+
+      await client.query(
+        `UPDATE flix.users
+         SET is_premium = TRUE,
+             payment_proof = $1,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id_user = $2`,
+        [transaction.payment_proof, transaction.id_user],
+      );
+    } else {
+      const updateResult = await client.query(
+        `UPDATE flix.payment_transactions
+         SET status = 'rejected',
+             admin_note = NULLIF($1, ''),
+             verified_by_user_id = $2,
+             verified_at = CURRENT_TIMESTAMP,
+             premium_started_at = NULL,
+             premium_expired_at = NULL,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id_transaction = $3
+         RETURNING *`,
+        [adminNote, req.user.id_user, transactionId],
+      );
+
+      updatedTransaction = updateResult.rows[0];
+    }
+
+    await client.query("COMMIT");
+
+    const mappedTransaction = mapAdminTransactions([
+      {
+        ...updatedTransaction,
+        username: transaction.username,
+        email: transaction.email,
+        profile_image_url: transaction.profile_image_url,
+        is_premium: nextStatus === "approved" ? true : transaction.is_premium,
+      },
+    ])[0];
+
+    return res.json({
+      message:
+        nextStatus === "approved"
+          ? "Transaksi berhasil disetujui dan akses premium user aktif."
+          : "Transaksi berhasil ditolak.",
+      transaction: mappedTransaction,
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    return res.status(500).json({
+      message: "Gagal mengubah status transaksi",
+      error: error.message,
+    });
+  } finally {
+    client.release();
+  }
+};
+
 export const updateAdminUserStatus = async (req, res) => {
   try {
     const userId = Number(req.params.id);
@@ -1559,6 +1832,7 @@ export const updateAdminUserStatus = async (req, res) => {
           email,
           email_verified,
           is_active,
+          is_premium,
           profile_image_url,
           banner_image_url,
           created_at,
@@ -1591,6 +1865,7 @@ export const updateAdminUserStatus = async (req, res) => {
         roleLabel: normalizeUserRole(userRow.role_name),
         status: formatAdminUserStatus(userRow),
         isActive: userRow.is_active !== false,
+        isPremium: Boolean(userRow.is_premium),
         joinedAt: formatDate(userRow.created_at),
         deactivatedAt: userRow.deactivated_at ? formatDateTime(userRow.deactivated_at) : null,
         profileImageUrl: userRow.profile_image_url,
@@ -1918,6 +2193,7 @@ export const getAdminUserDetail = async (req, res) => {
         roleLabel: normalizeUserRole(userRow.role_name),
         status: formatAdminUserStatus(userRow),
         isActive: userRow.is_active !== false,
+        isPremium: Boolean(userRow.is_premium),
         joinedAt: formatDate(userRow.created_at),
         joinedAtDetail: formatDateTime(userRow.created_at),
         deactivatedAt: userRow.deactivated_at ? formatDateTime(userRow.deactivated_at) : null,

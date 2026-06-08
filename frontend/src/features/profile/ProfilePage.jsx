@@ -19,6 +19,7 @@ import {
   FaYoutube,
 } from "react-icons/fa";
 import SiteNavbar from "@/components/layout/SiteNavbar";
+import PremiumAvatar from "@/components/ui/PremiumAvatar";
 import diamondIcon from "@/assets/icon/bluediamond-icon.png";
 import santaiIcon from "@/assets/emoticon/santai-emoticon.png";
 import seruIcon from "@/assets/emoticon/seru-emoticon.png";
@@ -294,23 +295,15 @@ function ProfilePostItem({ post }) {
 }
 
 function ProfileFriendItem({ friend, disabled, onMessage, onRemove }) {
-  const avatarUrl = resolveMediaUrl(friend.profile_image_url);
-
   return (
     <article className="profile-friend-item">
-      <span
-        className={
-          avatarUrl
-            ? "profile-friend-avatar has-image"
-            : "profile-friend-avatar"
-        }
-      >
-        {avatarUrl ? (
-          <img src={avatarUrl} alt={friend.username || "Friend"} />
-        ) : (
-          getInitial(friend.username || friend.email)
-        )}
-      </span>
+      <PremiumAvatar
+        className="profile-friend-avatar"
+        imageUrl={friend.profile_image_url}
+        name={friend.username || friend.email}
+        isPremium={Boolean(friend.is_premium)}
+        alt={friend.username || "Friend"}
+      />
 
       <div>
         <h3>{friend.username || "User FLIX"}</h3>
@@ -342,23 +335,15 @@ function ProfileFriendItem({ friend, disabled, onMessage, onRemove }) {
 }
 
 function ProfileFriendRequestItem({ request, disabled, onAccept, onDecline }) {
-  const avatarUrl = resolveMediaUrl(request.profile_image_url);
-
   return (
     <article className="profile-friend-request-item">
-      <span
-        className={
-          avatarUrl
-            ? "profile-friend-avatar has-image"
-            : "profile-friend-avatar"
-        }
-      >
-        {avatarUrl ? (
-          <img src={avatarUrl} alt={request.username || "Friend request"} />
-        ) : (
-          getInitial(request.username || request.email)
-        )}
-      </span>
+      <PremiumAvatar
+        className="profile-friend-avatar"
+        imageUrl={request.profile_image_url}
+        name={request.username || request.email}
+        isPremium={Boolean(request.is_premium)}
+        alt={request.username || "Friend request"}
+      />
 
       <div>
         <h3>{request.username || "User FLIX"}</h3>
@@ -389,25 +374,18 @@ function ProfileFriendRequestItem({ request, disabled, onAccept, onDecline }) {
 }
 
 function ProfileFriendSearchResult({ user, disabled, onAdd }) {
-  const avatarUrl = resolveMediaUrl(user.profile_image_url);
   const status = user.friendship_status;
   const canAdd = !status;
 
   return (
     <article className="profile-friend-search-result">
-      <span
-        className={
-          avatarUrl
-            ? "profile-friend-avatar has-image"
-            : "profile-friend-avatar"
-        }
-      >
-        {avatarUrl ? (
-          <img src={avatarUrl} alt={user.username || "User FLIX"} />
-        ) : (
-          getInitial(user.username || user.email)
-        )}
-      </span>
+      <PremiumAvatar
+        className="profile-friend-avatar"
+        imageUrl={user.profile_image_url}
+        name={user.username || user.email}
+        isPremium={Boolean(user.is_premium)}
+        alt={user.username || "User FLIX"}
+      />
 
       <div>
         <h3>{user.username || "User FLIX"}</h3>
@@ -1302,6 +1280,7 @@ function ProfilePage() {
         username: friend.username,
         email: friend.email,
         profile_image_url: friend.profile_image_url,
+        is_premium: friend.is_premium,
         lastMessage: "Mulai obrolan tentang film",
       }),
     );
@@ -1384,20 +1363,13 @@ function ProfilePage() {
             accept="image/jpeg,image/png,image/jpg,image/webp"
             onChange={(event) => handleMediaUpload(event, "profile_image_url")}
           />
-          <div
-            className={
-              profileImageUrl ? "profile-avatar has-image" : "profile-avatar"
-            }
-          >
-            {profileImageUrl ? (
-              <img
-                src={profileImageUrl}
-                alt={profile?.username || "Foto profile"}
-              />
-            ) : (
-              initial
-            )}
-          </div>
+          <PremiumAvatar
+            className="profile-avatar"
+            imageUrl={profileImageUrl}
+            name={profile?.username || initial}
+            isPremium={Boolean(profile?.is_premium)}
+            alt={profile?.username || "Foto profile"}
+          />
           <button
             type="button"
             aria-label="Edit avatar"

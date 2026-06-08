@@ -105,6 +105,7 @@ export const login = async (req, res) => {
           u.password,
           u.email_verified,
           u.is_active,
+          u.is_premium,
           u.profile_image_url,
           u.banner_image_url,
           r.role_name
@@ -148,7 +149,8 @@ export const login = async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role_name,
-        email_verified: user.email_verified
+        email_verified: user.email_verified,
+        is_premium: user.is_premium
       },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
@@ -170,6 +172,7 @@ export const login = async (req, res) => {
         email: user.email,
         role: user.role_name,
         email_verified: user.email_verified,
+        is_premium: user.is_premium,
         profile_image_url: user.profile_image_url,
         banner_image_url: user.banner_image_url
       }

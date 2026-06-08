@@ -15,12 +15,12 @@ import GifPickerModal from "@/components/editor/GifPickerModal";
 import PostInsightModal from "@/components/community/PostInsightModal";
 import RichContent from "@/components/editor/RichContent";
 import SiteNavbar from "@/components/layout/SiteNavbar";
+import PremiumAvatar from "@/components/ui/PremiumAvatar";
 import ReportModal from "@/components/ui/ReportModal";
 import reportIcon from "@/assets/icon/report-icon.svg";
 import shareIcon from "@/assets/icon/share-icon.svg";
 import { createChatThreadFromUser, openChatThread } from "@/utils/chat";
 import { requireLogin } from "@/utils/authPrompt";
-import { resolveMediaUrl } from "@/utils/media";
 import { submitReport } from "@/utils/report";
 import "@/components/community/PostCard.css";
 import "./PostDetail.css";
@@ -425,10 +425,6 @@ function PostDetail() {
     );
   };
 
-  const getReplyInitial = (username = "") => {
-    return username.trim().charAt(0).toUpperCase() || "U";
-  };
-
   const formatReplyDate = (date) => {
     return new Date(date).toLocaleString("id-ID", {
       day: "numeric",
@@ -528,6 +524,7 @@ function PostDetail() {
         id_user: targetUser.id_user,
         username: targetUser.username,
         profile_image_url: targetUser.profile_image_url,
+        is_premium: targetUser.is_premium,
         lastMessage: "Mulai obrolan tentang film",
       }),
     );
@@ -559,7 +556,6 @@ function PostDetail() {
     return items.map((comment) => {
       const childComments = getChildComments(allComments, comment.id_comment);
       const inputKey = `comment-${comment.id_comment}`;
-      const replyAvatarUrl = resolveMediaUrl(comment.profile_image_url);
       const replyNumber =
         allComments.findIndex(
           (item) => item.id_comment === comment.id_comment,
@@ -574,26 +570,21 @@ function PostDetail() {
           <article className="post-reply-card">
             <header className="post-reply-header">
               <div className="post-reply-author">
-                <div
-                  className={
-                    replyAvatarUrl
-                      ? "post-reply-avatar has-image"
-                      : "post-reply-avatar"
-                  }
-                  aria-hidden="true"
-                >
-                  {replyAvatarUrl ? (
-                    <img src={replyAvatarUrl} alt="" />
-                  ) : (
-                    getReplyInitial(comment.username)
-                  )}
-                </div>
+                <PremiumAvatar
+                  className="post-reply-avatar"
+                  imageUrl={comment.profile_image_url}
+                  name={comment.username}
+                  isPremium={Boolean(comment.is_premium)}
+                  alt=""
+                  ariaHidden
+                />
                 <div className="post-reply-meta">
                   <CommunityUserPopover
                     user={{
                       id_user: comment.id_user,
                       username: comment.username,
                       profile_image_url: comment.profile_image_url,
+                      is_premium: comment.is_premium,
                     }}
                     currentUser={user}
                     isFriend={Boolean(comment.is_friend)}
@@ -603,6 +594,7 @@ function PostDetail() {
                         id_user: comment.id_user,
                         username: comment.username,
                         profile_image_url: comment.profile_image_url,
+                        is_premium: comment.is_premium,
                       })
                     }
                     onMessage={() => handleMessageUser(comment)}
@@ -611,6 +603,7 @@ function PostDetail() {
                         id_user: comment.id_user,
                         username: comment.username,
                         profile_image_url: comment.profile_image_url,
+                        is_premium: comment.is_premium,
                       })
                     }
                   />
@@ -782,8 +775,6 @@ function PostDetail() {
     (total, option) => total + Number(option.vote_count || 0),
     0,
   );
-  const authorInitial = (post.username || "F").slice(0, 1).toUpperCase();
-  const authorAvatarUrl = resolveMediaUrl(post.profile_image_url);
   const selectedPostReactionOption = postReactionOptions.find(
     (item) => item.type === selectedPostReaction,
   );
@@ -802,19 +793,13 @@ function PostDetail() {
       <div className="post-detail-card community-post-card">
         <div className="community-post-card__header">
           <div className="community-post-card__author">
-            <span
-              className={
-                authorAvatarUrl
-                  ? "community-post-card__avatar has-image"
-                  : "community-post-card__avatar"
-              }
-            >
-              {authorAvatarUrl ? (
-                <img src={authorAvatarUrl} alt={post.username || "Profile"} />
-              ) : (
-                authorInitial
-              )}
-            </span>
+            <PremiumAvatar
+              className="community-post-card__avatar"
+              imageUrl={post.profile_image_url}
+              name={post.username || "F"}
+              isPremium={Boolean(post.is_premium)}
+              alt={post.username || "Profile"}
+            />
             <div>
               <h3>{post.title || "Untitled Post"}</h3>
               <p>
@@ -824,24 +809,27 @@ function PostDetail() {
                     id_user: post.id_user,
                     username: post.username,
                     profile_image_url: post.profile_image_url,
+                    is_premium: post.is_premium,
                   }}
                   currentUser={user}
                   isFriend={Boolean(post.is_friend)}
                   friendshipStatus={post.friendship_status}
                   onAddFriend={() =>
                     handleAddFriend({
-                      id_user: post.id_user,
-                      username: post.username,
-                      profile_image_url: post.profile_image_url,
-                    })
+                        id_user: post.id_user,
+                        username: post.username,
+                        profile_image_url: post.profile_image_url,
+                        is_premium: post.is_premium,
+                      })
                   }
                   onMessage={() => handleMessageUser(post)}
                   onReportUser={() =>
                     handleReportUser({
-                      id_user: post.id_user,
-                      username: post.username,
-                      profile_image_url: post.profile_image_url,
-                    })
+                        id_user: post.id_user,
+                        username: post.username,
+                        profile_image_url: post.profile_image_url,
+                        is_premium: post.is_premium,
+                      })
                   }
                 />
                 <span aria-hidden="true" />

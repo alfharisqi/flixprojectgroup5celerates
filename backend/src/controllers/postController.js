@@ -30,6 +30,7 @@ export const getPosts = async (req, res) => {
           u.id_user,
           u.username,
           u.profile_image_url,
+          u.is_premium,
           CASE
             WHEN $1::BIGINT IS NULL OR p.id_user = $1 THEN FALSE
             ELSE EXISTS (
@@ -193,6 +194,7 @@ export const getPostById = async (req, res) => {
           u.id_user,
           u.username,
           u.profile_image_url,
+          u.is_premium,
           CASE
             WHEN $2::BIGINT IS NULL OR p.id_user = $2 THEN FALSE
             ELSE EXISTS (

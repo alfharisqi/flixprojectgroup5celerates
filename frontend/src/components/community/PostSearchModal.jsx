@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FiSearch, FiX } from "react-icons/fi";
-import { resolveMediaUrl } from "@/utils/media";
+import PremiumAvatar from "@/components/ui/PremiumAvatar";
 import "@/components/ui/SearchModal.css";
 
 const stripHtml = (html = "") =>
@@ -16,9 +16,6 @@ const formatDate = (date) =>
     month: "short",
     year: "numeric",
   });
-
-const getPostInitial = (username = "") =>
-  username.trim().charAt(0).toUpperCase() || "F";
 
 function PostSearchModal({ open, posts = [], comments = {}, onClose, onOpenPost }) {
   const inputRef = useRef(null);
@@ -119,8 +116,6 @@ function PostSearchModal({ open, posts = [], comments = {}, onClose, onOpenPost 
           ) : (
             <div className="flix-search-modal__results">
               {results.map((post) => {
-                const avatarUrl = resolveMediaUrl(post.profile_image_url);
-
                 return (
                   <button
                     key={post.id_post}
@@ -128,20 +123,14 @@ function PostSearchModal({ open, posts = [], comments = {}, onClose, onOpenPost 
                     className="flix-search-modal__result flix-search-modal__result--post"
                     onClick={() => handleOpenPost(post.id_post)}
                   >
-                    <div
-                      className={
-                        avatarUrl
-                          ? "flix-search-modal__avatar has-image"
-                          : "flix-search-modal__avatar"
-                      }
-                      aria-hidden="true"
-                    >
-                      {avatarUrl ? (
-                        <img src={avatarUrl} alt="" />
-                      ) : (
-                        getPostInitial(post.username)
-                      )}
-                    </div>
+                    <PremiumAvatar
+                      className="flix-search-modal__avatar"
+                      imageUrl={post.profile_image_url}
+                      name={post.username || "F"}
+                      isPremium={Boolean(post.is_premium)}
+                      alt=""
+                      ariaHidden
+                    />
                     <span>
                       <strong>
                         {post.title || "Untitled Post"}{" "}

@@ -6,8 +6,10 @@ import {
   getAdminDashboard,
   getAdminMovies,
   getAdminReviews,
+  getAdminTransactions,
   getAdminUserDetail,
   getAdminUsers,
+  updateAdminTransactionStatus,
   updateAdminCommunityReportStatus,
   updateAdminReviewReportStatus,
   updateAdminUserStatus,
@@ -63,6 +65,20 @@ router.get(
   verifyToken,
   allowRoles("admin"),
   getAdminCommunity
+);
+
+router.get(
+  "/transactions",
+  verifyToken,
+  allowRoles("admin"),
+  getAdminTransactions
+);
+
+router.patch(
+  "/transactions/:id/status",
+  verifyToken,
+  allowRoles("admin"),
+  updateAdminTransactionStatus
 );
 
 router.patch(
