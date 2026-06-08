@@ -1,5 +1,45 @@
 import pool from "../config/db.js";
 import { initializePaymentTransactionsTable } from "../config/initPaymentTransactions.js";
+import { initializePaymentMethodsTable } from "../config/initPaymentMethods.js";
+
+export const mapPaymentMethodRow = (row) => ({
+  id: row.id_method,
+  type: row.type,
+  name: row.name,
+  category: row.category || "",
+  accountNumber: row.account_number || "",
+  accountName: row.account_name || "",
+  imageUrl: row.image_url || "",
+  imageName: row.image_name || "",
+  isActive: row.is_active !== false,
+  sortOrder: Number(row.sort_order || 0),
+});
+
+export const getPaymentMethodRows = async () => {
+  await initializePaymentMethodsTable();
+
+  const result = await pool.query(
+    `SELECT *
+     FROM flix.payment_methods
+     WHERE is_active = TRUE
+     ORDER BY sort_order ASC, created_at ASC`,
+  );
+
+  return result.rows;
+};
+
+export const getPaymentSettings = async (req, res) => {
+  try {
+    const methods = (await getPaymentMethodRows()).map(mapPaymentMethodRow);
+
+    return res.json({ methods });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal mengambil pengaturan pembayaran.",
+      error: error.message,
+    });
+  }
+};
 
 const normalizeNumber = (value, fallback = 0) => {
   const number = Number(value);

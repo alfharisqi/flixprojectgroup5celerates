@@ -1,11 +1,54 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import flixLogo from "@/assets/flix-logo.png";
 import blueDiamondIcon from "@/assets/icon/bluediamond-icon.png";
+import { resolveMediaUrl } from "@/utils/media";
 import "./PaymentPage.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+const fallbackPaymentMethods = [
+  {
+    id: "qris",
+    type: "qris",
+    name: "QRIS All Payment",
+    category: "QRIS",
+    accountNumber: "00020101021126680014ID.CO.QRIS.WWW01189360029314817",
+    accountName: "FLIX Entertainment",
+    imageUrl: "",
+  },
+  {
+    id: "bca",
+    type: "bank",
+    name: "Bank BCA",
+    category: "Bank",
+    accountNumber: "1234567890",
+    accountName: "FLIX Entertainment",
+    imageUrl: "",
+  },
+  {
+    id: "dana",
+    type: "ewallet",
+    name: "Dana",
+    category: "E-Wallet",
+    accountNumber: "08123456789",
+    accountName: "FLIX Entertainment",
+    imageUrl: "",
+  },
+];
+
+const paymentTypeLabels = {
+  bank: "Transfer Bank",
+  qris: "QR Code",
+  ewallet: "E-Wallet",
+};
+
+const getMethodIcon = (type) => {
+  if (type === "bank") return "🏦";
+  if (type === "ewallet") return "💳";
+  return "📱";
+};
 
 function PaymentPage() {
   const navigate = useNavigate();
@@ -29,9 +72,9 @@ function PaymentPage() {
   const [durationMonths, setDurationMonths] = useState(selectedPackage.durationMonths);
 
   // 3. State Metode Pembayaran & Saluran
-  const [paymentMethod, setPaymentMethod] = useState("qris"); // 'qris', 'bank', 'ewallet'
-  const [selectedBank, setSelectedBank] = useState("bca"); // 'bca', 'mandiri'
-  const [selectedEwallet, setSelectedEwallet] = useState("gopay"); // 'gopay', 'ovo', 'dana'
+  const [paymentMethods, setPaymentMethods] = useState(fallbackPaymentMethods);
+  const [paymentMethod, setPaymentMethod] = useState("qris");
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState("qris");
   const [ewalletPhone, setEwalletPhone] = useState("");
 
   // 4. State Modal Upload & Status Keberhasilan
@@ -45,6 +88,115 @@ function PaymentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [transactionId, setTransactionId] = useState("");
+  const paymentMethodsByType = useMemo(
+    () => ({
+      qris: paymentMethods.filter((method) => method.type === "qris"),
+      bank: paymentMethods.filter((method) => method.type === "bank"),
+      ewallet: paymentMethods.filter((method) => method.type === "ewallet"),
+    }),
+    [paymentMethods],
+  );
+
+  const availablePaymentTypes = useMemo(
+    () =>
+      [
+        {
+          id: "qris",
+          title: "QR Code",
+          description: "Bayar menggunakan QRIS",
+        },
+        {
+          id: "bank",
+          title: "Transfer Bank",
+          description: "Pilih rekening bank tujuan",
+        },
+        {
+          id: "ewallet",
+          title: "E-Wallet",
+          description: "Pilih dompet digital tujuan",
+        },
+      ].filter((type) => paymentMethodsByType[type.id]?.length),
+    [paymentMethodsByType],
+  );
+
+  const selectedTypeMethods = paymentMethodsByType[paymentMethod] || [];
+  const selectedPaymentMethod = useMemo(
+    () =>
+      selectedTypeMethods.find((method) => method.id === selectedPaymentMethodId) ||
+      selectedTypeMethods[0] ||
+      paymentMethods[0] ||
+      fallbackPaymentMethods[0],
+    [paymentMethods, selectedPaymentMethodId, selectedTypeMethods],
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadPaymentSettings = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/payment/settings`);
+        const methods = Array.isArray(response.data?.methods)
+          ? response.data.methods
+          : fallbackPaymentMethods;
+
+        if (!isMounted) {
+          return;
+        }
+
+        const nextMethods = methods.length ? methods : fallbackPaymentMethods;
+        const nextType = nextMethods.some((method) => method.type === "qris")
+          ? "qris"
+          : nextMethods[0]?.type || "qris";
+
+        setPaymentMethods(nextMethods);
+        setPaymentMethod(nextType);
+        setSelectedPaymentMethodId(
+          nextMethods.find((method) => method.type === nextType)?.id ||
+            nextMethods[0]?.id ||
+            "qris",
+        );
+      } catch {
+        if (isMounted) {
+          setPaymentMethods(fallbackPaymentMethods);
+          setPaymentMethod("qris");
+          setSelectedPaymentMethodId("qris");
+        }
+      }
+    };
+
+    loadPaymentSettings();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const currentMethods = paymentMethodsByType[paymentMethod] || [];
+
+    if (!currentMethods.length) {
+      const nextType = availablePaymentTypes[0]?.id || "qris";
+      const nextMethodId =
+        paymentMethodsByType[nextType]?.[0]?.id || fallbackPaymentMethods[0].id;
+
+      if (paymentMethod !== nextType) {
+        setPaymentMethod(nextType);
+      }
+      if (selectedPaymentMethodId !== nextMethodId) {
+        setSelectedPaymentMethodId(nextMethodId);
+      }
+      return;
+    }
+
+    if (!currentMethods.some((method) => method.id === selectedPaymentMethodId)) {
+      setSelectedPaymentMethodId(currentMethods[0].id);
+    }
+  }, [
+    availablePaymentTypes,
+    paymentMethod,
+    paymentMethodsByType,
+    selectedPaymentMethodId,
+  ]);
 
   // Salin teks ke Clipboard
   const handleCopyText = (text) => {
@@ -96,19 +248,13 @@ function PaymentPage() {
   const getPackageCode = () => (Number(durationMonths) === 12 ? "premium_yearly" : "premium");
 
   const getPaymentMethodLabel = () => {
-    if (paymentMethod === "qris") return "QRIS";
-    if (paymentMethod === "bank") return `Transfer Bank (${selectedBank.toUpperCase()})`;
-    return `E-Wallet (${selectedEwallet.toUpperCase()})`;
+    return selectedPaymentMethod?.name || paymentTypeLabels[paymentMethod] || "QRIS";
   };
 
   // Ketika klik tombol "Bayar Sekarang"
   const handleOpenUploadModal = () => {
     if (!fullName.trim() || !email.trim() || !phoneNumber.trim()) {
       setError("Mohon lengkapi Data Diri Pembayar terlebih dahulu!");
-      return;
-    }
-    if (paymentMethod === "ewallet" && !ewalletPhone.trim()) {
-      setError("Mohon isi nomor handphone E-Wallet Anda!");
       return;
     }
     setError("");
@@ -254,65 +400,39 @@ function PaymentPage() {
             </div>
             
             <div className="payment-method-selector-list">
-              {/* Pilihan QR Code */}
-              <label className={`payment-method-row ${paymentMethod === "qris" ? "is-active" : ""}`}>
-                <input
-                  type="radio"
-                  name="main_method"
-                  checked={paymentMethod === "qris"}
-                  onChange={() => setPaymentMethod("qris")}
-                />
-                <div className="method-row-content">
-                  <div className="method-icon-text">
-                    <span className="icon-method-emoji">📱</span>
-                    <div>
-                      <strong>QR Code</strong>
-                      <p>Bayar menggunakan QRIS</p>
+              {availablePaymentTypes.map((type) => (
+                <label
+                  key={type.id}
+                  className={`payment-method-row${
+                    paymentMethod === type.id ? " is-active" : ""
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="main_method"
+                    checked={paymentMethod === type.id}
+                    onChange={() => {
+                      setPaymentMethod(type.id);
+                      setSelectedPaymentMethodId(
+                        paymentMethodsByType[type.id]?.[0]?.id || "",
+                      );
+                    }}
+                  />
+                  <div className="method-row-content">
+                    <div className="method-icon-text">
+                      <span className="icon-method-logo">
+                        {type.id === "bank" ? "BNK" : type.id === "ewallet" ? "EW" : "QR"}
+                      </span>
+                      <div>
+                        <strong>{type.title}</strong>
+                        <p>{type.description}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </label>
-
-              {/* Pilihan Bank Transfer */}
-              <label className={`payment-method-row ${paymentMethod === "bank" ? "is-active" : ""}`}>
-                <input
-                  type="radio"
-                  name="main_method"
-                  checked={paymentMethod === "bank"}
-                  onChange={() => setPaymentMethod("bank")}
-                />
-                <div className="method-row-content">
-                  <div className="method-icon-text">
-                    <span className="icon-method-emoji">🏦</span>
-                    <div>
-                      <strong>Transfer Bank</strong>
-                      <p>Transfer ke nomor rekening bank</p>
-                    </div>
-                  </div>
-                </div>
-              </label>
-
-              {/* Pilihan E-Wallet */}
-              <label className={`payment-method-row ${paymentMethod === "ewallet" ? "is-active" : ""}`}>
-                <input
-                  type="radio"
-                  name="main_method"
-                  checked={paymentMethod === "ewallet"}
-                  onChange={() => setPaymentMethod("ewallet")}
-                />
-                <div className="method-row-content">
-                  <div className="method-icon-text">
-                    <span className="icon-method-emoji">💳</span>
-                    <div>
-                      <strong>E-Wallet</strong>
-                      <p>Bayar dengan saldo e-wallet</p>
-                    </div>
-                  </div>
-                </div>
-              </label>
+                </label>
+              ))}
             </div>
           </section>
-
           {/* 3. DETAIL METODE PEMBAYARAN (DINAMIS) */}
           <section className="payment-section-card">
             <div className="section-title-wrapper">
@@ -320,133 +440,129 @@ function PaymentPage() {
               <h2>Detail Pembayaran</h2>
             </div>
 
-            {/* Jika Memilih QRIS */}
+            {selectedTypeMethods.length > 1 && (
+              <div className="payment-channel-selector">
+                {selectedTypeMethods.map((method) => (
+                  <button
+                    key={method.id}
+                    type="button"
+                    className={`payment-channel-btn${
+                      selectedPaymentMethod.id === method.id ? " is-selected" : ""
+                    }`}
+                    onClick={() => setSelectedPaymentMethodId(method.id)}
+                  >
+                    <span className="payment-channel-icon">
+                      {method.imageUrl ? (
+                        <img src={resolveMediaUrl(method.imageUrl)} alt="" />
+                      ) : (
+                        method.type === "bank" ? "BNK" : method.type === "ewallet" ? "EW" : "QR"
+                      )}
+                    </span>
+                    <span>{method.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {paymentMethod === "qris" && (
               <div className="payment-detail-box animated-fade">
-                <h4>QR Code</h4>
-                <p className="detail-subtext">Scan QR code berikut menggunakan aplikasi e-wallet atau mobile banking</p>
+                <h4>{selectedPaymentMethod.name}</h4>
+                <p className="detail-subtext">Scan QR code atau salin kode pembayaran QRIS berikut.</p>
                 
                 <div className="qris-qr-container">
-                  <svg width="160" height="160" viewBox="0 0 29 29" className="qris-svg-code">
-                    <path d="M0 0h7v7H0zm2 2v3h3V2zm0 8h1v1H2zm0 2h3v1H2zm3 2h2v1H5zm6-6h1v1h-1zm1 2h1v2h-1zm0 3h1v1h-1zM0 22h7v7H0zm2 2v3h3v-3zm20-22h7v7h-7zm2 2v3h3V2zm-9 20h2v1h-2zm1 2h3v1h-3zm2-4h2v1h-2zm-6-2h1v1h-1zm5 2h1v1h-1zm0 2h1v1h-1zm-6-2h1v1h-1zm1 2h1v1h-1zm2 1h1v1h-1zm1 1h1v1h-1z" fill="#000000"/>
-                  </svg>
-                </div>
-
-                <div className="divider-or">
-                  <span>ATAU</span>
+                  {selectedPaymentMethod.imageUrl ? (
+                    <img
+                      src={resolveMediaUrl(selectedPaymentMethod.imageUrl)}
+                      alt={selectedPaymentMethod.name}
+                      className="qris-image-code"
+                    />
+                  ) : (
+                    <svg width="160" height="160" viewBox="0 0 29 29" className="qris-svg-code">
+                      <path d="M0 0h7v7H0zm2 2v3h3V2zm0 8h1v1H2zm0 2h3v1H2zm3 2h2v1H5zm6-6h1v1h-1zm1 2h1v2h-1zm0 3h1v1h-1zM0 22h7v7H0zm2 2v3h3v-3zm20-22h7v7h-7zm2 2v3h3V2zm-9 20h2v1h-2zm1 2h3v1h-3zm2-4h2v1h-2zm-6-2h1v1h-1zm5 2h1v1h-1zm0 2h1v1h-1zm-6-2h1v1h-1zm1 2h1v1h-1zm2 1h1v1h-1zm1 1h1v1h-1z" fill="#000000"/>
+                    </svg>
+                  )}
                 </div>
 
                 <div className="copy-code-group">
-                  <label>Tidak bisa scan? Salin kode pembayaran</label>
+                  <label>Kode pembayaran QRIS</label>
                   <div className="copy-input-row">
                     <input
                       type="text"
                       readOnly
-                      value="00020101021126680014ID.CO.QRIS.WWW01189360029314817"
+                      value={selectedPaymentMethod.accountNumber || "-"}
                     />
-                    <button type="button" onClick={() => handleCopyText("00020101021126680014ID.CO.QRIS.WWW01189360029314817")}>
-                      📋 Salin
+                    <button
+                      type="button"
+                      onClick={() => handleCopyText(selectedPaymentMethod.accountNumber || "")}
+                      disabled={!selectedPaymentMethod.accountNumber}
+                    >
+                      Salin
                     </button>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Jika Memilih Bank Transfer */}
             {paymentMethod === "bank" && (
               <div className="payment-detail-box animated-fade">
-                <h4>Transfer Rekening Bank</h4>
-                <p className="detail-subtext">Pilih salah satu bank di bawah ini untuk melihat nomor rekening</p>
-
-                <div className="bank-tab-selector">
-                  <button
-                    type="button"
-                    className={`bank-tab-btn ${selectedBank === "bca" ? "is-selected" : ""}`}
-                    onClick={() => setSelectedBank("bca")}
-                  >
-                    BCA Virtual Account
-                  </button>
-                  <button
-                    type="button"
-                    className={`bank-tab-btn ${selectedBank === "mandiri" ? "is-selected" : ""}`}
-                    onClick={() => setSelectedBank("mandiri")}
-                  >
-                    Mandiri Transfer
-                  </button>
-                </div>
+                <h4>{selectedPaymentMethod.name}</h4>
+                <p className="detail-subtext">Transfer ke rekening tujuan berikut.</p>
 
                 <div className="bank-account-details">
-                  {selectedBank === "bca" ? (
-                    <div className="bank-info-card">
-                      <div className="bank-logo-row">BCA</div>
-                      <div className="bank-num-label">Nomor Virtual Account</div>
-                      <div className="bank-num-value-row">
-                        <strong>88012 0812 3456 7890</strong>
-                        <button type="button" onClick={() => handleCopyText("88012081234567890")}>Salin</button>
-                      </div>
-                      <div className="bank-holder-label">Nama Rekening: <strong>PT FLIX INDONESIA</strong></div>
+                  <div className="bank-info-card">
+                    <div className="bank-logo-row payment-method-logo-row">
+                      {selectedPaymentMethod.imageUrl ? (
+                        <img src={resolveMediaUrl(selectedPaymentMethod.imageUrl)} alt={selectedPaymentMethod.name} />
+                      ) : (
+                        selectedPaymentMethod.name
+                      )}
                     </div>
-                  ) : (
-                    <div className="bank-info-card">
-                      <div className="bank-logo-row">MANDIRI</div>
-                      <div className="bank-num-label">Nomor Rekening Mandiri</div>
-                      <div className="bank-num-value-row">
-                        <strong>137 00234 56789</strong>
-                        <button type="button" onClick={() => handleCopyText("1370023456789")}>Salin</button>
-                      </div>
-                      <div className="bank-holder-label">Nama Rekening: <strong>PT FLIX INDONESIA</strong></div>
+                    <div className="bank-num-label">Nomor Rekening / Virtual Account</div>
+                    <div className="bank-num-value-row">
+                      <strong>{selectedPaymentMethod.accountNumber || "-"}</strong>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyText(selectedPaymentMethod.accountNumber || "")}
+                        disabled={!selectedPaymentMethod.accountNumber}
+                      >
+                        Salin
+                      </button>
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Jika Memilih E-Wallet */}
-            {paymentMethod === "ewallet" && (
-              <div className="payment-detail-box animated-fade">
-                <h4>Dompet Digital (E-Wallet)</h4>
-                <p className="detail-subtext">Pilih e-wallet dan masukkan nomor HP yang terdaftar</p>
-
-                <div className="ewallet-selector-grid">
-                  <button
-                    type="button"
-                    className={`ewallet-logo-btn ${selectedEwallet === "gopay" ? "is-selected" : ""}`}
-                    onClick={() => setSelectedEwallet("gopay")}
-                  >
-                    GoPay
-                  </button>
-                  <button
-                    type="button"
-                    className={`ewallet-logo-btn ${selectedEwallet === "ovo" ? "is-selected" : ""}`}
-                    onClick={() => setSelectedEwallet("ovo")}
-                  >
-                    OVO
-                  </button>
-                  <button
-                    type="button"
-                    className={`ewallet-logo-btn ${selectedEwallet === "dana" ? "is-selected" : ""}`}
-                    onClick={() => setSelectedEwallet("dana")}
-                  >
-                    DANA
-                  </button>
-                </div>
-
-                <div className="ewallet-phone-group">
-                  <label>Nomor HP terdaftar di {selectedEwallet.toUpperCase()}</label>
-                  <div className="phone-prefix-input">
-                    <span className="prefix">+62</span>
-                    <input
-                      type="tel"
-                      placeholder="812XXXXXXXX"
-                      value={ewalletPhone}
-                      onChange={(e) => setEwalletPhone(e.target.value)}
-                    />
+                    <div className="bank-holder-label">Atas Nama: <strong>{selectedPaymentMethod.accountName || "-"}</strong></div>
                   </div>
                 </div>
               </div>
             )}
-          </section>
 
+            {paymentMethod === "ewallet" && (
+              <div className="payment-detail-box animated-fade">
+                <h4>{selectedPaymentMethod.name}</h4>
+                <p className="detail-subtext">Transfer e-wallet ke kode/nomor tujuan berikut.</p>
+
+                <div className="bank-info-card">
+                  <div className="bank-logo-row payment-method-logo-row">
+                    {selectedPaymentMethod.imageUrl ? (
+                      <img src={resolveMediaUrl(selectedPaymentMethod.imageUrl)} alt={selectedPaymentMethod.name} />
+                    ) : (
+                      selectedPaymentMethod.name
+                    )}
+                  </div>
+                  <div className="bank-num-label">Kode / Nomor Tujuan</div>
+                  <div className="bank-num-value-row">
+                    <strong>{selectedPaymentMethod.accountNumber || "-"}</strong>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyText(selectedPaymentMethod.accountNumber || "")}
+                      disabled={!selectedPaymentMethod.accountNumber}
+                    >
+                      Salin
+                    </button>
+                  </div>
+                  <div className="bank-holder-label">Atas Nama: <strong>{selectedPaymentMethod.accountName || "-"}</strong></div>
+                </div>
+              </div>
+            )}
+          </section>
           {/* 5. TOMBOL BAYAR UTAMA */}
           {error && <p className="payment-error-msg">{error}</p>}
           <button
@@ -506,7 +622,7 @@ function PaymentPage() {
               </div>
               <div className="summary-row">
                 <span>Metode Pembayaran</span>
-                <strong className="text-uppercase">{paymentMethod.toUpperCase()}</strong>
+                <strong>{selectedPaymentMethod.name}</strong>
               </div>
 
               <div className="summary-total">

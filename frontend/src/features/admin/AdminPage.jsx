@@ -716,7 +716,8 @@ function AdminPage() {
           usersResponse,
           reviewsResponse,
           communityResponse,
-          transactionsResponse
+          transactionsResponse,
+          paymentSettingsResponse
         ] = await Promise.all([
           fetch(dashboardUrl, {
             headers: {
@@ -747,6 +748,11 @@ function AdminPage() {
             headers: {
               Authorization: `Bearer ${token}`
             }
+          }),
+          fetch(`${API_URL}/api/admin/payment-settings`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
           })
         ]);
 
@@ -760,6 +766,9 @@ function AdminPage() {
         const reviewsData = reviewsResponse.ok ? await reviewsResponse.json() : null;
         const communityData = communityResponse.ok ? await communityResponse.json() : null;
         const transactionsData = transactionsResponse.ok ? await transactionsResponse.json() : null;
+        const paymentSettingsData = paymentSettingsResponse.ok
+          ? await paymentSettingsResponse.json()
+          : null;
 
         setDashboard(normalizeDashboard(dashboardData?.dashboard || dashboardData));
         setDashboardError(dashboardResponse.ok ? "" : "Dashboard belum bisa mengambil data backend.");
@@ -850,6 +859,15 @@ function AdminPage() {
           items: transactionItems
         });
         setTransactionsError(transactionsResponse.ok ? "" : "Riwayat transaksi belum bisa mengambil data backend.");
+
+        const paymentMethodItems = Array.isArray(paymentSettingsData?.methods)
+          ? paymentSettingsData.methods
+          : defaultPaymentMethods;
+        setPaymentMethods(paymentMethodItems);
+        setSelectedPaymentMethodId(paymentMethodItems[0]?.id || "");
+        setPaymentSettingsFeedback(
+          paymentSettingsResponse.ok ? "" : "Pengaturan pembayaran belum bisa mengambil data backend."
+        );
       } catch {
         if (isMounted) {
           setDashboard(fallbackDashboard);
@@ -866,6 +884,9 @@ function AdminPage() {
           setCommunityError("Kelola community belum bisa mengambil data backend.");
           setAdminTransactions(fallbackTransactions);
           setTransactionsError("Riwayat transaksi belum bisa mengambil data backend.");
+          setPaymentMethods(defaultPaymentMethods);
+          setSelectedPaymentMethodId(defaultPaymentMethods[0]?.id || "");
+          setPaymentSettingsFeedback("Pengaturan pembayaran belum bisa mengambil data backend.");
         }
       } finally {
         if (isMounted) {
@@ -1271,6 +1292,7 @@ function AdminPage() {
       category: "Bank",
       accountNumber: "",
       accountName: "FLIX Entertainment",
+      imageUrl: "",
       imageName: ""
     };
 
@@ -1296,8 +1318,87 @@ function AdminPage() {
     });
   };
 
-  const savePaymentSettings = () => {
-    setPaymentSettingsFeedback("Perubahan pembayaran tersimpan sementara di halaman admin.");
+  const uploadPaymentMethodImage = async (file) => {
+    const token = localStorage.getItem("token");
+
+    if (!token || !file) {
+      return null;
+    }
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    const response = await fetch(`${API_URL}/api/uploads/editor-image`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: formData
+    });
+    const data = response.ok ? await response.json() : null;
+
+    if (!response.ok || !data?.imageUrl) {
+      throw new Error(data?.message || "Gagal upload logo pembayaran.");
+    }
+
+    return data.imageUrl;
+  };
+
+  const handlePaymentMethodImageChange = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      setPaymentSettingsFeedback("Mengupload logo pembayaran...");
+      const imageUrl = await uploadPaymentMethodImage(file);
+      updateSelectedPaymentMethod("imageUrl", imageUrl);
+      updateSelectedPaymentMethod("imageName", file.name);
+      setPaymentSettingsFeedback("Logo pembayaran berhasil diupload. Klik Simpan Perubahan untuk menyimpan.");
+    } catch (error) {
+      setPaymentSettingsFeedback(error.message || "Gagal upload logo pembayaran.");
+    }
+  };
+
+  const savePaymentSettings = async () => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setPaymentSettingsFeedback("Sesi admin tidak tersedia.");
+      return;
+    }
+
+    try {
+      setPaymentSettingsFeedback("Menyimpan pengaturan pembayaran...");
+      const response = await fetch(`${API_URL}/api/admin/payment-settings`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          methods: paymentMethods.map((method, index) => ({
+            ...method,
+            sortOrder: index + 1
+          }))
+        })
+      });
+      const data = response.ok ? await response.json() : null;
+
+      if (!response.ok || !Array.isArray(data?.methods)) {
+        setPaymentSettingsFeedback(data?.message || "Gagal menyimpan pengaturan pembayaran.");
+        return;
+      }
+
+      setPaymentMethods(data.methods);
+      setSelectedPaymentMethodId(data.methods[0]?.id || "");
+      setPaymentSettingsFeedback(data.message || "Pengaturan pembayaran berhasil disimpan.");
+    } catch {
+      setPaymentSettingsFeedback("Gagal menyimpan pengaturan pembayaran.");
+    }
   };
 
   const updateTransactionStatus = async (transactionId, nextStatus) => {
@@ -2771,7 +2872,9 @@ function AdminPage() {
                             onClick={() => setSelectedPaymentMethodId(method.id)}
                           >
                             <span className="admin-payment-method-card__icon">
-                              {method.type === "ewallet" ? (
+                              {method.imageUrl ? (
+                                <img src={resolveMediaUrl(method.imageUrl)} alt="" />
+                              ) : method.type === "ewallet" ? (
                                 <FiCreditCard aria-hidden="true" />
                               ) : method.type === "qris" ? (
                                 <FiGrid aria-hidden="true" />
@@ -2865,7 +2968,14 @@ function AdminPage() {
                     <div className="admin-payment-upload">
                       <div>
                         <span className="admin-payment-upload__preview">
-                          <FiUploadCloud aria-hidden="true" />
+                          {selectedPaymentMethod?.imageUrl ? (
+                            <img
+                              src={resolveMediaUrl(selectedPaymentMethod.imageUrl)}
+                              alt={selectedPaymentMethod?.name || "Logo metode pembayaran"}
+                            />
+                          ) : (
+                            <FiUploadCloud aria-hidden="true" />
+                          )}
                         </span>
                         <div>
                           <strong>{selectedPaymentMethod?.imageName || "Belum ada gambar"}</strong>
@@ -2878,15 +2988,16 @@ function AdminPage() {
                         <input
                           type="file"
                           accept="image/png,image/jpeg,image/jpg,image/webp"
-                          onChange={(event) =>
-                            updateSelectedPaymentMethod("imageName", event.target.files?.[0]?.name || "")
-                          }
+                          onChange={handlePaymentMethodImageChange}
                         />
                       </label>
                       <button
                         type="button"
                         aria-label="Hapus gambar metode pembayaran"
-                        onClick={() => updateSelectedPaymentMethod("imageName", "")}
+                        onClick={() => {
+                          updateSelectedPaymentMethod("imageUrl", "");
+                          updateSelectedPaymentMethod("imageName", "");
+                        }}
                       >
                         <FiX aria-hidden="true" />
                       </button>

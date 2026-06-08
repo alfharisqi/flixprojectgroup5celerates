@@ -1,6 +1,8 @@
 import pool from "../config/db.js";
 import { initializeUserStatusColumns } from "../config/initUserStatus.js";
 import { initializePaymentTransactionsTable } from "../config/initPaymentTransactions.js";
+import { initializePaymentMethodsTable } from "../config/initPaymentMethods.js";
+import { getPaymentMethodRows, mapPaymentMethodRow } from "./paymentController.js";
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w92";
@@ -1658,6 +1660,128 @@ export const getAdminTransactions = async (req, res) => {
       message: "Gagal mengambil transaksi admin",
       error: error.message,
     });
+  }
+};
+
+const normalizeAdminPaymentMethods = (methods) => {
+  if (!Array.isArray(methods)) {
+    return [];
+  }
+
+  return methods
+    .map((method, index) => {
+      const id = String(method.id || method.id_method || "").trim();
+      const type = String(method.type || "").trim().toLowerCase();
+      const name = String(method.name || "").trim();
+
+      if (!id || !["bank", "qris", "ewallet"].includes(type) || !name) {
+        return null;
+      }
+
+      return {
+        id,
+        type,
+        name,
+        category: String(method.category || "").trim(),
+        accountNumber: String(method.accountNumber || method.account_number || "").trim(),
+        accountName: String(method.accountName || method.account_name || "").trim(),
+        imageUrl: String(method.imageUrl || method.image_url || "").trim(),
+        imageName: String(method.imageName || method.image_name || "").trim(),
+        sortOrder: Number.isFinite(Number(method.sortOrder ?? method.sort_order))
+          ? Number(method.sortOrder ?? method.sort_order)
+          : index + 1,
+      };
+    })
+    .filter(Boolean);
+};
+
+export const getAdminPaymentSettings = async (req, res) => {
+  try {
+    const methods = (await getPaymentMethodRows()).map(mapPaymentMethodRow);
+
+    return res.json({ methods });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal mengambil pengaturan pembayaran",
+      error: error.message,
+    });
+  }
+};
+
+export const updateAdminPaymentSettings = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const methods = normalizeAdminPaymentMethods(req.body?.methods);
+
+    if (!methods.length) {
+      return res.status(400).json({
+        message: "Minimal harus ada satu metode pembayaran aktif.",
+      });
+    }
+
+    await initializePaymentMethodsTable();
+    await client.query("BEGIN");
+    await client.query("UPDATE flix.payment_methods SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP");
+
+    for (const method of methods) {
+      await client.query(
+        `INSERT INTO flix.payment_methods (
+           id_method,
+           type,
+           name,
+           category,
+           account_number,
+           account_name,
+           image_url,
+           image_name,
+           is_active,
+           sort_order,
+           updated_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, $9, CURRENT_TIMESTAMP)
+         ON CONFLICT (id_method) DO UPDATE
+         SET type = EXCLUDED.type,
+             name = EXCLUDED.name,
+             category = EXCLUDED.category,
+             account_number = EXCLUDED.account_number,
+             account_name = EXCLUDED.account_name,
+             image_url = EXCLUDED.image_url,
+             image_name = EXCLUDED.image_name,
+             is_active = TRUE,
+             sort_order = EXCLUDED.sort_order,
+             updated_at = CURRENT_TIMESTAMP`,
+        [
+          method.id,
+          method.type,
+          method.name,
+          method.category,
+          method.accountNumber,
+          method.accountName,
+          method.imageUrl,
+          method.imageName,
+          method.sortOrder,
+        ],
+      );
+    }
+
+    await client.query("COMMIT");
+
+    const nextMethods = (await getPaymentMethodRows()).map(mapPaymentMethodRow);
+
+    return res.json({
+      message: "Pengaturan pembayaran berhasil disimpan.",
+      methods: nextMethods,
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+
+    return res.status(500).json({
+      message: "Gagal menyimpan pengaturan pembayaran",
+      error: error.message,
+    });
+  } finally {
+    client.release();
   }
 };
 

@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 import path from "path";
-import { upgradeToPremium } from "../controllers/paymentController.js";
+import { getPaymentSettings, upgradeToPremium } from "../controllers/paymentController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -35,6 +35,8 @@ const upload = multer({
     fileSize: 2 * 1024 * 1024 // Batasi ukuran file maksimal 2 MB
   }
 });
+
+router.get("/settings", getPaymentSettings);
 
 // 3. Tambahkan middleware upload.single("payment_proof") pada rute checkout
 router.post("/checkout", verifyToken, upload.single("payment_proof"), upgradeToPremium);

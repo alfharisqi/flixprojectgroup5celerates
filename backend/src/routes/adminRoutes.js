@@ -5,12 +5,14 @@ import {
   getAdminCommunity,
   getAdminDashboard,
   getAdminMovies,
+  getAdminPaymentSettings,
   getAdminReviews,
   getAdminTransactions,
   getAdminUserDetail,
   getAdminUsers,
   updateAdminTransactionStatus,
   updateAdminCommunityReportStatus,
+  updateAdminPaymentSettings,
   updateAdminReviewReportStatus,
   updateAdminUserStatus,
   updateAdminMovie
@@ -79,6 +81,20 @@ router.patch(
   verifyToken,
   allowRoles("admin"),
   updateAdminTransactionStatus
+);
+
+router.get(
+  "/payment-settings",
+  verifyToken,
+  allowRoles("admin"),
+  getAdminPaymentSettings
+);
+
+router.put(
+  "/payment-settings",
+  verifyToken,
+  allowRoles("admin"),
+  updateAdminPaymentSettings
 );
 
 router.patch(

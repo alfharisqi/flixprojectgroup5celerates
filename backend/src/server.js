@@ -43,6 +43,7 @@ import { initializeReportsTable } from "./config/initReports.js";
 import { initializeAdminMoviesTable } from "./config/initAdminMovies.js";
 import { initializeContactMessagesTable } from "./config/initContactMessages.js";
 import { initializePaymentTransactionsTable } from "./config/initPaymentTransactions.js";
+import { initializePaymentMethodsTable } from "./config/initPaymentMethods.js";
 
 dotenv.config();
 
@@ -69,6 +70,7 @@ const initializeDatabase = () => {
       initializeAdminMoviesTable(),
       initializeContactMessagesTable(),
       initializePaymentTransactionsTable(),
+      initializePaymentMethodsTable(),
     ]).then(() => initializeReportsTable());
   }
 
