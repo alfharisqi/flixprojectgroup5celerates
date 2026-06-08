@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import flixLogo from "@/assets/flix-logo.png";
@@ -45,25 +45,6 @@ function PaymentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [transactionId, setTransactionId] = useState("");
-  const [timeLeft, setTimeLeft] = useState(900); // Timer QRIS 15 menit (900 detik)
-
-  // Countdown timer untuk QRIS
-  useEffect(() => {
-    if (paymentMethod !== "qris" || timeLeft <= 0) return;
-
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [paymentMethod, timeLeft]);
-
-  // Format detik menjadi MM:SS
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
 
   // Salin teks ke Clipboard
   const handleCopyText = (text) => {
@@ -349,11 +330,6 @@ function PaymentPage() {
                   <svg width="160" height="160" viewBox="0 0 29 29" className="qris-svg-code">
                     <path d="M0 0h7v7H0zm2 2v3h3V2zm0 8h1v1H2zm0 2h3v1H2zm3 2h2v1H5zm6-6h1v1h-1zm1 2h1v2h-1zm0 3h1v1h-1zM0 22h7v7H0zm2 2v3h3v-3zm20-22h7v7h-7zm2 2v3h3V2zm-9 20h2v1h-2zm1 2h3v1h-3zm2-4h2v1h-2zm-6-2h1v1h-1zm5 2h1v1h-1zm0 2h1v1h-1zm-6-2h1v1h-1zm1 2h1v1h-1zm2 1h1v1h-1zm1 1h1v1h-1z" fill="#000000"/>
                   </svg>
-                </div>
-
-                <div className="qris-timer-alert">
-                  <span className="info-icon">ℹ️</span>
-                  <span>QR Code akan kadaluarsa dalam <strong>{formatTime(timeLeft)}</strong></span>
                 </div>
 
                 <div className="divider-or">
@@ -703,3 +679,4 @@ function PaymentPage() {
 }
 
 export default PaymentPage;
+

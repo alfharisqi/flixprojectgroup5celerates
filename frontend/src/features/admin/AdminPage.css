@@ -3140,16 +3140,26 @@
 }
 
 .admin-transaction-table {
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 .admin-transaction-table__row {
-  min-width: 1160px;
+  width: 100%;
+  min-width: 0;
   display: grid;
-  grid-template-columns: 160px minmax(230px, 1.2fr) 140px 98px 135px 124px 112px 72px;
+  grid-template-columns:
+    minmax(132px, 0.92fr)
+    minmax(180px, 1.25fr)
+    minmax(106px, 0.76fr)
+    minmax(72px, 0.48fr)
+    minmax(104px, 0.76fr)
+    minmax(96px, 0.62fr)
+    minmax(88px, 0.58fr)
+    46px;
+  column-gap: 12px;
   align-items: center;
   min-height: 94px;
-  padding: 0 18px;
+  padding: 0 14px;
   border-bottom: 1px solid rgba(128, 128, 128, 0.65);
   color: #ffffff;
   font-size: 13px;
@@ -3161,6 +3171,14 @@
   border: 1px solid #404040;
   background: #404040;
   font-size: 13px;
+}
+
+.admin-transaction-table__row > span,
+.admin-transaction-table__row > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .admin-transaction-id,
@@ -3191,13 +3209,13 @@
 .admin-transaction-user {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .admin-transaction-user img,
 .admin-transaction-user > span {
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   flex: 0 0 auto;
   border-radius: 50%;
 }
@@ -3211,7 +3229,7 @@
   place-items: center;
   background: #e50914;
   color: #ffffff;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -3274,10 +3292,12 @@
 }
 
 .admin-transaction-actions {
-  display: inline-flex;
+  width: 46px;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  justify-self: center;
 }
 
 .admin-transaction-actions button {
@@ -3307,7 +3327,7 @@
 }
 
 .admin-transaction-table__empty {
-  min-width: 1160px;
+  min-width: 0;
   padding: 58px 16px;
   color: #979797;
   font-size: 14px;

@@ -2748,7 +2748,6 @@ function AdminPage() {
                   <span>1</span>
                   <div>
                     <h3>Pilih Paket</h3>
-                    <p>Pilih paket yang akan dikelola.</p>
                   </div>
                 </div>
 
