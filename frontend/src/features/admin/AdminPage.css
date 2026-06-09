@@ -2826,6 +2826,167 @@
   padding: 0;
 }
 
+.admin-payment-crop-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(8px);
+}
+
+.admin-payment-crop-modal__dialog {
+  width: min(560px, 100%);
+  max-height: min(92vh, 720px);
+  overflow-y: auto;
+  padding: 24px;
+  border-radius: 20px;
+  background: #232323;
+  box-shadow:
+    0 69px 28px rgba(0, 0, 0, 0.02),
+    0 39px 23px rgba(0, 0, 0, 0.08),
+    0 17px 17px rgba(0, 0, 0, 0.13),
+    0 4px 9px rgba(0, 0, 0, 0.15);
+}
+
+.admin-payment-crop-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.admin-payment-crop-modal__header h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.admin-payment-crop-modal__header button {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 50%;
+  background: transparent;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.admin-payment-crop-modal__stage {
+  position: relative;
+  width: min(360px, 100%);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #000000;
+  cursor: grab;
+  touch-action: none;
+}
+
+.admin-payment-crop-modal__stage:active {
+  cursor: grabbing;
+}
+
+.admin-payment-crop-modal__stage img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: none;
+  max-height: none;
+  user-select: none;
+  pointer-events: none;
+  transform-origin: center;
+  translate: -50% -50%;
+}
+
+.admin-payment-crop-modal__circle-mask {
+  position: absolute;
+  inset: 12%;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.42);
+  pointer-events: none;
+}
+
+.admin-payment-crop-modal__zoom {
+  width: fit-content;
+  min-width: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 22px auto 0;
+  padding: 10px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.admin-payment-crop-modal__zoom button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  background: transparent;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.admin-payment-crop-modal__zoom button span {
+  display: block;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+.admin-payment-crop-modal__zoom button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.admin-payment-crop-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.admin-payment-crop-modal__actions button {
+  min-width: 130px;
+  min-height: 48px;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-payment-crop-modal__actions button:first-child {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+}
+
+.admin-payment-crop-modal__actions button:last-child {
+  border: 0;
+  background: #e50914;
+}
+
+.admin-payment-crop-modal__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .admin-payment-price-card {
   display: grid;
   grid-template-columns: minmax(190px, 1fr) 118px 200px;

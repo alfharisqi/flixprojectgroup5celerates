@@ -33,6 +33,23 @@ const defaultPaymentMethods = [
   },
 ];
 
+const defaultPaymentPackages = [
+  {
+    code: "premium",
+    name: "Premium Bulanan",
+    durationMonths: 1,
+    price: 29000,
+    sortOrder: 1,
+  },
+  {
+    code: "premium_yearly",
+    name: "Eksklusif",
+    durationMonths: 12,
+    price: 249000,
+    sortOrder: 2,
+  },
+];
+
 export const initializePaymentMethodsTable = async () => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS flix.payment_methods (
@@ -50,6 +67,19 @@ export const initializePaymentMethodsTable = async () => {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT payment_methods_type_check
         CHECK (type IN ('bank', 'qris', 'ewallet'))
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS flix.payment_packages (
+      package_code VARCHAR(40) PRIMARY KEY,
+      package_name VARCHAR(120) NOT NULL,
+      duration_months INTEGER NOT NULL DEFAULT 1,
+      price INTEGER NOT NULL DEFAULT 0,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
@@ -76,6 +106,27 @@ export const initializePaymentMethodsTable = async () => {
         method.accountName,
         method.imageName,
         method.sortOrder,
+      ],
+    );
+  }
+
+  for (const paymentPackage of defaultPaymentPackages) {
+    await pool.query(
+      `INSERT INTO flix.payment_packages (
+         package_code,
+         package_name,
+         duration_months,
+         price,
+         sort_order
+       )
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (package_code) DO NOTHING`,
+      [
+        paymentPackage.code,
+        paymentPackage.name,
+        paymentPackage.durationMonths,
+        paymentPackage.price,
+        paymentPackage.sortOrder,
       ],
     );
   }

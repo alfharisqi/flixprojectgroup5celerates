@@ -15,6 +15,15 @@ export const mapPaymentMethodRow = (row) => ({
   sortOrder: Number(row.sort_order || 0),
 });
 
+export const mapPaymentPackageRow = (row) => ({
+  code: row.package_code,
+  name: row.package_name,
+  durationMonths: Number(row.duration_months || 1),
+  price: Number(row.price || 0),
+  isActive: row.is_active !== false,
+  sortOrder: Number(row.sort_order || 0),
+});
+
 export const getPaymentMethodRows = async () => {
   await initializePaymentMethodsTable();
 
@@ -28,11 +37,40 @@ export const getPaymentMethodRows = async () => {
   return result.rows;
 };
 
+export const getPaymentPackageRows = async () => {
+  await initializePaymentMethodsTable();
+
+  const result = await pool.query(
+    `SELECT *
+     FROM flix.payment_packages
+     WHERE is_active = TRUE
+     ORDER BY sort_order ASC, duration_months ASC`,
+  );
+
+  return result.rows;
+};
+
 export const getPaymentSettings = async (req, res) => {
   try {
     const methods = (await getPaymentMethodRows()).map(mapPaymentMethodRow);
+    const packages = (await getPaymentPackageRows()).map(mapPaymentPackageRow);
+    await initializePaymentTransactionsTable();
+    const subscriberResult = await pool.query(
+      `SELECT COUNT(DISTINCT u.id_user) AS total
+       FROM flix.users u
+       LEFT JOIN flix.payment_transactions pt
+         ON pt.id_user = u.id_user
+        AND pt.status = 'approved'
+        AND (
+          pt.premium_expired_at IS NULL
+          OR pt.premium_expired_at > CURRENT_TIMESTAMP
+        )
+       WHERE u.is_premium = TRUE
+          OR pt.id_transaction IS NOT NULL`,
+    );
+    const subscriberCount = Number(subscriberResult.rows[0]?.total || 0);
 
-    return res.json({ methods });
+    return res.json({ methods, packages, subscriberCount });
   } catch (error) {
     return res.status(500).json({
       message: "Gagal mengambil pengaturan pembayaran.",
@@ -53,7 +91,7 @@ const normalizePackage = (body) => {
     String(body.packageCode || body.package_code || "").trim() ||
     (durationMonths >= 12 ? "premium_yearly" : "premium");
   const packageName =
-    rawName || (durationMonths >= 12 ? "Premium Tahunan" : "Premium Bulanan");
+    rawName || (durationMonths >= 12 ? "Eksklusif" : "Premium Bulanan");
 
   return {
     packageCode,

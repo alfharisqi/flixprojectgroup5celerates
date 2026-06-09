@@ -2,7 +2,12 @@ import pool from "../config/db.js";
 import { initializeUserStatusColumns } from "../config/initUserStatus.js";
 import { initializePaymentTransactionsTable } from "../config/initPaymentTransactions.js";
 import { initializePaymentMethodsTable } from "../config/initPaymentMethods.js";
-import { getPaymentMethodRows, mapPaymentMethodRow } from "./paymentController.js";
+import {
+  getPaymentMethodRows,
+  getPaymentPackageRows,
+  mapPaymentMethodRow,
+  mapPaymentPackageRow,
+} from "./paymentController.js";
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w92";
@@ -1695,11 +1700,50 @@ const normalizeAdminPaymentMethods = (methods) => {
     .filter(Boolean);
 };
 
+const normalizeAdminPaymentPackages = (packages) => {
+  if (!Array.isArray(packages)) {
+    return [];
+  }
+
+  return packages
+    .map((paymentPackage, index) => {
+      const code = String(
+        paymentPackage.code || paymentPackage.packageCode || paymentPackage.package_code || "",
+      ).trim();
+      const name = String(
+        paymentPackage.name || paymentPackage.packageName || paymentPackage.package_name || "",
+      ).trim();
+      const durationMonths = Number(
+        paymentPackage.durationMonths || paymentPackage.duration_months || 1,
+      );
+      const price = Number(
+        String(paymentPackage.price ?? paymentPackage.amount ?? "")
+          .replace(/[^\d]/g, ""),
+      );
+
+      if (!code || !name || !Number.isFinite(durationMonths) || durationMonths <= 0) {
+        return null;
+      }
+
+      return {
+        code,
+        name,
+        durationMonths,
+        price: Number.isFinite(price) ? price : 0,
+        sortOrder: Number.isFinite(Number(paymentPackage.sortOrder ?? paymentPackage.sort_order))
+          ? Number(paymentPackage.sortOrder ?? paymentPackage.sort_order)
+          : index + 1,
+      };
+    })
+    .filter(Boolean);
+};
+
 export const getAdminPaymentSettings = async (req, res) => {
   try {
     const methods = (await getPaymentMethodRows()).map(mapPaymentMethodRow);
+    const packages = (await getPaymentPackageRows()).map(mapPaymentPackageRow);
 
-    return res.json({ methods });
+    return res.json({ methods, packages });
   } catch (error) {
     return res.status(500).json({
       message: "Gagal mengambil pengaturan pembayaran",
@@ -1713,6 +1757,7 @@ export const updateAdminPaymentSettings = async (req, res) => {
 
   try {
     const methods = normalizeAdminPaymentMethods(req.body?.methods);
+    const packages = normalizeAdminPaymentPackages(req.body?.packages);
 
     if (!methods.length) {
       return res.status(400).json({
@@ -1765,13 +1810,50 @@ export const updateAdminPaymentSettings = async (req, res) => {
       );
     }
 
+    if (packages.length) {
+      await client.query(
+        "UPDATE flix.payment_packages SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP",
+      );
+
+      for (const paymentPackage of packages) {
+        await client.query(
+          `INSERT INTO flix.payment_packages (
+             package_code,
+             package_name,
+             duration_months,
+             price,
+             is_active,
+             sort_order,
+             updated_at
+           )
+           VALUES ($1, $2, $3, $4, TRUE, $5, CURRENT_TIMESTAMP)
+           ON CONFLICT (package_code) DO UPDATE
+           SET package_name = EXCLUDED.package_name,
+               duration_months = EXCLUDED.duration_months,
+               price = EXCLUDED.price,
+               is_active = TRUE,
+               sort_order = EXCLUDED.sort_order,
+               updated_at = CURRENT_TIMESTAMP`,
+          [
+            paymentPackage.code,
+            paymentPackage.name,
+            paymentPackage.durationMonths,
+            paymentPackage.price,
+            paymentPackage.sortOrder,
+          ],
+        );
+      }
+    }
+
     await client.query("COMMIT");
 
     const nextMethods = (await getPaymentMethodRows()).map(mapPaymentMethodRow);
+    const nextPackages = (await getPaymentPackageRows()).map(mapPaymentPackageRow);
 
     return res.json({
       message: "Pengaturan pembayaran berhasil disimpan.",
       methods: nextMethods,
+      packages: nextPackages,
     });
   } catch (error) {
     await client.query("ROLLBACK");

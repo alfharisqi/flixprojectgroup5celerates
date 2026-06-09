@@ -44,6 +44,21 @@ const paymentTypeLabels = {
   ewallet: "E-Wallet",
 };
 
+const fallbackPaymentPackages = [
+  {
+    code: "premium",
+    name: "Premium Bulanan",
+    durationMonths: 1,
+    price: 29000,
+  },
+  {
+    code: "premium_yearly",
+    name: "Eksklusif",
+    durationMonths: 12,
+    price: 249000,
+  },
+];
+
 const getMethodIcon = (type) => {
   if (type === "bank") return "🏦";
   if (type === "ewallet") return "💳";
@@ -73,6 +88,7 @@ function PaymentPage() {
 
   // 3. State Metode Pembayaran & Saluran
   const [paymentMethods, setPaymentMethods] = useState(fallbackPaymentMethods);
+  const [paymentPackages, setPaymentPackages] = useState(fallbackPaymentPackages);
   const [paymentMethod, setPaymentMethod] = useState("qris");
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState("qris");
   const [ewalletPhone, setEwalletPhone] = useState("");
@@ -138,6 +154,9 @@ function PaymentPage() {
         const methods = Array.isArray(response.data?.methods)
           ? response.data.methods
           : fallbackPaymentMethods;
+        const packages = Array.isArray(response.data?.packages)
+          ? response.data.packages
+          : fallbackPaymentPackages;
 
         if (!isMounted) {
           return;
@@ -149,6 +168,7 @@ function PaymentPage() {
           : nextMethods[0]?.type || "qris";
 
         setPaymentMethods(nextMethods);
+        setPaymentPackages(packages.length ? packages : fallbackPaymentPackages);
         setPaymentMethod(nextType);
         setSelectedPaymentMethodId(
           nextMethods.find((method) => method.type === nextType)?.id ||
@@ -158,6 +178,7 @@ function PaymentPage() {
       } catch {
         if (isMounted) {
           setPaymentMethods(fallbackPaymentMethods);
+          setPaymentPackages(fallbackPaymentPackages);
           setPaymentMethod("qris");
           setSelectedPaymentMethodId("qris");
         }
@@ -206,12 +227,18 @@ function PaymentPage() {
 
   // Kalkulasi Harga secara Dinamis berdasarkan Durasi Bulan
   const getSubtotal = () => {
-    // Jika durasi 12 bulan (tahunan), beri harga khusus paket tahunan Rp 249.000
+    const monthlyPackage =
+      paymentPackages.find((paymentPackage) => paymentPackage.code === "premium") ||
+      fallbackPaymentPackages[0];
+    const yearlyPackage =
+      paymentPackages.find((paymentPackage) => paymentPackage.code === "premium_yearly") ||
+      fallbackPaymentPackages[1];
+
     if (Number(durationMonths) === 12) {
-      return 249000;
+      return Number(yearlyPackage.price || 0);
     }
-    // Jika bulanan biasa
-    return Number(durationMonths) * 29000;
+
+    return Number(durationMonths) * Number(monthlyPackage.price || 0);
   };
 
   const subtotal = getSubtotal();
@@ -287,7 +314,7 @@ function PaymentPage() {
       formData.append("packageCode", getPackageCode());
       formData.append(
         "packageName",
-        Number(durationMonths) === 12 ? "Premium Tahunan" : "Premium Bulanan",
+        Number(durationMonths) === 12 ? "Eksklusif" : "Premium Bulanan",
       );
       formData.append("durationMonths", String(durationMonths));
       formData.append("paymentMethod", paymentMethod);
@@ -386,7 +413,7 @@ function PaymentPage() {
                   <option value={1}>1 Bulan (Premium Bulanan)</option>
                   <option value={3}>3 Bulan</option>
                   <option value={6}>6 Bulan</option>
-                  <option value={12}>12 Bulan (Premium Tahunan - Hemat!)</option>
+                  <option value={12}>12 Bulan (Eksklusif - Hemat!)</option>
                 </select>
               </div>
             </div>
@@ -605,7 +632,7 @@ function PaymentPage() {
                 <span>Paket</span>
                 <strong>
                   <img src={blueDiamondIcon} alt="" className="pro-icon" />{" "}
-                  {durationMonths === 12 ? "Premium Tahunan" : "Premium Bulanan"}
+                  {durationMonths === 12 ? "Eksklusif" : "Premium Bulanan"}
                 </strong>
               </div>
               <div className="summary-row">
@@ -731,7 +758,7 @@ function PaymentPage() {
               </div>
               <div className="table-row">
                 <span>Paket</span>
-                <strong>{durationMonths === 12 ? "Premium Tahunan" : "Premium Bulanan"}</strong>
+                <strong>{durationMonths === 12 ? "Eksklusif" : "Premium Bulanan"}</strong>
               </div>
               <div className="table-row">
                 <span>Metode</span>

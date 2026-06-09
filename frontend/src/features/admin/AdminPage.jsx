@@ -177,8 +177,8 @@ const paymentPackageOptions = [
   },
   {
     id: "premium_yearly",
-    name: "Premium Tahunan",
-    description: "Paket premium tahunan dengan harga hemat",
+    name: "Eksklusif",
+    description: "Paket eksklusif tahunan dengan harga hemat",
     icon: <FiKey aria-hidden="true" />
   }
 ];
@@ -223,6 +223,290 @@ const defaultPaymentPrices = {
   premium: "25.000",
   premium_yearly: "249.000"
 };
+
+const formatAdminPriceInput = (value) =>
+  new Intl.NumberFormat("id-ID").format(Number(value || 0));
+
+const parseAdminPriceInput = (value) =>
+  String(value || "").replace(/[^\d]/g, "");
+
+const paymentImageCropConfig = {
+  title: "Crop Gambar Pembayaran",
+  outputWidth: 512,
+  outputHeight: 512
+};
+
+const loadCropImage = (source) =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = source;
+  });
+
+const cropImageToBlob = async ({
+  source,
+  zoom,
+  pan = { x: 0, y: 0 },
+  stageSize = { width: 1, height: 1 },
+  outputWidth,
+  outputHeight,
+  type
+}) => {
+  const image = await loadCropImage(source);
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  const stageWidth = stageSize.width || outputWidth || 1;
+  const stageHeight = stageSize.height || outputHeight || 1;
+  const baseScale = Math.max(
+    stageWidth / image.naturalWidth,
+    stageHeight / image.naturalHeight
+  );
+  const renderedWidth = image.naturalWidth * baseScale * zoom;
+  const renderedHeight = image.naturalHeight * baseScale * zoom;
+  const sourceScale = 1 / (baseScale * zoom);
+  const sourceWidth = Math.min(stageWidth * sourceScale, image.naturalWidth);
+  const sourceHeight = Math.min(stageHeight * sourceScale, image.naturalHeight);
+  const sourceX = Math.min(
+    Math.max(0, ((renderedWidth - stageWidth) / 2 - pan.x) * sourceScale),
+    image.naturalWidth - sourceWidth
+  );
+  const sourceY = Math.min(
+    Math.max(0, ((renderedHeight - stageHeight) / 2 - pan.y) * sourceScale),
+    image.naturalHeight - sourceHeight
+  );
+
+  canvas.width = outputWidth;
+  canvas.height = outputHeight;
+  context.drawImage(
+    image,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    outputWidth,
+    outputHeight
+  );
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("Gagal crop gambar"));
+        }
+      },
+      type === "image/png" ? "image/png" : "image/jpeg",
+      0.92
+    );
+  });
+};
+
+function AdminPaymentImageCropModal({
+  cropData,
+  saving,
+  onClose,
+  onZoomChange,
+  onPanChange,
+  onStageSizeChange,
+  onImageLoad,
+  onUseImage
+}) {
+  const stageRef = useRef(null);
+  const dragRef = useRef(null);
+
+  if (!cropData) {
+    return null;
+  }
+
+  const zoomPercent = Math.round(cropData.zoom * 100);
+  const pan = cropData.pan || { x: 0, y: 0 };
+  const naturalSize = cropData.naturalSize;
+  const stageSize = cropData.stageSize;
+  const canCalculatePreview =
+    naturalSize?.width > 0 &&
+    naturalSize?.height > 0 &&
+    stageSize?.width > 1 &&
+    stageSize?.height > 1;
+  const baseScale = canCalculatePreview
+    ? Math.max(stageSize.width / naturalSize.width, stageSize.height / naturalSize.height)
+    : 1;
+  const imageStyle = canCalculatePreview
+    ? {
+        width: `${naturalSize.width * baseScale}px`,
+        height: `${naturalSize.height * baseScale}px`,
+        transform: `translate(${pan.x}px, ${pan.y}px) scale(${cropData.zoom})`
+      }
+    : {
+        transform: `translate(${pan.x}px, ${pan.y}px) scale(${cropData.zoom})`
+      };
+
+  const getPanLimit = () => {
+    const stage = stageRef.current;
+    const rect = stage?.getBoundingClientRect();
+    const width = rect?.width || 1;
+    const height = rect?.height || 1;
+    const size = cropData.naturalSize;
+
+    if (!size?.width || !size?.height) {
+      const fallbackLimit = Math.max(width, height) * Math.max(0.2, (cropData.zoom - 1) / 2);
+
+      return {
+        x: fallbackLimit,
+        y: fallbackLimit
+      };
+    }
+
+    const scale = Math.max(width / size.width, height / size.height) * cropData.zoom;
+    const renderedWidth = size.width * scale;
+    const renderedHeight = size.height * scale;
+
+    return {
+      x: Math.max(0, (renderedWidth - width) / 2),
+      y: Math.max(0, (renderedHeight - height) / 2)
+    };
+  };
+
+  const clampPan = (nextPan) => {
+    const limit = getPanLimit();
+
+    return {
+      x: Math.min(Math.max(nextPan.x, -limit.x), limit.x),
+      y: Math.min(Math.max(nextPan.y, -limit.y), limit.y)
+    };
+  };
+
+  const handlePointerDown = (event) => {
+    const stage = stageRef.current;
+
+    if (!stage) {
+      return;
+    }
+
+    const rect = stage.getBoundingClientRect();
+    onStageSizeChange({ width: rect.width, height: rect.height });
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      pan
+    };
+    event.preventDefault();
+    stage.setPointerCapture?.(event.pointerId);
+  };
+
+  const handleImageLoad = (event) => {
+    const stage = stageRef.current;
+    const rect = stage?.getBoundingClientRect();
+
+    onImageLoad({
+      naturalSize: {
+        width: event.currentTarget.naturalWidth,
+        height: event.currentTarget.naturalHeight
+      },
+      stageSize: {
+        width: rect?.width || 1,
+        height: rect?.height || 1
+      }
+    });
+  };
+
+  const handlePointerMove = (event) => {
+    const drag = dragRef.current;
+
+    if (!drag) {
+      return;
+    }
+
+    event.preventDefault();
+    onPanChange(
+      clampPan({
+        x: drag.pan.x + event.clientX - drag.startX,
+        y: drag.pan.y + event.clientY - drag.startY
+      })
+    );
+  };
+
+  const handlePointerUp = (event) => {
+    const stage = stageRef.current;
+
+    if (dragRef.current?.pointerId === event.pointerId) {
+      stage?.releasePointerCapture?.(event.pointerId);
+      dragRef.current = null;
+    }
+  };
+
+  return (
+    <div className="admin-payment-crop-modal" role="presentation" onClick={onClose}>
+      <section
+        className="admin-payment-crop-modal__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="admin-payment-crop-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="admin-payment-crop-modal__header">
+          <h2 id="admin-payment-crop-title">{paymentImageCropConfig.title}</h2>
+          <button type="button" onClick={onClose} aria-label="Tutup crop gambar">
+            <FiX />
+          </button>
+        </header>
+
+        <div
+          ref={stageRef}
+          className="admin-payment-crop-modal__stage"
+          role="presentation"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+        >
+          <img
+            src={cropData.previewUrl}
+            alt="Preview crop"
+            draggable="false"
+            onLoad={handleImageLoad}
+            onDragStart={(event) => event.preventDefault()}
+            style={imageStyle}
+          />
+          <span className="admin-payment-crop-modal__circle-mask" aria-hidden="true" />
+        </div>
+
+        <div className="admin-payment-crop-modal__zoom" aria-label="Zoom gambar">
+          <button
+            type="button"
+            onClick={() => onZoomChange(Math.max(1, Number((cropData.zoom - 0.1).toFixed(2))))}
+            disabled={cropData.zoom <= 1}
+            aria-label="Perkecil gambar"
+          >
+            <span aria-hidden="true">-</span>
+          </button>
+          <span>{zoomPercent} %</span>
+          <button
+            type="button"
+            onClick={() => onZoomChange(Math.min(3, Number((cropData.zoom + 0.1).toFixed(2))))}
+            disabled={cropData.zoom >= 3}
+            aria-label="Perbesar gambar"
+          >
+            <span aria-hidden="true">+</span>
+          </button>
+        </div>
+
+        <footer className="admin-payment-crop-modal__actions">
+          <button type="button" onClick={onClose} disabled={saving}>
+            Batal
+          </button>
+          <button type="button" onClick={onUseImage} disabled={saving}>
+            {saving ? "Mengupload..." : "Gunakan Gambar"}
+          </button>
+        </footer>
+      </section>
+    </div>
+  );
+}
 
 const dummyCommunityReportedPosts = [
   {
@@ -644,6 +928,8 @@ function AdminPage() {
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState(defaultPaymentMethods[0].id);
   const [paymentPrices, setPaymentPrices] = useState(defaultPaymentPrices);
   const [paymentSettingsFeedback, setPaymentSettingsFeedback] = useState("");
+  const [paymentImageCropData, setPaymentImageCropData] = useState(null);
+  const [isCroppingPaymentImage, setIsCroppingPaymentImage] = useState(false);
   const [selectedUserDetail, setSelectedUserDetail] = useState(null);
   const [isUserDetailLoading, setIsUserDetailLoading] = useState(false);
   const [addMovieForm, setAddMovieForm] = useState(defaultAddMovieForm);
@@ -697,6 +983,15 @@ function AdminPage() {
 
     return `${API_URL}/api/admin/dashboard?${params.toString()}`;
   }, [selectedChartActivity, selectedChartYear]);
+
+  useEffect(
+    () => () => {
+      if (paymentImageCropData?.previewUrl) {
+        URL.revokeObjectURL(paymentImageCropData.previewUrl);
+      }
+    },
+    [paymentImageCropData?.previewUrl]
+  );
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -865,6 +1160,15 @@ function AdminPage() {
           : defaultPaymentMethods;
         setPaymentMethods(paymentMethodItems);
         setSelectedPaymentMethodId(paymentMethodItems[0]?.id || "");
+        if (Array.isArray(paymentSettingsData?.packages) && paymentSettingsData.packages.length) {
+          setPaymentPrices((prices) => ({
+            ...prices,
+            ...paymentSettingsData.packages.reduce((result, paymentPackage) => {
+              result[paymentPackage.code] = formatAdminPriceInput(paymentPackage.price);
+              return result;
+            }, {})
+          }));
+        }
         setPaymentSettingsFeedback(
           paymentSettingsResponse.ok ? "" : "Pengaturan pembayaran belum bisa mengambil data backend."
         );
@@ -1352,14 +1656,78 @@ function AdminPage() {
       return;
     }
 
+    const previewUrl = URL.createObjectURL(file);
+    setPaymentImageCropData((currentCropData) => {
+      if (currentCropData?.previewUrl) {
+        URL.revokeObjectURL(currentCropData.previewUrl);
+      }
+
+      return {
+        methodId: selectedPaymentMethodId,
+        file,
+        previewUrl,
+        naturalSize: null,
+        pan: { x: 0, y: 0 },
+        stageSize: { width: 1, height: 1 },
+        zoom: 1
+      };
+    });
+    setPaymentSettingsFeedback("Atur crop gambar pembayaran sebelum diupload.");
+  };
+
+  const closePaymentImageCropModal = () => {
+    setPaymentImageCropData((currentCropData) => {
+      if (currentCropData?.previewUrl) {
+        URL.revokeObjectURL(currentCropData.previewUrl);
+      }
+
+      return null;
+    });
+    setIsCroppingPaymentImage(false);
+  };
+
+  const handleUseCroppedPaymentImage = async () => {
+    if (!paymentImageCropData) {
+      return;
+    }
+
     try {
       setPaymentSettingsFeedback("Mengupload logo pembayaran...");
-      const imageUrl = await uploadPaymentMethodImage(file);
-      updateSelectedPaymentMethod("imageUrl", imageUrl);
-      updateSelectedPaymentMethod("imageName", file.name);
+      setIsCroppingPaymentImage(true);
+      const croppedBlob = await cropImageToBlob({
+        source: paymentImageCropData.previewUrl,
+        zoom: paymentImageCropData.zoom,
+        pan: paymentImageCropData.pan,
+        stageSize: paymentImageCropData.stageSize,
+        outputWidth: paymentImageCropConfig.outputWidth,
+        outputHeight: paymentImageCropConfig.outputHeight,
+        type: paymentImageCropData.file.type
+      });
+      const croppedFile = new File(
+        [croppedBlob],
+        paymentImageCropData.file.name || "payment-method-image.jpg",
+        {
+          type: croppedBlob.type || "image/jpeg"
+        }
+      );
+      const imageUrl = await uploadPaymentMethodImage(croppedFile);
+
+      setPaymentMethods((methods) =>
+        methods.map((method) =>
+          method.id === paymentImageCropData.methodId
+            ? {
+                ...method,
+                imageUrl,
+                imageName: paymentImageCropData.file.name
+              }
+            : method
+        )
+      );
       setPaymentSettingsFeedback("Logo pembayaran berhasil diupload. Klik Simpan Perubahan untuk menyimpan.");
+      closePaymentImageCropModal();
     } catch (error) {
       setPaymentSettingsFeedback(error.message || "Gagal upload logo pembayaran.");
+      setIsCroppingPaymentImage(false);
     }
   };
 
@@ -1383,6 +1751,13 @@ function AdminPage() {
           methods: paymentMethods.map((method, index) => ({
             ...method,
             sortOrder: index + 1
+          })),
+          packages: paymentPackageOptions.map((paymentPackage, index) => ({
+            code: paymentPackage.id,
+            name: paymentPackage.name,
+            durationMonths: paymentPackage.id === "premium_yearly" ? 12 : 1,
+            price: Number(parseAdminPriceInput(paymentPrices[paymentPackage.id])),
+            sortOrder: index + 1
           }))
         })
       });
@@ -1395,6 +1770,15 @@ function AdminPage() {
 
       setPaymentMethods(data.methods);
       setSelectedPaymentMethodId(data.methods[0]?.id || "");
+      if (Array.isArray(data.packages)) {
+        setPaymentPrices((prices) => ({
+          ...prices,
+          ...data.packages.reduce((result, paymentPackage) => {
+            result[paymentPackage.code] = formatAdminPriceInput(paymentPackage.price);
+            return result;
+          }, {})
+        }));
+      }
       setPaymentSettingsFeedback(data.message || "Pengaturan pembayaran berhasil disimpan.");
     } catch {
       setPaymentSettingsFeedback("Gagal menyimpan pengaturan pembayaran.");
@@ -3031,7 +3415,7 @@ function AdminPage() {
                       </div>
                       <div className="admin-payment-price-card__current">
                         <small>Harga saat ini</small>
-                        <strong>Rp{defaultPaymentPrices[paymentPackage.id]}</strong>
+                        <strong>Rp{paymentPrices[paymentPackage.id] || defaultPaymentPrices[paymentPackage.id]}</strong>
                       </div>
                       <label className="admin-payment-price-card__new">
                         <span>Harga Baru</span>
@@ -4284,6 +4668,38 @@ function AdminPage() {
           </article>
         </div>
       )}
+      <AdminPaymentImageCropModal
+        cropData={paymentImageCropData}
+        saving={isCroppingPaymentImage}
+        onClose={closePaymentImageCropModal}
+        onZoomChange={(zoom) =>
+          setPaymentImageCropData((currentCropData) =>
+            currentCropData ? { ...currentCropData, zoom } : currentCropData
+          )
+        }
+        onPanChange={(pan) =>
+          setPaymentImageCropData((currentCropData) =>
+            currentCropData ? { ...currentCropData, pan } : currentCropData
+          )
+        }
+        onStageSizeChange={(stageSize) =>
+          setPaymentImageCropData((currentCropData) =>
+            currentCropData ? { ...currentCropData, stageSize } : currentCropData
+          )
+        }
+        onImageLoad={({ naturalSize, stageSize }) =>
+          setPaymentImageCropData((currentCropData) =>
+            currentCropData
+              ? {
+                  ...currentCropData,
+                  naturalSize,
+                  stageSize
+                }
+              : currentCropData
+          )
+        }
+        onUseImage={handleUseCroppedPaymentImage}
+      />
     </main>
   );
 }

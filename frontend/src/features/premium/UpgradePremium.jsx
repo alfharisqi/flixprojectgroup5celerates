@@ -6,6 +6,25 @@ import "./UpgradePremium.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+const defaultPackagePrices = {
+  premium: 29000,
+  premium_yearly: 249000,
+};
+
+const formatCurrency = (value, compact = false) => {
+  const number = Number(value || 0);
+
+  if (compact && number >= 1000) {
+    return `Rp ${Math.round(number / 1000)}K`;
+  }
+
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(number);
+};
+
 const getStoredUser = () => {
   try {
     return JSON.parse(localStorage.getItem("user")) || {};
@@ -18,6 +37,8 @@ function UpgradePage() {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const [user, setUser] = useState(() => getStoredUser());
+  const [packagePrices, setPackagePrices] = useState(defaultPackagePrices);
+  const [subscriberCount, setSubscriberCount] = useState(0);
 
   useEffect(() => {
     if (!token) {
@@ -55,6 +76,41 @@ function UpgradePage() {
       shouldIgnore = true;
     };
   }, [token]);
+
+  useEffect(() => {
+    let shouldIgnore = false;
+
+    const fetchPaymentSettings = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/payment/settings`);
+        const packages = Array.isArray(response.data?.packages) ? response.data.packages : [];
+
+        if (shouldIgnore || !packages.length) {
+          return;
+        }
+
+        setPackagePrices((prices) => ({
+          ...prices,
+          ...packages.reduce((result, paymentPackage) => {
+            result[paymentPackage.code] = Number(paymentPackage.price || 0);
+            return result;
+          }, {}),
+        }));
+        setSubscriberCount(Number(response.data?.subscriberCount || 0));
+      } catch {
+        if (!shouldIgnore) {
+          setPackagePrices(defaultPackagePrices);
+          setSubscriberCount(0);
+        }
+      }
+    };
+
+    fetchPaymentSettings();
+
+    return () => {
+      shouldIgnore = true;
+    };
+  }, []);
 
   const currentPackageId = useMemo(() => {
     if (!user?.is_premium) {
@@ -128,13 +184,13 @@ function UpgradePage() {
       note: "Selamanya gratis",
       description: "Untuk kamu yang baru mulai menjelajah FLIX.",
       features: [
-        { text: "Rekomendasi mood (maks. 4 film)", active: true },
+        { text: "Lihat film & TV series", active: true },
+        { text: "Search film & TV series", active: true },
         { text: "Watchlist maks. 10 film", active: true },
-        { text: "Tulis review", active: true },
-        { text: "Pencarian film", active: true },
-        { text: "Filter lanjutan", active: false },
-        { text: "Community Film", active: false },
-        { text: "Bebas Iklan", active: false },
+        { text: "Review film/series", active: true },
+        { text: "Community post", active: false },
+        { text: "Chat antar user", active: false },
+        { text: "Chatbot FLIX", active: false },
       ],
       buttonText: "Paket Gratis",
       buttonClass: "btn-disabled",
@@ -142,23 +198,24 @@ function UpgradePage() {
     {
       id: "premium",
       name: "PREMIUM",
-      price: "Rp 29K",
+      price: formatCurrency(packagePrices.premium, true),
       period: "/bulan",
       note: "Bisa dibatalkan kapan saja",
-      description: "Untuk penonton serius yang ingin rekomendasi terbaik.",
+      description: "Untuk penonton yang ingin fitur sosial dan watchlist penuh.",
       popular: true, // Untuk menandai kartu terpopuler
       features: [
-        {
-          text: "Rekomendasi mood unlimited",
-          active: true,
-          boldText: "unlimited",
-        },
-        { text: "Watchlist maks. 10 film", active: true },
-        { text: "Watchlist unlimited", active: true },
-        { text: "Tulis & edit review", active: true },
-        { text: "Filter lanjutan", active: true },
-        { text: "Community", active: true },
-        { text: "Badge Premium di profil", active: false },
+        { text: "Lihat film & TV series", active: true },
+        { text: "Search film & TV series", active: true },
+        { text: "Watchlist unlimited", active: true, boldText: "unlimited" },
+        { text: "Review film/series", active: true },
+        { text: "Community post", active: true },
+        { text: "Comment/reply community", active: true },
+        { text: "Like/reaction/share community", active: true },
+        { text: "Chat antar user", active: true },
+        { text: "Add friend / friendlist", active: true },
+        { text: "Badge premium di profil", active: true },
+        { text: "Bebas iklan", active: true },
+        { text: "Chatbot FLIX", active: false },
       ],
       buttonText: "Mulai Premium",
       buttonClass: "btn-primary",
@@ -166,10 +223,10 @@ function UpgradePage() {
     },
     {
       id: "annual",
-      name: "PREMIUM TAHUNAN",
-      price: "Rp 249",
-      period: "/tahun",
-      note: "Hemat Rp 99K vs bulanan",
+      name: "EKSKLUSIF",
+      price: formatCurrency(packagePrices.premium_yearly, true),
+      period: "/bulan",
+      note: "Pilihan terbaik untuk pengalaman penuh",
       description:
         "Semua fitur Premium + bonus eksklusif untuk pengguna setia.",
       features: [
@@ -181,11 +238,36 @@ function UpgradePage() {
         { text: "Bebas sponsored", active: true },
         { text: "Hemat Rp 99K/tahun", active: true },
       ],
-      buttonText: "Pilih Tahunan",
+      buttonText: "Pilih Eksklusif",
       buttonClass: "btn-secondary",
       hasArrow: true,
     },
   ];
+
+  const getPackageDescription = (pkg) => {
+    if (pkg.id === "annual") {
+      return "Semua fitur Premium dengan akses asisten FLIX untuk pengguna setia.";
+    }
+
+    return pkg.description;
+  };
+
+  const getVisiblePackageFeatures = (pkg) => {
+    if (pkg.id === "annual") {
+      return [
+        { text: "Semua fitur Premium", active: true },
+        { text: "Watchlist unlimited", active: true, boldText: "unlimited" },
+        { text: "Community post", active: true },
+        { text: "Chat antar user", active: true },
+        { text: "Add friend / friendlist", active: true },
+        { text: "Badge premium di profil", active: true },
+        { text: "Bebas iklan", active: true },
+        { text: "Chatbot FLIX", active: true },
+      ];
+    }
+
+    return pkg.features;
+  };
 
   return (
     <div className="upgrade-page">
@@ -223,12 +305,15 @@ function UpgradePage() {
           <span className="text-highlight"> FLIX Premium</span>
         </h1>
         <p className="upgrade-hero__subtitle">
-          Akses rekomendasi tak terbatas, filter canggih, dan pengalaman
-          menonton yang benar-benar personal.
+          Buka watchlist unlimited, fitur community, chat antar user,
+          dan akses Chatbot FLIX di paket Eksklusif.
         </p>
         <p className="upgrade-hero__stats">
-          Sudah <strong className="text-white">3.741</strong> user menikmati
-          FLIX — yuk bergabung!
+          Sudah{" "}
+          <strong className="text-white">
+            {new Intl.NumberFormat("id-ID").format(subscriberCount)}
+          </strong>{" "}
+          user berlangganan FLIX - yuk bergabung!
         </p>
       </section>
       
@@ -263,14 +348,14 @@ function UpgradePage() {
                   <span className="card-header__period">{pkg.period}</span>
                 </div>
                 <span className="card-header__note">{pkg.note}</span>
-                <p className="card-header__desc">{pkg.description}</p>
+                <p className="card-header__desc">{getPackageDescription(pkg)}</p>
               </div>
 
               <div className="card-divider"></div>
 
               {/* Daftar Fitur */}
               <ul className="card-features">
-                {pkg.features.map((feat, index) => (
+                {getVisiblePackageFeatures(pkg).map((feat, index) => (
                   <li
                     key={index}
                     className={`feature-item ${!feat.active ? "feature-item--inactive" : ""}`}
@@ -329,15 +414,15 @@ function UpgradePage() {
                   // Konfigurasi data paket untuk dibawa ke halaman pembayaran
                   const selectedPkg = {
                     name:
-                      pkg.name === "PREMIUM TAHUNAN"
-                        ? "Premium Tahunan"
+                      pkg.id === "annual"
+                        ? "Eksklusif"
                         : "Premium Bulanan",
                     priceText:
-                      pkg.name === "PREMIUM TAHUNAN"
-                        ? "Rp 249.000"
-                        : "Rp 29.000",
-                    price: pkg.name === "PREMIUM TAHUNAN" ? 249000 : 29000,
-                    durationMonths: pkg.name === "PREMIUM TAHUNAN" ? 12 : 1,
+                      pkg.id === "annual"
+                        ? formatCurrency(packagePrices.premium_yearly)
+                        : formatCurrency(packagePrices.premium),
+                    price: pkg.id === "annual" ? packagePrices.premium_yearly : packagePrices.premium,
+                    durationMonths: pkg.id === "annual" ? 12 : 1,
                   };
 
                   navigate("/payment", { state: { package: selectedPkg } });

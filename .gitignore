@@ -16,3 +16,9 @@ backend/.env.*
 !backend/.env.mailpit.example
 
 API Key.txt
+
+# Runtime uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+uploads/*
+!uploads/.gitkeep
