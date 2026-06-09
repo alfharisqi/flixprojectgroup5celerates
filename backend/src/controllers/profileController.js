@@ -12,6 +12,7 @@ export const getMyProfile = async (req, res) => {
           u.profile_image_url,
           u.banner_image_url,
           u.is_premium,
+          u.subscription_plan,
           r.role_name,
           u.created_at,
           active_package.package_code AS current_package_code,

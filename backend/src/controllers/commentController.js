@@ -17,6 +17,7 @@ export const getCommentsByPost = async (req, res) => {
           u.username,
           u.profile_image_url,
           u.is_premium,
+          u.subscription_plan,
           CASE
             WHEN $2::BIGINT IS NULL OR c.id_user = $2 THEN FALSE
             ELSE EXISTS (

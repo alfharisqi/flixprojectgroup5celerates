@@ -65,7 +65,8 @@ export const getPaymentSettings = async (req, res) => {
           pt.premium_expired_at IS NULL
           OR pt.premium_expired_at > CURRENT_TIMESTAMP
         )
-       WHERE u.is_premium = TRUE
+       WHERE u.subscription_plan IN ('premium', 'exclusive')
+          OR u.is_premium = TRUE
           OR pt.id_transaction IS NOT NULL`,
     );
     const subscriberCount = Number(subscriberResult.rows[0]?.total || 0);

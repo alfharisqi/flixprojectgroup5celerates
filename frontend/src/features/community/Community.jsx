@@ -22,7 +22,7 @@ import FilterPopup from "@/components/ui/FilterPopup";
 import PremiumAvatar from "@/components/ui/PremiumAvatar";
 import ReportModal from "@/components/ui/ReportModal";
 import { createChatThreadFromUser, openChatThread } from "@/utils/chat";
-import { requireLogin } from "@/utils/authPrompt";
+import { requireLogin, requirePremiumAccess } from "@/utils/authPrompt";
 import { submitReport } from "@/utils/report";
 import "./Community.css";
 
@@ -436,7 +436,7 @@ function Community() {
   };
 
   const handleLike = async (postId) => {
-    if (!requireLogin()) {
+    if (!requirePremiumAccess()) {
       return;
     }
 
@@ -458,7 +458,7 @@ function Community() {
   };
 
   const handleReaction = async (postId, reactionType) => {
-    if (!requireLogin()) {
+    if (!requirePremiumAccess()) {
       return false;
     }
 
@@ -482,7 +482,7 @@ function Community() {
   };
 
   const handleShare = async (postId) => {
-    if (!requireLogin()) {
+    if (!requirePremiumAccess()) {
       return;
     }
 
@@ -588,7 +588,7 @@ function Community() {
   };
 
   const handleAddFriend = (targetUser) => {
-    if (!requireLogin()) {
+    if (!requirePremiumAccess()) {
       return;
     }
 
@@ -626,7 +626,7 @@ function Community() {
   };
 
   const handleMessageUser = (post) => {
-    if (!requireLogin()) {
+    if (!requirePremiumAccess()) {
       return;
     }
 
@@ -642,7 +642,7 @@ function Community() {
   };
 
   const handleVotePoll = async (postId, pollId, optionId) => {
-    if (!requireLogin()) {
+    if (!requirePremiumAccess()) {
       return;
     }
 
@@ -714,6 +714,7 @@ function Community() {
               imageUrl={user?.profile_image_url}
               name={user?.username || user?.email || "F"}
               isPremium={Boolean(user?.is_premium)}
+              subscriptionPlan={user?.subscription_plan}
               alt={user?.username || "Profile"}
             />
             <div>
@@ -726,7 +727,11 @@ function Community() {
             <button
               className="community-create-button"
               type="button"
-              onClick={() => navigate("/create-post")}
+              onClick={() => {
+                if (requirePremiumAccess()) {
+                  navigate("/create-post");
+                }
+              }}
             >
               <FiPlus />
               Create Post

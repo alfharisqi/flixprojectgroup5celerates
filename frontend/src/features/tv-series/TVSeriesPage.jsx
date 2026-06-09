@@ -14,7 +14,7 @@ import {
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import FilterPopup from "@/components/ui/FilterPopup";
 import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
-import { requireLogin } from "@/utils/authPrompt";
+import { canAddWatchlistItem, requireLogin } from "@/utils/authPrompt";
 import "./TVSeriesPage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -705,7 +705,9 @@ function TVSeriesPage() {
       return;
     }
 
-    setPendingWatchlistSeries({ ...mediaItem, media_type: mediaType });
+    if (canAddWatchlistItem(watchlist, movieWatchlist)) {
+      setPendingWatchlistSeries({ ...mediaItem, media_type: mediaType });
+    }
   };
 
   const confirmSaveToWatchlist = () => {

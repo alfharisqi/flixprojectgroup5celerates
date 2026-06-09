@@ -18,7 +18,7 @@ import smileIcon from "@/assets/icon/smile-icon.svg";
 import blueDiamondIcon from "@/assets/icon/bluediamond-icon.png";
 import PremiumAvatar from "@/components/ui/PremiumAvatar";
 import SearchModal from "@/components/ui/SearchModal";
-import { requireLogin } from "@/utils/authPrompt";
+import { requireLogin, requirePremiumAccess } from "@/utils/authPrompt";
 import { resolveMediaUrl } from "@/utils/media";
 import "./SiteNavbar.css";
 
@@ -261,7 +261,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
 
   const startChatWithUser = useCallback(
     async (thread) => {
-      if (!requireLogin()) {
+      if (!requirePremiumAccess()) {
         return null;
       }
 
@@ -313,7 +313,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
   );
 
   const handleToggleChat = () => {
-    if (!requireLogin()) {
+    if (!requirePremiumAccess()) {
       return;
     }
 

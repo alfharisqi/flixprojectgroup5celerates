@@ -20,7 +20,6 @@ import {
   FiLogOut,
   FiMapPin,
   FiMessageSquare,
-  FiMoon,
   FiPlus,
   FiSearch,
   FiSettings,
@@ -930,7 +929,6 @@ function AdminPage() {
   const [addMovieFeedback, setAddMovieFeedback] = useState("");
   const [isSavingMovie, setIsSavingMovie] = useState(false);
   const [selectedEditingMovie, setSelectedEditingMovie] = useState(null);
-  const [nightMode, setNightMode] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [tableLimit, setTableLimit] = useState(10);
   const [filmPage, setFilmPage] = useState(1);
@@ -2368,18 +2366,6 @@ function AdminPage() {
             <FiLogOut aria-hidden="true" />
             <span>Log Out</span>
           </button>
-
-          <label className="admin-night-mode">
-            <span>Night Mode</span>
-            <input
-              type="checkbox"
-              checked={nightMode}
-              onChange={(event) => setNightMode(event.target.checked)}
-            />
-            <span className="admin-night-mode__switch">
-              <FiMoon aria-hidden="true" />
-            </span>
-          </label>
 
           <div className="admin-profile">
             <div className="admin-profile__avatar">

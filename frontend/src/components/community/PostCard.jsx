@@ -99,6 +99,7 @@ function PostCard({
             imageUrl={post.profile_image_url}
             name={post.username || "F"}
             isPremium={Boolean(post.is_premium)}
+            subscriptionPlan={post.subscription_plan}
             alt={post.username || "Profile"}
           />
           <div>
@@ -111,6 +112,7 @@ function PostCard({
                   username: post.username,
                   profile_image_url: post.profile_image_url,
                   is_premium: post.is_premium,
+                  subscription_plan: post.subscription_plan,
                 }}
                 currentUser={user}
                 isFriend={Boolean(post.is_friend)}
@@ -121,6 +123,7 @@ function PostCard({
                     username: post.username,
                     profile_image_url: post.profile_image_url,
                     is_premium: post.is_premium,
+                    subscription_plan: post.subscription_plan,
                   })
                 }
                 onMessage={() => handleMessageUser?.(post)}
@@ -130,6 +133,7 @@ function PostCard({
                         username: post.username,
                         profile_image_url: post.profile_image_url,
                         is_premium: post.is_premium,
+                        subscription_plan: post.subscription_plan,
                       })
                 }
               />

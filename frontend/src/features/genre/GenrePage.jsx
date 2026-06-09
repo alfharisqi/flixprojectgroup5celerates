@@ -13,7 +13,7 @@ import {
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import FilterPopup from "@/components/ui/FilterPopup";
 import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
-import { requireLogin } from "@/utils/authPrompt";
+import { canAddWatchlistItem, requireLogin } from "@/utils/authPrompt";
 import "./GenrePage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -1003,13 +1003,18 @@ function GenrePage() {
       return;
     }
 
-    setPendingWatchlistItem({
-      mediaLabel: mediaType === "tv" ? "Series" : "Film",
-      item: {
-        ...mediaItem,
-        media_type: mediaType,
-      },
-    });
+    const primaryWatchlist = mediaType === "tv" ? seriesWatchlist : movieWatchlist;
+    const secondaryWatchlist = mediaType === "tv" ? movieWatchlist : seriesWatchlist;
+
+    if (canAddWatchlistItem(primaryWatchlist, secondaryWatchlist)) {
+      setPendingWatchlistItem({
+        mediaLabel: mediaType === "tv" ? "Series" : "Film",
+        item: {
+          ...mediaItem,
+          media_type: mediaType,
+        },
+      });
+    }
   };
 
   const confirmSaveToWatchlist = () => {

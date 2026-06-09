@@ -1,5 +1,6 @@
 import blueDiamondIcon from "@/assets/icon/bluediamond-icon.png";
 import { resolveMediaUrl } from "@/utils/media";
+import { normalizeSubscriptionPlan } from "@/utils/authPrompt";
 import "./PremiumAvatar.css";
 
 const getInitial = (name = "User") =>
@@ -9,16 +10,24 @@ function PremiumAvatar({
   imageUrl,
   name,
   isPremium = false,
+  subscriptionPlan,
   className = "",
   alt,
   ariaHidden = false,
 }) {
   const resolvedImageUrl = resolveMediaUrl(imageUrl);
+  const plan = normalizeSubscriptionPlan({
+    subscription_plan: subscriptionPlan,
+    is_premium: isPremium,
+  });
+  const hasBadge = plan === "premium" || plan === "exclusive";
+  const badgeLabel = plan === "exclusive" ? "Eksklusif" : "Premium";
   const classes = [
     "premium-avatar",
     className,
     resolvedImageUrl ? "has-image" : "",
-    isPremium ? "is-premium" : "",
+    hasBadge ? "is-premium" : "",
+    plan === "exclusive" ? "is-exclusive" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -35,9 +44,9 @@ function PremiumAvatar({
         getInitial(name)
       )}
 
-      {isPremium && (
-        <span className="premium-avatar__badge" title="Premium">
-          <img src={blueDiamondIcon} alt="Premium" />
+      {hasBadge && (
+        <span className="premium-avatar__badge" title={badgeLabel}>
+          <img src={blueDiamondIcon} alt={badgeLabel} />
         </span>
       )}
     </span>

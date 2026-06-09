@@ -20,7 +20,7 @@ import ReportModal from "@/components/ui/ReportModal";
 import reportIcon from "@/assets/icon/report-icon.svg";
 import shareIcon from "@/assets/icon/share-icon.svg";
 import { createChatThreadFromUser, openChatThread } from "@/utils/chat";
-import { requireLogin } from "@/utils/authPrompt";
+import { requireLogin, requirePremiumAccess } from "@/utils/authPrompt";
 import { submitReport } from "@/utils/report";
 import "@/components/community/PostCard.css";
 import "./PostDetail.css";
@@ -253,7 +253,7 @@ function PostDetail() {
   };
 
   const handleLike = async (postId) => {
-    if (!requireLogin()) {
+    if (!requirePremiumAccess()) {
       return;
     }
 
@@ -274,7 +274,7 @@ function PostDetail() {
   };
 
   const handleReaction = async (postId, reactionType) => {
-    if (!requireLogin()) {
+    if (!requirePremiumAccess()) {
       return false;
     }
 
@@ -308,7 +308,7 @@ function PostDetail() {
   };
 
   const handleShare = async (postId) => {
-    if (!requireLogin()) {
+    if (!requirePremiumAccess()) {
       return;
     }
 
@@ -336,7 +336,7 @@ function PostDetail() {
   };
 
   const handleVotePoll = async (pollId, optionId) => {
-    if (!requireLogin()) {
+    if (!requirePremiumAccess()) {
       return;
     }
 
@@ -363,7 +363,7 @@ function PostDetail() {
     parentCommentId = null,
     inputKey,
   ) => {
-    if (!requireLogin()) {
+    if (!requirePremiumAccess()) {
       return;
     }
 
@@ -472,7 +472,7 @@ function PostDetail() {
   };
 
   const handleAddFriend = (targetUser) => {
-    if (!requireLogin()) {
+    if (!requirePremiumAccess()) {
       return;
     }
 
@@ -515,7 +515,7 @@ function PostDetail() {
   };
 
   const handleMessageUser = (targetUser) => {
-    if (!requireLogin()) {
+    if (!requirePremiumAccess()) {
       return;
     }
 
@@ -525,6 +525,7 @@ function PostDetail() {
         username: targetUser.username,
         profile_image_url: targetUser.profile_image_url,
         is_premium: targetUser.is_premium,
+        subscription_plan: targetUser.subscription_plan,
         lastMessage: "Mulai obrolan tentang film",
       }),
     );
@@ -575,6 +576,7 @@ function PostDetail() {
                   imageUrl={comment.profile_image_url}
                   name={comment.username}
                   isPremium={Boolean(comment.is_premium)}
+                  subscriptionPlan={comment.subscription_plan}
                   alt=""
                   ariaHidden
                 />
@@ -585,6 +587,7 @@ function PostDetail() {
                       username: comment.username,
                       profile_image_url: comment.profile_image_url,
                       is_premium: comment.is_premium,
+                      subscription_plan: comment.subscription_plan,
                     }}
                     currentUser={user}
                     isFriend={Boolean(comment.is_friend)}
@@ -595,6 +598,7 @@ function PostDetail() {
                         username: comment.username,
                         profile_image_url: comment.profile_image_url,
                         is_premium: comment.is_premium,
+                        subscription_plan: comment.subscription_plan,
                       })
                     }
                     onMessage={() => handleMessageUser(comment)}
@@ -604,6 +608,7 @@ function PostDetail() {
                         username: comment.username,
                         profile_image_url: comment.profile_image_url,
                         is_premium: comment.is_premium,
+                        subscription_plan: comment.subscription_plan,
                       })
                     }
                   />
@@ -798,6 +803,7 @@ function PostDetail() {
               imageUrl={post.profile_image_url}
               name={post.username || "F"}
               isPremium={Boolean(post.is_premium)}
+              subscriptionPlan={post.subscription_plan}
               alt={post.username || "Profile"}
             />
             <div>
@@ -810,6 +816,7 @@ function PostDetail() {
                     username: post.username,
                     profile_image_url: post.profile_image_url,
                     is_premium: post.is_premium,
+                    subscription_plan: post.subscription_plan,
                   }}
                   currentUser={user}
                   isFriend={Boolean(post.is_friend)}
@@ -820,6 +827,7 @@ function PostDetail() {
                         username: post.username,
                         profile_image_url: post.profile_image_url,
                         is_premium: post.is_premium,
+                        subscription_plan: post.subscription_plan,
                       })
                   }
                   onMessage={() => handleMessageUser(post)}
@@ -829,6 +837,7 @@ function PostDetail() {
                         username: post.username,
                         profile_image_url: post.profile_image_url,
                         is_premium: post.is_premium,
+                        subscription_plan: post.subscription_plan,
                       })
                   }
                 />

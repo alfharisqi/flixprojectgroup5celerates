@@ -8,6 +8,7 @@ import {
   deletePost,
 } from "../controllers/postController.js";
 import { optionalToken, verifyToken } from "../middleware/authMiddleware.js";
+import { requirePremiumFeature } from "../middleware/subscriptionMiddleware.js";
 
 const router = express.Router();
 
@@ -41,7 +42,7 @@ const upload = multer({
 
 router.get("/", optionalToken, getPosts);
 router.get("/:id", optionalToken, getPostById);
-router.post("/", verifyToken, upload.single("image"), createPost);
+router.post("/", verifyToken, requirePremiumFeature, upload.single("image"), createPost);
 router.delete("/:id", verifyToken, deletePost);
 
 export default router;

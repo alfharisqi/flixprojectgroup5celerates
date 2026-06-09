@@ -1893,7 +1893,7 @@ export const updateAdminTransactionStatus = async (req, res) => {
     await client.query("BEGIN");
 
     const transactionResult = await client.query(
-      `SELECT pt.*, u.username, u.email, u.profile_image_url, u.is_premium
+      `SELECT pt.*, u.username, u.email, u.profile_image_url, u.is_premium, u.subscription_plan
        FROM flix.payment_transactions pt
        JOIN flix.users u ON u.id_user = pt.id_user
        WHERE pt.id_transaction = $1
@@ -1921,6 +1921,13 @@ export const updateAdminTransactionStatus = async (req, res) => {
     let updatedTransaction;
 
     if (nextStatus === "approved") {
+      const approvedPlan =
+        Number(transaction.duration_months || 1) >= 12 ||
+        String(transaction.package_code || "").toLowerCase().includes("year") ||
+        String(transaction.package_name || "").toLowerCase().includes("eksklusif")
+          ? "exclusive"
+          : "premium";
+
       const updateResult = await client.query(
         `UPDATE flix.payment_transactions
          SET status = 'approved',
@@ -1945,10 +1952,11 @@ export const updateAdminTransactionStatus = async (req, res) => {
       await client.query(
         `UPDATE flix.users
          SET is_premium = TRUE,
-             payment_proof = $1,
+             subscription_plan = $1,
+             payment_proof = $2,
              updated_at = CURRENT_TIMESTAMP
-         WHERE id_user = $2`,
-        [transaction.payment_proof, transaction.id_user],
+         WHERE id_user = $3`,
+        [approvedPlan, transaction.payment_proof, transaction.id_user],
       );
     } else {
       const updateResult = await client.query(

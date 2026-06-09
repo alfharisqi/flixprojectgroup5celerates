@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { FiMessageCircle, FiMinus, FiSend, FiTrash2 } from "react-icons/fi";
 import flixAdminLogo from "@/assets/flixadmin-logo.png";
+import { requireExclusiveAccess } from "@/utils/authPrompt";
 import "./FlixChatbot.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -255,10 +256,12 @@ function FlixChatbot() {
     scrollToBottom();
 
     try {
+      const token = localStorage.getItem("token");
       const response = await fetch(`${API_URL}/api/chatbot`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           message: messageText,
@@ -277,6 +280,10 @@ function FlixChatbot() {
       });
 
       const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Gagal memakai Chatbot FLIX");
+      }
+
       const assistantContent =
         data.reply ||
         data.message ||
@@ -325,7 +332,9 @@ function FlixChatbot() {
         className="flix-chatbot-toggle"
         type="button"
         onClick={() => {
-          setIsOpen(true);
+          if (requireExclusiveAccess()) {
+            setIsOpen(true);
+          }
         }}
         aria-label="Buka Chatbot FLIX"
       >

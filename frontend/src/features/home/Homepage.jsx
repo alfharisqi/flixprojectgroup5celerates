@@ -15,7 +15,7 @@ import {
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import FilterPopup from "@/components/ui/FilterPopup";
 import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
-import { requireLogin } from "@/utils/authPrompt";
+import { canAddWatchlistItem, requireLogin } from "@/utils/authPrompt";
 import menegangkanIcon from "@/assets/emoticon/menegangkan-emoticon.png";
 import pikiranIcon from "@/assets/emoticon/pikiran-emoticon.png";
 import romantisIcon from "@/assets/emoticon/romantis-emoticon.png";
@@ -673,7 +673,9 @@ function Homepage() {
       return;
     }
 
-    setPendingWatchlistMovie({ ...mediaItem, media_type: mediaType });
+    if (canAddWatchlistItem(watchlist, seriesWatchlist)) {
+      setPendingWatchlistMovie({ ...mediaItem, media_type: mediaType });
+    }
   };
 
   const confirmSaveToWatchlist = () => {

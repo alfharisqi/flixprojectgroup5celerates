@@ -13,7 +13,8 @@ export const getMyFriends = async (req, res) => {
           u.username,
           u.email,
           u.profile_image_url,
-          u.is_premium
+          u.is_premium,
+          u.subscription_plan
        FROM flix.user_friends uf
        JOIN flix.users u
          ON u.id_user = CASE
@@ -72,7 +73,8 @@ export const getPendingFriendRequests = async (req, res) => {
           u.username,
           u.email,
           u.profile_image_url,
-          u.is_premium
+          u.is_premium,
+          u.subscription_plan
        FROM flix.user_friends uf
        JOIN flix.users u ON u.id_user = uf.requester_user_id
        WHERE uf.addressee_user_id = $1
@@ -107,6 +109,7 @@ export const searchUsersForFriend = async (req, res) => {
           u.email,
           u.profile_image_url,
           u.is_premium,
+          u.subscription_plan,
           CASE
             WHEN uf.status = 'accepted' THEN 'accepted'
             WHEN uf.status = 'pending' AND uf.requester_user_id = $1 THEN 'pending_sent'
@@ -159,7 +162,7 @@ export const addFriend = async (req, res) => {
     }
 
     const userCheck = await pool.query(
-      `SELECT id_user, username, email, profile_image_url, is_premium
+      `SELECT id_user, username, email, profile_image_url, is_premium, subscription_plan
        FROM flix.users
        WHERE id_user = $1`,
       [addresseeId],
@@ -261,7 +264,8 @@ export const acceptFriendRequest = async (req, res) => {
          u.username,
          u.email,
          u.profile_image_url,
-         u.is_premium`,
+         u.is_premium,
+         u.subscription_plan`,
       [friendRequestId, userId],
     );
 

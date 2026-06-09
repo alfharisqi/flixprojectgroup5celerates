@@ -206,42 +206,6 @@
   height: 24px;
 }
 
-.admin-night-mode {
-  min-height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 31px 25px;
-  color: #ffffff;
-  font-size: 16px;
-  font-weight: 400;
-}
-
-.admin-night-mode input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.admin-night-mode__switch {
-  width: 35px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 2px 4px;
-  border-radius: 999px;
-  background: #000000;
-  color: #bcbcbc;
-  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.16);
-}
-
-.admin-night-mode__switch svg {
-  width: 13px;
-  height: 13px;
-}
-
 .admin-profile {
   display: flex;
   align-items: center;
@@ -4326,7 +4290,6 @@
   .admin-brand__flix-logo,
   .admin-nav__item span,
   .admin-sidebar__logout span,
-  .admin-night-mode span:first-child,
   .admin-profile__meta {
     display: none;
   }
@@ -4354,11 +4317,6 @@
 
   .admin-nav__item,
   .admin-sidebar__logout {
-    justify-content: center;
-    padding-inline: 0;
-  }
-
-  .admin-night-mode {
     justify-content: center;
     padding-inline: 0;
   }

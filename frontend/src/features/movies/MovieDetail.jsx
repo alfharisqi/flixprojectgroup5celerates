@@ -26,7 +26,7 @@ import catchplayIcon from "@/assets/platformstream-logo/catchplay-icon.png";
 import disneyHotstarIcon from "@/assets/platformstream-logo/disneyhotstar-icon.png";
 import hboMaxIcon from "@/assets/platformstream-logo/HBOmax-icon.png";
 import netflixIcon from "@/assets/platformstream-logo/netflix-icon.png";
-import { requireLogin } from "@/utils/authPrompt";
+import { canAddWatchlistItem, requireLogin } from "@/utils/authPrompt";
 import { submitReport } from "@/utils/report";
 import "@/features/movies/MovieDetail.css";
 
@@ -368,7 +368,9 @@ function MovieDetail() {
       return;
     }
 
-    setPendingWatchlistMovie(watchlistMovie);
+    if (canAddWatchlistItem(watchlist)) {
+      setPendingWatchlistMovie(watchlistMovie);
+    }
   };
 
   const confirmSaveToWatchlist = () => {

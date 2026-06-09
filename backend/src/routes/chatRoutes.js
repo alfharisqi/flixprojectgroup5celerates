@@ -6,12 +6,13 @@ import {
   startConversation,
 } from "../controllers/chatController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
+import { requirePremiumFeature } from "../middleware/subscriptionMiddleware.js";
 
 const router = express.Router();
 
-router.get("/conversations", verifyToken, getMyConversations);
-router.post("/conversations/:userId", verifyToken, startConversation);
-router.get("/conversations/:conversationId/messages", verifyToken, getConversationMessages);
-router.post("/conversations/:conversationId/messages", verifyToken, sendMessage);
+router.get("/conversations", verifyToken, requirePremiumFeature, getMyConversations);
+router.post("/conversations/:userId", verifyToken, requirePremiumFeature, startConversation);
+router.get("/conversations/:conversationId/messages", verifyToken, requirePremiumFeature, getConversationMessages);
+router.post("/conversations/:conversationId/messages", verifyToken, requirePremiumFeature, sendMessage);
 
 export default router;

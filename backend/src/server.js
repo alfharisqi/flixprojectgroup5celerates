@@ -29,6 +29,7 @@ import movieReviewRoutes from "./routes/movieReviewRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import tvSeriesReviewRoutes from "./routes/tvSeriesReviewRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import watchlistRoutes from "./routes/watchlistRoutes.js";
 import { initializeChatsTable } from "./config/initChats.js";
 import { initializeFriendsTable } from "./config/initFriends.js";
 import { initializeNotificationsTable } from "./config/initNotifications.js";
@@ -44,6 +45,7 @@ import { initializeAdminMoviesTable } from "./config/initAdminMovies.js";
 import { initializeContactMessagesTable } from "./config/initContactMessages.js";
 import { initializePaymentTransactionsTable } from "./config/initPaymentTransactions.js";
 import { initializePaymentMethodsTable } from "./config/initPaymentMethods.js";
+import { initializeWatchlistTable } from "./config/initWatchlist.js";
 
 dotenv.config();
 
@@ -71,6 +73,7 @@ const initializeDatabase = () => {
       initializeContactMessagesTable(),
       initializePaymentTransactionsTable(),
       initializePaymentMethodsTable(),
+      initializeWatchlistTable(),
     ]).then(() => initializeReportsTable());
   }
 
@@ -135,6 +138,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/api/payment", paymentRoutes);
+app.use("/api/watchlist", watchlistRoutes);
 
 const PORT = process.env.PORT || 5000;
 

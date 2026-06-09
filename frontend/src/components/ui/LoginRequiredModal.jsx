@@ -6,12 +6,27 @@ import "./LoginRequiredModal.css";
 function LoginRequiredModal() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState("login");
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const handleOpen = () => setOpen(true);
+    const handleOpen = () => {
+      setMode("login");
+      setMessage("");
+      setOpen(true);
+    };
+    const handleUpgradeOpen = (event) => {
+      setMode("upgrade");
+      setMessage(event.detail?.message || "Fitur ini hanya tersedia untuk pengguna Premium atau Eksklusif.");
+      setOpen(true);
+    };
 
     window.addEventListener("flix:require-login", handleOpen);
-    return () => window.removeEventListener("flix:require-login", handleOpen);
+    window.addEventListener("flix:require-upgrade", handleUpgradeOpen);
+    return () => {
+      window.removeEventListener("flix:require-login", handleOpen);
+      window.removeEventListener("flix:require-upgrade", handleUpgradeOpen);
+    };
   }, []);
 
   if (!open) {
@@ -48,25 +63,41 @@ function LoginRequiredModal() {
         </div>
 
         <div className="login-required__texts">
-          <h2 id="login-required-title">Gabung dengan FLIX</h2>
-          <p>Yuk login dulu! Kamu perlu punya akun untuk menjelajahi FLIX.</p>
+          <h2 id="login-required-title">
+            {mode === "upgrade" ? "Upgrade FLIX" : "Gabung dengan FLIX"}
+          </h2>
+          <p>
+            {mode === "upgrade"
+              ? message
+              : "Yuk login dulu! Kamu perlu punya akun untuk menjelajahi FLIX."}
+          </p>
         </div>
 
         <div className="login-required__actions">
           <button
             className="login-required__primary"
             type="button"
-            onClick={() => goToAuthPage("/register")}
+            onClick={() => goToAuthPage(mode === "upgrade" ? "/premium" : "/register")}
           >
-            Daftar Sekarang
+            {mode === "upgrade" ? "Lihat Paket" : "Daftar Sekarang"}
           </button>
-          <button
-            className="login-required__secondary"
-            type="button"
-            onClick={() => goToAuthPage("/login")}
-          >
-            Login
-          </button>
+          {mode === "upgrade" ? (
+            <button
+              className="login-required__secondary"
+              type="button"
+              onClick={closeModal}
+            >
+              Nanti dulu
+            </button>
+          ) : (
+            <button
+              className="login-required__secondary"
+              type="button"
+              onClick={() => goToAuthPage("/login")}
+            >
+              Login
+            </button>
+          )}
         </div>
       </section>
     </div>

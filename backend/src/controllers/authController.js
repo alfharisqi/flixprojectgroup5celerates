@@ -53,9 +53,9 @@ export const register = async (req, res) => {
       await client.query("BEGIN");
 
       const result = await client.query(
-        `INSERT INTO flix.users (id_role, username, email, password, email_verified)
-         VALUES ($1, $2, $3, $4, FALSE)
-         RETURNING id_user, username, email, profile_image_url, banner_image_url, email_verified`,
+        `INSERT INTO flix.users (id_role, username, email, password, email_verified, subscription_plan)
+         VALUES ($1, $2, $3, $4, FALSE, 'free')
+         RETURNING id_user, username, email, profile_image_url, banner_image_url, email_verified, is_premium, subscription_plan`,
         [roleId, username, email, hashedPassword]
       );
 
@@ -106,6 +106,7 @@ export const login = async (req, res) => {
           u.email_verified,
           u.is_active,
           u.is_premium,
+          u.subscription_plan,
           u.profile_image_url,
           u.banner_image_url,
           r.role_name,
@@ -142,6 +143,8 @@ export const login = async (req, res) => {
     }
 
     const user = result.rows[0];
+    const subscriptionPlan =
+      user.subscription_plan || (user.is_premium ? "premium" : "free");
 
     const isMatch = await bcrypt.compare(password, user.password);
 
@@ -170,7 +173,8 @@ export const login = async (req, res) => {
         email: user.email,
         role: user.role_name,
         email_verified: user.email_verified,
-        is_premium: user.is_premium
+        is_premium: subscriptionPlan === "premium" || subscriptionPlan === "exclusive",
+        subscription_plan: subscriptionPlan
       },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
@@ -192,7 +196,8 @@ export const login = async (req, res) => {
         email: user.email,
         role: user.role_name,
         email_verified: user.email_verified,
-        is_premium: user.is_premium,
+        is_premium: subscriptionPlan === "premium" || subscriptionPlan === "exclusive",
+        subscription_plan: subscriptionPlan,
         profile_image_url: user.profile_image_url,
         banner_image_url: user.banner_image_url,
         current_package_code: user.current_package_code,

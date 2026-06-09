@@ -29,6 +29,7 @@ import menegangkanIcon from "@/assets/emoticon/menegangkan-emoticon.png";
 import romantisIcon from "@/assets/emoticon/romantis-emoticon.png";
 import pikiranIcon from "@/assets/emoticon/pikiran-emoticon.png";
 import { createChatThreadFromUser, openChatThread } from "@/utils/chat";
+import { normalizeSubscriptionPlan, requirePremiumAccess } from "@/utils/authPrompt";
 import { resolveMediaUrl } from "@/utils/media";
 import "./ProfilePage.css";
 
@@ -1136,11 +1137,11 @@ function ProfilePage() {
         setLoading(true);
         setErrorMessage("");
         const [
-          profileResponse,
-          activityResponse,
-          friendsResponse,
-          friendRequestsResponse,
-        ] = await Promise.all([
+          profileResult,
+          activityResult,
+          friendsResult,
+          friendRequestsResult,
+        ] = await Promise.allSettled([
           axios.get(`${apiUrl}/api/profile/me`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
@@ -1155,6 +1156,11 @@ function ProfilePage() {
           }),
         ]);
 
+        if (profileResult.status !== "fulfilled") {
+          throw profileResult.reason;
+        }
+
+        const profileResponse = profileResult.value;
         setProfile(profileResponse.data);
         const currentStoredUser = getStoredUser() || {};
         localStorage.setItem(
@@ -1170,9 +1176,19 @@ function ProfilePage() {
           email: profileResponse.data.email || "",
           password: "",
         });
-        setActivity(activityResponse.data);
-        setFriends(friendsResponse.data || []);
-        setFriendRequests(friendRequestsResponse.data || []);
+        setActivity(
+          activityResult.status === "fulfilled"
+            ? activityResult.value.data
+            : { stats: {}, reviews: [], posts: [] },
+        );
+        setFriends(
+          friendsResult.status === "fulfilled" ? friendsResult.value.data || [] : [],
+        );
+        setFriendRequests(
+          friendRequestsResult.status === "fulfilled"
+            ? friendRequestsResult.value.data || []
+            : [],
+        );
       } catch (error) {
         setErrorMessage(
           error.response?.data?.message || "Gagal mengambil profile",
@@ -1269,6 +1285,13 @@ function ProfilePage() {
       setFriendSearchResults([]);
       setFriendSearchLoading(false);
       setFriendSearchMessage("");
+      return undefined;
+    }
+
+    if (!requirePremiumAccess()) {
+      setFriendSearchResults([]);
+      setFriendSearchLoading(false);
+      setFriendSearchMessage("Fitur ini hanya tersedia untuk pengguna Premium atau Eksklusif.");
       return undefined;
     }
 
@@ -1581,6 +1604,10 @@ function ProfilePage() {
   };
 
   const handleAcceptFriendRequest = async (request) => {
+    if (!requirePremiumAccess()) {
+      return;
+    }
+
     try {
       setFriendActionSaving(true);
       const response = await axios.put(
@@ -1605,6 +1632,10 @@ function ProfilePage() {
   };
 
   const handleDeclineFriendRequest = async (request) => {
+    if (!requirePremiumAccess()) {
+      return;
+    }
+
     try {
       setFriendActionSaving(true);
       await axios.delete(
@@ -1627,6 +1658,10 @@ function ProfilePage() {
   };
 
   const handleAddFriendFromSearch = async (user) => {
+    if (!requirePremiumAccess()) {
+      return;
+    }
+
     if (!user?.id_user) {
       return;
     }
@@ -1663,6 +1698,10 @@ function ProfilePage() {
   };
 
   const handleMessageFriend = (friend) => {
+    if (!requirePremiumAccess()) {
+      return;
+    }
+
     openChatThread(
       createChatThreadFromUser({
         id_user: friend.id_user,
@@ -1670,12 +1709,17 @@ function ProfilePage() {
         email: friend.email,
         profile_image_url: friend.profile_image_url,
         is_premium: friend.is_premium,
+        subscription_plan: friend.subscription_plan,
         lastMessage: "Mulai obrolan tentang film",
       }),
     );
   };
 
   const handleRemoveFriend = async (friend) => {
+    if (!requirePremiumAccess()) {
+      return;
+    }
+
     const shouldRemove = window.confirm(
       `Hapus ${friend.username || "teman ini"} dari friendlist?`,
     );
@@ -1757,6 +1801,7 @@ function ProfilePage() {
             imageUrl={profileImageUrl}
             name={profile?.username || initial}
             isPremium={Boolean(profile?.is_premium)}
+            subscriptionPlan={profile?.subscription_plan}
             alt={profile?.username || "Foto profile"}
           />
           <button
@@ -1776,11 +1821,10 @@ function ProfilePage() {
             <FaCalendarAlt />
             <span>{formatJoinDate(profile?.created_at)}</span>
 
-            {/* Logika Kondisional Status Premium */}
-            {profile?.is_premium ? (
+            {["premium", "exclusive"].includes(normalizeSubscriptionPlan(profile)) ? (
               <span className="profile-premium-badge">
                 <img src={diamondIcon} alt="" />
-                Premium
+                {normalizeSubscriptionPlan(profile) === "exclusive" ? "Eksklusif" : "Premium"}
               </span>
             ) : (
               <button

@@ -4,7 +4,7 @@ import axios from "axios";
 import { FiArrowLeft, FiHash, FiPlus, FiSend, FiTrash2, FiX } from "react-icons/fi";
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import RichTextEditor from "@/components/editor/RichTextEditor";
-import { requireLogin } from "@/utils/authPrompt";
+import { requireLogin, requirePremiumAccess } from "@/utils/authPrompt";
 import "./CreatePostPage.css";
 
 function CreatePostPage() {
@@ -21,7 +21,10 @@ function CreatePostPage() {
   useEffect(() => {
     if (!token) {
       requireLogin();
+      return;
     }
+
+    requirePremiumAccess();
   }, [token]);
 
   const addTag = () => {
@@ -77,7 +80,7 @@ function CreatePostPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!requireLogin()) {
+    if (!requirePremiumAccess()) {
       return;
     }
 

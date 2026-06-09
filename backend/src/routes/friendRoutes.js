@@ -10,16 +10,17 @@ import {
   searchUsersForFriend,
 } from "../controllers/friendController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
+import { requirePremiumFeature } from "../middleware/subscriptionMiddleware.js";
 
 const router = express.Router();
 
-router.get("/", verifyToken, getMyFriends);
-router.get("/ids", verifyToken, getMyFriendIds);
-router.get("/requests", verifyToken, getPendingFriendRequests);
-router.get("/search", verifyToken, searchUsersForFriend);
-router.put("/requests/:friendId/accept", verifyToken, acceptFriendRequest);
-router.delete("/requests/:friendId/decline", verifyToken, declineFriendRequest);
-router.post("/:userId", verifyToken, addFriend);
-router.delete("/:userId", verifyToken, removeFriend);
+router.get("/", verifyToken, requirePremiumFeature, getMyFriends);
+router.get("/ids", verifyToken, requirePremiumFeature, getMyFriendIds);
+router.get("/requests", verifyToken, requirePremiumFeature, getPendingFriendRequests);
+router.get("/search", verifyToken, requirePremiumFeature, searchUsersForFriend);
+router.put("/requests/:friendId/accept", verifyToken, requirePremiumFeature, acceptFriendRequest);
+router.delete("/requests/:friendId/decline", verifyToken, requirePremiumFeature, declineFriendRequest);
+router.post("/:userId", verifyToken, requirePremiumFeature, addFriend);
+router.delete("/:userId", verifyToken, requirePremiumFeature, removeFriend);
 
 export default router;

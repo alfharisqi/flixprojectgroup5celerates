@@ -18,7 +18,7 @@ import {
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import FilterPopup from "@/components/ui/FilterPopup";
 import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
-import { requireLogin } from "@/utils/authPrompt";
+import { canAddWatchlistItem, requireLogin } from "@/utils/authPrompt";
 import amazonPrimeVideoIcon from "@/assets/platformstream-logo/amazonprimevideo-icon.png";
 import appleTvIcon from "@/assets/platformstream-logo/appletv-icon.png";
 import catchplayIcon from "@/assets/platformstream-logo/catchplay-icon.png";
@@ -795,7 +795,9 @@ function MoviesPage() {
       return;
     }
 
-    setPendingWatchlistMovie({ ...mediaItem, media_type: mediaType });
+    if (canAddWatchlistItem(watchlist, seriesWatchlist)) {
+      setPendingWatchlistMovie({ ...mediaItem, media_type: mediaType });
+    }
   };
 
   const confirmSaveToWatchlist = () => {
