@@ -226,22 +226,13 @@ function PaymentPage() {
   };
 
   // Kalkulasi Harga secara Dinamis berdasarkan Durasi Bulan
-  const getSubtotal = () => {
-    const monthlyPackage =
-      paymentPackages.find((paymentPackage) => paymentPackage.code === "premium") ||
-      fallbackPaymentPackages[0];
-    const yearlyPackage =
-      paymentPackages.find((paymentPackage) => paymentPackage.code === "premium_yearly") ||
-      fallbackPaymentPackages[1];
-
-    if (Number(durationMonths) === 12) {
-      return Number(yearlyPackage.price || 0);
-    }
-
-    return Number(durationMonths) * Number(monthlyPackage.price || 0);
-  };
-
-  const subtotal = getSubtotal();
+  const monthlyPackage =
+    paymentPackages.find((paymentPackage) => paymentPackage.code === "premium") ||
+    fallbackPaymentPackages[0];
+  const monthlyPrice = Number(monthlyPackage.price || fallbackPaymentPackages[0].price || 0);
+  const baseSubtotal = Number(durationMonths) * monthlyPrice;
+  const durationDiscount = Number(durationMonths) === 12 ? Math.round(baseSubtotal * 0.1) : 0;
+  const subtotal = baseSubtotal - durationDiscount;
   const adminFee = 2500; // Biaya admin Rp2.500 sesuai mockup Anda
   const totalPayment = subtotal + adminFee;
 
@@ -413,7 +404,7 @@ function PaymentPage() {
                   <option value={1}>1 Bulan (Premium Bulanan)</option>
                   <option value={3}>3 Bulan</option>
                   <option value={6}>6 Bulan</option>
-                  <option value={12}>12 Bulan (Eksklusif - Hemat!)</option>
+                  <option value={12}>12 Bulan (Hemat 10%)</option>
                 </select>
               </div>
             </div>
@@ -635,6 +626,18 @@ function PaymentPage() {
                   {durationMonths === 12 ? "Eksklusif" : "Premium Bulanan"}
                 </strong>
               </div>
+              {durationMonths === 12 && (
+                <>
+                  <div className="summary-row">
+                    <span>Harga 12 Bulan</span>
+                    <strong>{formatRupiah(baseSubtotal)}</strong>
+                  </div>
+                  <div className="summary-row">
+                    <span>Diskon 10%</span>
+                    <strong>-{formatRupiah(durationDiscount)}</strong>
+                  </div>
+                </>
+              )}
               <div className="summary-row">
                 <span>Subtotal</span>
                 <strong>{formatRupiah(subtotal)}</strong>

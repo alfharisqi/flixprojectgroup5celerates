@@ -258,36 +258,30 @@ const cropImageToBlob = async ({
   const context = canvas.getContext("2d");
   const stageWidth = stageSize.width || outputWidth || 1;
   const stageHeight = stageSize.height || outputHeight || 1;
-  const baseScale = Math.max(
+  const baseScale = Math.min(
     stageWidth / image.naturalWidth,
     stageHeight / image.naturalHeight
   );
-  const renderedWidth = image.naturalWidth * baseScale * zoom;
-  const renderedHeight = image.naturalHeight * baseScale * zoom;
-  const sourceScale = 1 / (baseScale * zoom);
-  const sourceWidth = Math.min(stageWidth * sourceScale, image.naturalWidth);
-  const sourceHeight = Math.min(stageHeight * sourceScale, image.naturalHeight);
-  const sourceX = Math.min(
-    Math.max(0, ((renderedWidth - stageWidth) / 2 - pan.x) * sourceScale),
-    image.naturalWidth - sourceWidth
-  );
-  const sourceY = Math.min(
-    Math.max(0, ((renderedHeight - stageHeight) / 2 - pan.y) * sourceScale),
-    image.naturalHeight - sourceHeight
-  );
+  const scale = baseScale * zoom;
+  const renderedWidth = image.naturalWidth * scale;
+  const renderedHeight = image.naturalHeight * scale;
+  const outputScaleX = outputWidth / stageWidth;
+  const outputScaleY = outputHeight / stageHeight;
+  const outputImageWidth = renderedWidth * outputScaleX;
+  const outputImageHeight = renderedHeight * outputScaleY;
+  const outputX = (outputWidth - outputImageWidth) / 2 + pan.x * outputScaleX;
+  const outputY = (outputHeight - outputImageHeight) / 2 + pan.y * outputScaleY;
 
   canvas.width = outputWidth;
   canvas.height = outputHeight;
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, outputWidth, outputHeight);
   context.drawImage(
     image,
-    sourceX,
-    sourceY,
-    sourceWidth,
-    sourceHeight,
-    0,
-    0,
-    outputWidth,
-    outputHeight
+    outputX,
+    outputY,
+    outputImageWidth,
+    outputImageHeight
   );
 
   return new Promise((resolve, reject) => {
@@ -332,7 +326,7 @@ function AdminPaymentImageCropModal({
     stageSize?.width > 1 &&
     stageSize?.height > 1;
   const baseScale = canCalculatePreview
-    ? Math.max(stageSize.width / naturalSize.width, stageSize.height / naturalSize.height)
+    ? Math.min(stageSize.width / naturalSize.width, stageSize.height / naturalSize.height)
     : 1;
   const imageStyle = canCalculatePreview
     ? {
@@ -360,7 +354,7 @@ function AdminPaymentImageCropModal({
       };
     }
 
-    const scale = Math.max(width / size.width, height / size.height) * cropData.zoom;
+    const scale = Math.min(width / size.width, height / size.height) * cropData.zoom;
     const renderedWidth = size.width * scale;
     const renderedHeight = size.height * scale;
 
