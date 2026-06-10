@@ -1,7 +1,11 @@
 import express from "express";
 import multer from "multer";
 import path from "path";
-import { getPaymentSettings, upgradeToPremium } from "../controllers/paymentController.js";
+import {
+  getCurrentPayment,
+  getPaymentSettings,
+  upgradeToPremium,
+} from "../controllers/paymentController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -37,6 +41,7 @@ const upload = multer({
 });
 
 router.get("/settings", getPaymentSettings);
+router.get("/current", verifyToken, getCurrentPayment);
 
 // 3. Tambahkan middleware upload.single("payment_proof") pada rute checkout
 router.post("/checkout", verifyToken, upload.single("payment_proof"), upgradeToPremium);

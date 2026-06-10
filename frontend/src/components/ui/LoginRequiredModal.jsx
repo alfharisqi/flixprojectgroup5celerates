@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import flixAdminLogo from "@/assets/flixadmin-logo.png";
-import { getUpgradeTargetPath } from "@/utils/authPrompt";
+import { getUpgradeTargetPath, hasPendingPayment } from "@/utils/authPrompt";
 import "./LoginRequiredModal.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -42,14 +42,22 @@ function LoginRequiredModal() {
         }
 
         const profile = await response.json();
+        const storedUser = JSON.parse(localStorage.getItem("user") || "{}") || {};
         const nextUser = {
-          ...(JSON.parse(localStorage.getItem("user") || "{}") || {}),
+          ...storedUser,
           ...profile,
           role: profile.role_name || profile.role,
         };
+        const shouldContinuePayment =
+          hasPendingPayment(storedUser) ||
+          hasPendingPayment(profile) ||
+          hasPendingPayment(nextUser);
+        const resolvedUser = shouldContinuePayment
+          ? { ...nextUser, pending_payment_status: "pending" }
+          : nextUser;
 
-        localStorage.setItem("user", JSON.stringify(nextUser));
-        setTargetPath(getUpgradeTargetPath(nextUser));
+        localStorage.setItem("user", JSON.stringify(resolvedUser));
+        setTargetPath(shouldContinuePayment ? "/payment" : getUpgradeTargetPath(resolvedUser));
       } catch {
         // Biarkan target dari event/localStorage jika refresh profile gagal.
       }

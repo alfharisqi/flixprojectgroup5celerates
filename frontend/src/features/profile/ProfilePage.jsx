@@ -29,7 +29,12 @@ import menegangkanIcon from "@/assets/emoticon/menegangkan-emoticon.png";
 import romantisIcon from "@/assets/emoticon/romantis-emoticon.png";
 import pikiranIcon from "@/assets/emoticon/pikiran-emoticon.png";
 import { createChatThreadFromUser, openChatThread } from "@/utils/chat";
-import { getUpgradeTargetPath, normalizeSubscriptionPlan, requirePremiumAccess } from "@/utils/authPrompt";
+import {
+  getUpgradeTargetPath,
+  hasPendingPayment,
+  normalizeSubscriptionPlan,
+  requirePremiumAccess,
+} from "@/utils/authPrompt";
 import { resolveMediaUrl } from "@/utils/media";
 import "./ProfilePage.css";
 
@@ -956,6 +961,7 @@ function ProfilePage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isSubscriptionOpen, setIsSubscriptionOpen] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState(null);
   const [reviewSaving, setReviewSaving] = useState(false);
   const [friendActionSaving, setFriendActionSaving] = useState(false);
   const [friendSearchQuery, setFriendSearchQuery] = useState("");
@@ -1109,6 +1115,60 @@ function ProfilePage() {
   const initial = getInitial(profile?.username || storedUser?.username);
   const profileImageUrl = resolveMediaUrl(profile?.profile_image_url);
   const bannerImageUrl = resolveMediaUrl(profile?.banner_image_url);
+  const getProfileUpgradeTarget = () => {
+    const stored = getStoredUser() || {};
+
+    if (hasPendingPayment(stored) || hasPendingPayment(profile)) {
+      return "/payment";
+    }
+
+    return getUpgradeTargetPath(profile || stored);
+  };
+
+  const handleProfileUpgradeClick = async () => {
+    const stored = getStoredUser() || {};
+
+    if (pendingPayment || hasPendingPayment(stored) || hasPendingPayment(profile)) {
+      navigate("/payment");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      navigate(getProfileUpgradeTarget());
+      return;
+    }
+
+    try {
+      const response = await axios.get(`${apiUrl}/api/payment/current`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const pendingPayment = response.data?.pendingPayment;
+
+      if (response.data?.hasPendingPayment && pendingPayment) {
+        setPendingPayment(pendingPayment);
+        const nextUser = {
+          ...stored,
+          pending_payment_status: "pending",
+          pending_payment_package_code: pendingPayment.packageCode,
+          pending_payment_package_name: pendingPayment.packageName,
+          pending_payment_duration_months: pendingPayment.durationMonths,
+          pending_payment_total_amount: pendingPayment.totalAmount,
+          pending_payment_created_at: pendingPayment.createdAt,
+        };
+
+        localStorage.setItem("user", JSON.stringify(nextUser));
+        navigate("/payment");
+        return;
+      }
+    } catch (error) {
+      console.error("Gagal mengecek status pembayaran:", error);
+    }
+
+    navigate("/premium");
+  };
 
   useEffect(
     () => () => {
@@ -1142,6 +1202,7 @@ function ProfilePage() {
           activityResult,
           friendsResult,
           friendRequestsResult,
+          paymentResult,
         ] = await Promise.allSettled([
           axios.get(`${apiUrl}/api/profile/me`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -1155,6 +1216,9 @@ function ProfilePage() {
           axios.get(`${apiUrl}/api/friends/requests`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
+          axios.get(`${apiUrl}/api/payment/current`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
         ]);
 
         if (profileResult.status !== "fulfilled") {
@@ -1162,15 +1226,42 @@ function ProfilePage() {
         }
 
         const profileResponse = profileResult.value;
+        const pendingPaymentData =
+          paymentResult.status === "fulfilled" &&
+          paymentResult.value.data?.hasPendingPayment
+            ? paymentResult.value.data.pendingPayment
+            : null;
+
+        setPendingPayment(pendingPaymentData);
         setProfile(profileResponse.data);
         const currentStoredUser = getStoredUser() || {};
+        const nextStoredUser = {
+          ...currentStoredUser,
+          ...profileResponse.data,
+          role: profileResponse.data.role_name || currentStoredUser.role,
+        };
+
+        if (pendingPaymentData) {
+          Object.assign(nextStoredUser, {
+            pending_payment_status: "pending",
+            pending_payment_package_code: pendingPaymentData.packageCode,
+            pending_payment_package_name: pendingPaymentData.packageName,
+            pending_payment_duration_months: pendingPaymentData.durationMonths,
+            pending_payment_total_amount: pendingPaymentData.totalAmount,
+            pending_payment_created_at: pendingPaymentData.createdAt,
+          });
+        } else {
+          delete nextStoredUser.pending_payment_status;
+          delete nextStoredUser.pending_payment_package_code;
+          delete nextStoredUser.pending_payment_package_name;
+          delete nextStoredUser.pending_payment_duration_months;
+          delete nextStoredUser.pending_payment_total_amount;
+          delete nextStoredUser.pending_payment_created_at;
+        }
+
         localStorage.setItem(
           "user",
-          JSON.stringify({
-            ...currentStoredUser,
-            ...profileResponse.data,
-            role: profileResponse.data.role_name || currentStoredUser.role,
-          }),
+          JSON.stringify(nextStoredUser),
         );
         setForm({
           username: profileResponse.data.username || "",
@@ -1835,7 +1926,7 @@ function ProfilePage() {
               <button
                 type="button"
                 className="profile-upgrade-btn"
-                onClick={() => navigate(getUpgradeTargetPath(profile))}
+                onClick={handleProfileUpgradeClick}
               >
                 💎 Upgrade Premium
               </button>

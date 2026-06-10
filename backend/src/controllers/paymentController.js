@@ -80,6 +80,66 @@ export const getPaymentSettings = async (req, res) => {
   }
 };
 
+export const getCurrentPayment = async (req, res) => {
+  try {
+    const userId = req.user?.id_user || req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        message: "User tidak teridentifikasi. Silakan login kembali.",
+      });
+    }
+
+    await initializePaymentTransactionsTable();
+
+    const pendingResult = await pool.query(
+      `SELECT *
+       FROM flix.payment_transactions
+       WHERE id_user = $1
+         AND status = 'pending'
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [userId],
+    );
+
+    const pendingPayment = pendingResult.rows[0];
+
+    if (!pendingPayment) {
+      return res.json({
+        hasPendingPayment: false,
+        pendingPayment: null,
+      });
+    }
+
+    return res.json({
+      hasPendingPayment: true,
+      pendingPayment: {
+        id: Number(pendingPayment.id_transaction),
+        transactionId: formatTransactionId(
+          pendingPayment.id_transaction,
+          pendingPayment.created_at,
+        ),
+        status: pendingPayment.status,
+        packageCode: pendingPayment.package_code,
+        packageName: pendingPayment.package_name,
+        durationMonths: Number(pendingPayment.duration_months || 1),
+        amount: Number(pendingPayment.amount || 0),
+        adminFee: Number(pendingPayment.admin_fee || 0),
+        totalAmount: Number(pendingPayment.total_amount || 0),
+        paymentMethod: pendingPayment.payment_method,
+        paymentMethodDetail: pendingPayment.payment_method_detail,
+        paymentProof: pendingPayment.payment_proof,
+        createdAt: pendingPayment.created_at,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal mengambil status pembayaran.",
+      error: error.message,
+    });
+  }
+};
+
 const normalizeNumber = (value, fallback = 0) => {
   const number = Number(value);
   return Number.isFinite(number) && number >= 0 ? Math.round(number) : fallback;

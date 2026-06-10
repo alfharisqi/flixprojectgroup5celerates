@@ -24,8 +24,24 @@ export const hasPremiumAccess = (user = getStoredUser()) =>
 export const hasExclusiveAccess = (user = getStoredUser()) =>
   normalizeSubscriptionPlan(user) === "exclusive";
 
-export const hasPendingPayment = (user = getStoredUser()) =>
-  String(user?.pending_payment_status || "").toLowerCase() === "pending";
+export const hasPendingPayment = (user = getStoredUser()) => {
+  const directStatus = String(
+    user?.pending_payment_status ||
+      user?.pendingPaymentStatus ||
+      user?.payment_status ||
+      user?.paymentStatus ||
+      "",
+  ).toLowerCase();
+
+  const nestedStatus = String(
+    user?.pendingPayment?.status ||
+      user?.payment?.status ||
+      user?.latestPayment?.status ||
+      "",
+  ).toLowerCase();
+
+  return directStatus === "pending" || nestedStatus === "pending";
+};
 
 export const getUpgradeTargetPath = (user = getStoredUser()) =>
   hasPendingPayment(user) ? "/payment" : "/premium";

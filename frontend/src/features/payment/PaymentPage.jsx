@@ -71,6 +71,17 @@ function PaymentPage() {
   const token = localStorage.getItem("token");
   const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
   const pendingDurationMonths = Number(storedUser.pending_payment_duration_months || 0);
+  const storedPendingPayment =
+    String(storedUser.pending_payment_status || "").toLowerCase() === "pending"
+      ? {
+          status: "pending",
+          packageCode: storedUser.pending_payment_package_code,
+          packageName: storedUser.pending_payment_package_name || "Premium Bulanan",
+          durationMonths: pendingDurationMonths || 1,
+          totalAmount: Number(storedUser.pending_payment_total_amount || 0),
+          createdAt: storedUser.pending_payment_created_at,
+        }
+      : null;
 
   // 1. Ambil data paket yang diteruskan dari halaman UpgradePremium
   const selectedPackage =
@@ -113,6 +124,8 @@ function PaymentPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [paymentProofFile, setPaymentProofFile] = useState(null);
   const [paymentProofPreview, setPaymentProofPreview] = useState("");
+  const [currentPendingPayment, setCurrentPendingPayment] = useState(storedPendingPayment);
+  const [checkingCurrentPayment, setCheckingCurrentPayment] = useState(Boolean(token));
   
   // 5. State Tambahan
   const [promoCode, setPromoCode] = useState("");
@@ -201,6 +214,72 @@ function PaymentPage() {
     };
 
     loadPaymentSettings();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadCurrentPayment = async () => {
+      if (!token) {
+        setCheckingCurrentPayment(false);
+        return;
+      }
+
+      try {
+        const response = await axios.get(`${API_URL}/api/payment/current`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!isMounted) {
+          return;
+        }
+
+        const pendingPayment = response.data?.pendingPayment;
+
+        if (response.data?.hasPendingPayment && pendingPayment) {
+          setCurrentPendingPayment(pendingPayment);
+          setDurationMonths(Number(pendingPayment.durationMonths || 1));
+          setTransactionId(pendingPayment.transactionId || "");
+          localStorage.setItem(
+            "user",
+            JSON.stringify({
+              ...storedUser,
+              pending_payment_status: "pending",
+              pending_payment_package_code: pendingPayment.packageCode,
+              pending_payment_package_name: pendingPayment.packageName,
+              pending_payment_duration_months: Number(pendingPayment.durationMonths || 1),
+              pending_payment_total_amount: Number(pendingPayment.totalAmount || 0),
+              pending_payment_created_at: pendingPayment.createdAt,
+            }),
+          );
+          return;
+        }
+
+        setCurrentPendingPayment(null);
+        const nextStoredUser = { ...storedUser };
+        delete nextStoredUser.pending_payment_status;
+        delete nextStoredUser.pending_payment_package_code;
+        delete nextStoredUser.pending_payment_package_name;
+        delete nextStoredUser.pending_payment_duration_months;
+        delete nextStoredUser.pending_payment_total_amount;
+        delete nextStoredUser.pending_payment_created_at;
+        localStorage.setItem("user", JSON.stringify(nextStoredUser));
+      } catch (error) {
+        if (isMounted && storedPendingPayment) {
+          setCurrentPendingPayment(storedPendingPayment);
+        }
+      } finally {
+        if (isMounted) {
+          setCheckingCurrentPayment(false);
+        }
+      }
+    };
+
+    loadCurrentPayment();
 
     return () => {
       isMounted = false;
@@ -391,6 +470,122 @@ function PaymentPage() {
       setLoading(false);
     }
   };
+
+  if (checkingCurrentPayment) {
+    return (
+      <div className="payment-page">
+        <header className="payment-header">
+          <img
+            className="payment-header__logo"
+            src={flixLogo}
+            alt="FLIX"
+            onClick={() => navigate("/")}
+          />
+          <button className="payment-header__close" onClick={() => navigate(-1)}>
+            ✕
+          </button>
+        </header>
+
+        <main className="payment-pending-container">
+          <div className="payment-success-card payment-success-card--inline">
+            <div className="success-checkmark-circle">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#00E082" strokeWidth="3">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <h2>Memeriksa Status Pembayaran</h2>
+            <p className="success-subtext">
+              Mohon tunggu sebentar. FLIX sedang memeriksa transaksi premium kamu.
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (currentPendingPayment) {
+    const pendingPackageName =
+      currentPendingPayment.packageName ||
+      (Number(durationMonths) === 12 ? "Eksklusif" : "Premium Bulanan");
+    const pendingTotalAmount = Number(currentPendingPayment.totalAmount || totalPayment);
+
+    return (
+      <div className="payment-page">
+        <header className="payment-header">
+          <img
+            className="payment-header__logo"
+            src={flixLogo}
+            alt="FLIX"
+            onClick={() => navigate("/")}
+          />
+          <button className="payment-header__close" onClick={() => navigate("/profile")}>
+            ✕
+          </button>
+        </header>
+
+        <main className="payment-pending-container">
+          <div className="payment-success-card payment-success-card--inline">
+            <div className="success-checkmark-circle">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#00E082" strokeWidth="3">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+
+            <h2>Pembayaran Menunggu Konfirmasi</h2>
+            <p className="success-subtext">
+              Bukti pembayaran kamu sudah terkirim. Akses premium akan aktif setelah disetujui admin.
+            </p>
+
+            <div className="premium-active-badge-card">
+              <span className="premium-star-icon">💎</span> Status: Pending Verifikasi
+            </div>
+
+            <div className="success-transaction-table">
+              <div className="table-row">
+                <span>ID Transaksi</span>
+                <strong>{currentPendingPayment.transactionId || transactionId || "-"}</strong>
+              </div>
+              <div className="table-row">
+                <span>Paket</span>
+                <strong>{pendingPackageName}</strong>
+              </div>
+              <div className="table-row">
+                <span>Metode</span>
+                <strong>{currentPendingPayment.paymentMethodDetail || "-"}</strong>
+              </div>
+              <div className="table-row">
+                <span>Total Bayar</span>
+                <strong>{formatRupiah(pendingTotalAmount)}</strong>
+              </div>
+              <div className="table-row">
+                <span>Status</span>
+                <strong>Menunggu Admin</strong>
+              </div>
+            </div>
+
+            <div className="features-checklist-group">
+              <h5>FITUR AKAN AKTIF SETELAH DISETUJUI:</h5>
+              <ul>
+                {pendingActivationFeatures.map((feature) => (
+                  <li key={feature}>
+                    <span className="feat-check-icon">✓</span> {feature}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <button
+              type="button"
+              className="btn-success-modal-continue"
+              onClick={() => navigate("/profile")}
+            >
+              Kembali ke Profil
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="payment-page">

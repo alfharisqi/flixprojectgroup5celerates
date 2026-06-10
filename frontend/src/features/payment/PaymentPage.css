@@ -40,6 +40,13 @@
   gap: 30px;
 }
 
+.payment-pending-container {
+  min-height: calc(100vh - 120px);
+  display: grid;
+  place-items: center;
+  padding: 20px 0 60px;
+}
+
 /* CARDS DAN LAYOUT */
 .payment-main-form {
   display: flex;
@@ -800,6 +807,11 @@
   box-shadow: 0 15px 40px rgba(0,0,0,0.6);
   text-align: center;
   animation: modalFadeIn 0.3s ease;
+}
+
+.payment-success-card--inline {
+  max-width: 520px;
+  margin: 0 auto;
 }
 
 .success-checkmark-circle {
