@@ -11,6 +11,7 @@ import profileIcon from "@/assets/icon/profile-icon.png";
 import myWatchlistIcon from "@/assets/icon/mywatchlist-icon.png";
 import communityIcon from "@/assets/icon/community-icon.png";
 import settingIcon from "@/assets/icon/setting-icon.png";
+import adminIcon from "@/assets/icon/admin-icon.png";
 import logoutIcon from "@/assets/icon/logout-icon.png";
 import messageCircleIcon from "@/assets/icon/message-circle-icon.svg";
 import sendIcon from "@/assets/icon/send-icon.svg";
@@ -1020,7 +1021,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
 
                   {user?.role === "admin" && (
                     <Link className="site-navbar__profile-item" to="/admin">
-                      <img src={settingIcon} alt="" />
+                      <img src={adminIcon} alt="" />
                       <span>Admin</span>
                     </Link>
                   )}
