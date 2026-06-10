@@ -1,24 +1,58 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import flixAdminLogo from "@/assets/flixadmin-logo.png";
+import { getUpgradeTargetPath } from "@/utils/authPrompt";
 import "./LoginRequiredModal.css";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 function LoginRequiredModal() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState("login");
   const [message, setMessage] = useState("");
+  const [targetPath, setTargetPath] = useState("/premium");
 
   useEffect(() => {
     const handleOpen = () => {
       setMode("login");
       setMessage("");
+      setTargetPath("/register");
       setOpen(true);
     };
-    const handleUpgradeOpen = (event) => {
+    const handleUpgradeOpen = async (event) => {
       setMode("upgrade");
       setMessage(event.detail?.message || "Fitur ini hanya tersedia untuk pengguna Premium atau Eksklusif.");
+      setTargetPath(event.detail?.targetPath || "/premium");
       setOpen(true);
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/api/profile/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const profile = await response.json();
+        const nextUser = {
+          ...(JSON.parse(localStorage.getItem("user") || "{}") || {}),
+          ...profile,
+          role: profile.role_name || profile.role,
+        };
+
+        localStorage.setItem("user", JSON.stringify(nextUser));
+        setTargetPath(getUpgradeTargetPath(nextUser));
+      } catch {
+        // Biarkan target dari event/localStorage jika refresh profile gagal.
+      }
     };
 
     window.addEventListener("flix:require-login", handleOpen);
@@ -77,7 +111,7 @@ function LoginRequiredModal() {
           <button
             className="login-required__primary"
             type="button"
-            onClick={() => goToAuthPage(mode === "upgrade" ? "/premium" : "/register")}
+            onClick={() => goToAuthPage(mode === "upgrade" ? targetPath : "/register")}
           >
             {mode === "upgrade" ? "Lihat Paket" : "Daftar Sekarang"}
           </button>

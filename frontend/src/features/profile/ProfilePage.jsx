@@ -29,7 +29,7 @@ import menegangkanIcon from "@/assets/emoticon/menegangkan-emoticon.png";
 import romantisIcon from "@/assets/emoticon/romantis-emoticon.png";
 import pikiranIcon from "@/assets/emoticon/pikiran-emoticon.png";
 import { createChatThreadFromUser, openChatThread } from "@/utils/chat";
-import { normalizeSubscriptionPlan, requirePremiumAccess } from "@/utils/authPrompt";
+import { getUpgradeTargetPath, normalizeSubscriptionPlan, requirePremiumAccess } from "@/utils/authPrompt";
 import { resolveMediaUrl } from "@/utils/media";
 import "./ProfilePage.css";
 
@@ -955,6 +955,7 @@ function ProfilePage() {
   const [cropData, setCropData] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isSubscriptionOpen, setIsSubscriptionOpen] = useState(false);
   const [reviewSaving, setReviewSaving] = useState(false);
   const [friendActionSaving, setFriendActionSaving] = useState(false);
   const [friendSearchQuery, setFriendSearchQuery] = useState("");
@@ -1822,15 +1823,19 @@ function ProfilePage() {
             <span>{formatJoinDate(profile?.created_at)}</span>
 
             {["premium", "exclusive"].includes(normalizeSubscriptionPlan(profile)) ? (
-              <span className="profile-premium-badge">
+              <button
+                type="button"
+                className="profile-premium-badge"
+                onClick={() => setIsSubscriptionOpen(true)}
+              >
                 <img src={diamondIcon} alt="" />
                 {normalizeSubscriptionPlan(profile) === "exclusive" ? "Eksklusif" : "Premium"}
-              </span>
+              </button>
             ) : (
               <button
                 type="button"
                 className="profile-upgrade-btn"
-                onClick={() => navigate("/premium")}
+                onClick={() => navigate(getUpgradeTargetPath(profile))}
               >
                 💎 Upgrade Premium
               </button>
@@ -1846,6 +1851,84 @@ function ProfilePage() {
           Edit Profil
         </button>
       </section>
+
+      {isSubscriptionOpen && (
+        <div
+          className="profile-subscription-modal"
+          role="presentation"
+          onClick={() => setIsSubscriptionOpen(false)}
+        >
+          <section
+            className="profile-subscription-modal__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-subscription-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="profile-subscription-modal__close"
+              onClick={() => setIsSubscriptionOpen(false)}
+              aria-label="Tutup detail langganan"
+            >
+              <FaTimes />
+            </button>
+
+            <div className="profile-subscription-modal__badge" aria-hidden="true">
+              <img src={diamondIcon} alt="" />
+            </div>
+
+            <div className="profile-subscription-modal__head">
+              <span>Langganan aktif</span>
+              <h2 id="profile-subscription-title">
+                {normalizeSubscriptionPlan(profile) === "exclusive"
+                  ? "FLIX Eksklusif"
+                  : "FLIX Premium"}
+              </h2>
+              <p>
+                {normalizeSubscriptionPlan(profile) === "exclusive"
+                  ? "Semua fitur Premium aktif, termasuk Chatbot FLIX."
+                  : "Watchlist unlimited, Community, chat, friendlist, dan bebas iklan aktif."}
+              </p>
+            </div>
+
+            <div className="profile-subscription-modal__details">
+              <div>
+                <span>Paket</span>
+                <strong>
+                  {profile?.current_package_name ||
+                    (normalizeSubscriptionPlan(profile) === "exclusive"
+                      ? "Eksklusif"
+                      : "Premium Bulanan")}
+                </strong>
+              </div>
+              <div>
+                <span>Status</span>
+                <strong>Aktif</strong>
+              </div>
+              <div>
+                <span>Mulai</span>
+                <strong>{formatDate(profile?.premium_started_at)}</strong>
+              </div>
+              <div>
+                <span>Berakhir</span>
+                <strong>{formatDate(profile?.premium_expired_at)}</strong>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="profile-subscription-modal__action"
+              onClick={() => {
+                setIsSubscriptionOpen(false);
+                navigate("/premium");
+              }}
+            >
+              Lihat Paket
+            </button>
+          </section>
+        </div>
+      )}
 
       <section className="profile-stats" aria-label="Statistik profil">
         <ProfileStatCard

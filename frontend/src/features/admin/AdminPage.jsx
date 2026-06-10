@@ -63,6 +63,25 @@ const transactionTabs = [
   { id: "failed", label: "Ditolak", countKey: "failed" }
 ];
 
+const contactTabs = [
+  { id: "all", label: "Semua", countKey: "all" },
+  { id: "pending", label: "Pending", countKey: "pending" },
+  { id: "reviewed", label: "Ditinjau", countKey: "reviewed" },
+  { id: "resolved", label: "Selesai", countKey: "resolved" },
+  { id: "closed", label: "Ditutup", countKey: "closed" }
+];
+
+const fallbackContactMessages = {
+  summary: {
+    all: 0,
+    pending: 0,
+    reviewed: 0,
+    resolved: 0,
+    closed: 0
+  },
+  messages: []
+};
+
 const transactionStatusMap = {
   success: "Berhasil",
   pending: "Pending",
@@ -681,6 +700,7 @@ const navItems = [
   { id: "reviews", label: "Review", image: reviewIcon },
   { id: "community", label: "Community", image: communityIcon },
   { id: "transactions", label: "Transaksi", image: emptyWalletIcon },
+  { id: "contact", label: "Report", icon: FiMessageSquare },
   { id: "settings", label: "Pengaturan", icon: FiSettings }
 ];
 
@@ -909,12 +929,14 @@ function AdminPage() {
   const [adminUsersSummary, setAdminUsersSummary] = useState(fallbackUsersSummary);
   const [adminReviews, setAdminReviews] = useState(fallbackReviews);
   const [adminCommunity, setAdminCommunity] = useState(fallbackCommunity);
+  const [adminContactMessages, setAdminContactMessages] = useState(fallbackContactMessages);
   const [adminTransactions, setAdminTransactions] = useState(fallbackTransactions);
   const [activeAdminPage, setActiveAdminPage] = useState("dashboard");
   const [activeMoviePanel, setActiveMoviePanel] = useState("list");
   const [activeUserPanel, setActiveUserPanel] = useState("list");
   const [activeReviewTab, setActiveReviewTab] = useState("incoming");
   const [activeCommunityTab, setActiveCommunityTab] = useState("all");
+  const [activeContactTab, setActiveContactTab] = useState("all");
   const [activeTransactionTab, setActiveTransactionTab] = useState("all");
   const [activeTransactionPanel, setActiveTransactionPanel] = useState("list");
   const [paymentMethods, setPaymentMethods] = useState(defaultPaymentMethods);
@@ -935,6 +957,7 @@ function AdminPage() {
   const [userPage, setUserPage] = useState(1);
   const [reviewPage, setReviewPage] = useState(1);
   const [communityPage, setCommunityPage] = useState(1);
+  const [contactPage, setContactPage] = useState(1);
   const [transactionPage, setTransactionPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isUserStatusLoading, setIsUserStatusLoading] = useState(false);
@@ -942,6 +965,8 @@ function AdminPage() {
   const [selectedReviewReport, setSelectedReviewReport] = useState(null);
   const [communityReportActionLoading, setCommunityReportActionLoading] = useState({});
   const [selectedCommunityReport, setSelectedCommunityReport] = useState(null);
+  const [contactActionLoading, setContactActionLoading] = useState({});
+  const [selectedContactMessage, setSelectedContactMessage] = useState(null);
   const [transactionActionLoading, setTransactionActionLoading] = useState({});
   const [selectedTransactionDetail, setSelectedTransactionDetail] = useState(null);
   const [dashboardError, setDashboardError] = useState("");
@@ -949,6 +974,7 @@ function AdminPage() {
   const [usersError, setUsersError] = useState("");
   const [reviewsError, setReviewsError] = useState("");
   const [communityError, setCommunityError] = useState("");
+  const [contactError, setContactError] = useState("");
   const [transactionsError, setTransactionsError] = useState("");
   const [userDetailError, setUserDetailError] = useState("");
   const [userStatusFeedback, setUserStatusFeedback] = useState("");
@@ -1003,6 +1029,7 @@ function AdminPage() {
           usersResponse,
           reviewsResponse,
           communityResponse,
+          contactResponse,
           transactionsResponse,
           paymentSettingsResponse
         ] = await Promise.all([
@@ -1031,6 +1058,11 @@ function AdminPage() {
               Authorization: `Bearer ${token}`
             }
           }),
+          fetch(`${API_URL}/api/admin/contact-us`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }),
           fetch(`${API_URL}/api/admin/transactions`, {
             headers: {
               Authorization: `Bearer ${token}`
@@ -1052,6 +1084,7 @@ function AdminPage() {
         const usersData = usersResponse.ok ? await usersResponse.json() : null;
         const reviewsData = reviewsResponse.ok ? await reviewsResponse.json() : null;
         const communityData = communityResponse.ok ? await communityResponse.json() : null;
+        const contactData = contactResponse.ok ? await contactResponse.json() : null;
         const transactionsData = transactionsResponse.ok ? await transactionsResponse.json() : null;
         const paymentSettingsData = paymentSettingsResponse.ok
           ? await paymentSettingsResponse.json()
@@ -1137,6 +1170,18 @@ function AdminPage() {
         });
         setCommunityError(communityResponse.ok ? "" : "Kelola community belum bisa mengambil data backend.");
 
+        const contactItems = Array.isArray(contactData?.messages)
+          ? contactData.messages
+          : fallbackContactMessages.messages;
+        setAdminContactMessages({
+          summary: contactData?.summary || {
+            ...fallbackContactMessages.summary,
+            all: contactItems.length
+          },
+          messages: contactItems
+        });
+        setContactError(contactResponse.ok ? "" : "Report admin belum bisa mengambil data backend.");
+
         const transactionItems = Array.isArray(transactionsData?.transactions)
           ? transactionsData.transactions
           : fallbackTransactions.items;
@@ -1178,6 +1223,8 @@ function AdminPage() {
           setReviewsError("Moderasi review belum bisa mengambil data backend.");
           setAdminCommunity(fallbackCommunity);
           setCommunityError("Kelola community belum bisa mengambil data backend.");
+          setAdminContactMessages(fallbackContactMessages);
+          setContactError("Report admin belum bisa mengambil data backend.");
           setAdminTransactions(fallbackTransactions);
           setTransactionsError("Riwayat transaksi belum bisa mengambil data backend.");
           setPaymentMethods(defaultPaymentMethods);
@@ -1260,17 +1307,20 @@ function AdminPage() {
             ? "Moderasi Review"
             : activeAdminPage === "community"
               ? "Kelola Community"
-              : activeAdminPage === "transactions"
-                ? activeTransactionPanel === "payment-settings"
-                  ? "Kelola Pembayaran Premium"
-                  : "Transaksi"
-                : activeNavItem.label;
+              : activeAdminPage === "contact"
+                ? "Report"
+                : activeAdminPage === "transactions"
+                  ? activeTransactionPanel === "payment-settings"
+                    ? "Kelola Pembayaran Premium"
+                    : "Transaksi"
+                  : activeNavItem.label;
 
   useEffect(() => {
     setFilmPage(1);
     setUserPage(1);
     setReviewPage(1);
     setCommunityPage(1);
+    setContactPage(1);
     setTransactionPage(1);
   }, [normalizedSearch, activeAdminPage]);
 
@@ -1281,6 +1331,10 @@ function AdminPage() {
   useEffect(() => {
     setCommunityPage(1);
   }, [activeCommunityTab]);
+
+  useEffect(() => {
+    setContactPage(1);
+  }, [activeContactTab]);
 
   useEffect(() => {
     setTransactionPage(1);
@@ -1507,6 +1561,28 @@ function AdminPage() {
   const transactionPaginationItems = getPaginationItems(currentTransactionPage, totalTransactionPages);
   const selectedPaymentMethod =
     paymentMethods.find((method) => method.id === selectedPaymentMethodId) || paymentMethods[0];
+
+  const filteredContactMessages = useMemo(() => {
+    return adminContactMessages.messages.filter((message) => {
+      const matchesTab = activeContactTab === "all" || message.status === activeContactTab;
+      const matchesSearch =
+        !normalizedSearch ||
+        `${message.name} ${message.email} ${message.subject} ${message.categoryLabel} ${message.message} ${message.statusLabel}`
+          .toLowerCase()
+          .includes(normalizedSearch);
+
+      return matchesTab && matchesSearch;
+    });
+  }, [activeContactTab, adminContactMessages.messages, normalizedSearch]);
+
+  const contactRowsPerPage = 6;
+  const totalContactPages = Math.max(1, Math.ceil(filteredContactMessages.length / contactRowsPerPage));
+  const currentContactPage = Math.min(contactPage, totalContactPages);
+  const visibleContactMessages = filteredContactMessages.slice(
+    (currentContactPage - 1) * contactRowsPerPage,
+    currentContactPage * contactRowsPerPage
+  );
+  const contactPaginationItems = getPaginationItems(currentContactPage, totalContactPages);
 
   const chartItems = useMemo(() => {
     const values = dashboard.chart.map((item) => Number(item.value || 0));
@@ -2163,6 +2239,84 @@ function AdminPage() {
       setCommunityError(error.message || "Status report community belum bisa diubah.");
     } finally {
       setCommunityReportActionLoading((current) => {
+        const next = { ...current };
+        delete next[actionKey];
+        return next;
+      });
+    }
+  };
+
+  const handleUpdateContactStatus = async (message, status) => {
+    const actionKey = String(message.id);
+    const token = localStorage.getItem("token");
+
+    setContactError("");
+    setContactActionLoading((current) => ({
+      ...current,
+      [actionKey]: status,
+    }));
+
+    try {
+      if (!token) {
+        throw new Error("Sesi admin tidak tersedia.");
+      }
+
+      const response = await fetch(`${API_URL}/api/admin/contact-us/${message.id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      const responseData = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(responseData?.message || "Status report belum bisa diubah.");
+      }
+
+      const updatedMessage = responseData?.contactMessage || {
+        ...message,
+        status,
+        statusLabel:
+          contactTabs.find((tab) => tab.id === status)?.label || message.statusLabel,
+      };
+
+      setAdminContactMessages((currentMessages) => {
+        const nextMessages = currentMessages.messages.map((item) =>
+          String(item.id) === String(message.id) ? updatedMessage : item
+        );
+        const nextSummary = nextMessages.reduce(
+          (accumulator, item) => {
+            accumulator.all += 1;
+            accumulator[item.status] = (accumulator[item.status] || 0) + 1;
+            return accumulator;
+          },
+          {
+            all: 0,
+            pending: 0,
+            reviewed: 0,
+            resolved: 0,
+            closed: 0,
+          },
+        );
+
+        return {
+          summary: nextSummary,
+          messages: nextMessages,
+        };
+      });
+
+      setSelectedContactMessage((currentMessage) =>
+        currentMessage && String(currentMessage.id) === String(message.id)
+          ? updatedMessage
+          : currentMessage
+      );
+    } catch (error) {
+      setContactError(error.message || "Status report belum bisa diubah.");
+    } finally {
+      setContactActionLoading((current) => {
         const next = { ...current };
         delete next[actionKey];
         return next;
@@ -3177,6 +3331,130 @@ function AdminPage() {
                     aria-label="Halaman community berikutnya"
                     disabled={currentCommunityPage === totalCommunityPages}
                     onClick={() => setCommunityPage((page) => Math.min(totalCommunityPages, page + 1))}
+                  >
+                    &gt;
+                  </button>
+                </div>
+              </article>
+            </section>
+          ) : activeAdminPage === "contact" ? (
+            <section className="admin-contact-management" aria-label="Kelola report Contact Us">
+              {contactError && <p className="admin-dashboard-alert">{contactError}</p>}
+
+              <article className="admin-panel admin-contact-card">
+                <div className="admin-contact-card__header">
+                  <div>
+                    <h2>Report</h2>
+                    <p>Terima laporan, kritik, saran, dan pertanyaan dari pengguna.</p>
+                  </div>
+                </div>
+
+                <div className="admin-contact-tabs" role="tablist" aria-label="Filter report">
+                  {contactTabs.map((tab) => (
+                    <button
+                      type="button"
+                      key={tab.id}
+                      className={activeContactTab === tab.id ? "admin-contact-tabs__item--active" : ""}
+                      role="tab"
+                      aria-selected={activeContactTab === tab.id}
+                      onClick={() => setActiveContactTab(tab.id)}
+                    >
+                      <span>{tab.label}</span>
+                      <small>{formatChartNumber(adminContactMessages.summary?.[tab.countKey] || 0)}</small>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="admin-contact-list">
+                  {visibleContactMessages.map((message) => (
+                    <article className="admin-contact-message" key={message.id}>
+                      <div className="admin-contact-message__main">
+                        <div className="admin-contact-message__top">
+                          <span className="admin-contact-message__avatar">
+                            {String(message.name || "U").slice(0, 1).toUpperCase()}
+                          </span>
+                          <div>
+                            <strong>{message.name}</strong>
+                            <small>{message.email}</small>
+                          </div>
+                        </div>
+
+                        <div className="admin-contact-message__content">
+                          <div>
+                            <h3>{message.subject}</h3>
+                            <p>{formatPostPreview(message.message, 150)}</p>
+                          </div>
+                          <span className={`admin-contact-status admin-contact-status--${message.status}`}>
+                            {message.statusLabel}
+                          </span>
+                        </div>
+
+                        <div className="admin-contact-message__meta">
+                          <span>{message.categoryLabel}</span>
+                          <span>{message.formattedDate}</span>
+                        </div>
+                      </div>
+
+                      <div className="admin-contact-message__actions">
+                        <button
+                          type="button"
+                          aria-label="Lihat detail report"
+                          onClick={() => setSelectedContactMessage(message)}
+                        >
+                          <FiEye aria-hidden="true" />
+                        </button>
+                        <select
+                          value={message.status}
+                          disabled={Boolean(contactActionLoading[String(message.id)])}
+                          onChange={(event) => handleUpdateContactStatus(message, event.target.value)}
+                          aria-label="Ubah status report"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="reviewed">Ditinjau</option>
+                          <option value="resolved">Selesai</option>
+                          <option value="closed">Ditutup</option>
+                        </select>
+                      </div>
+                    </article>
+                  ))}
+
+                  {!visibleContactMessages.length && (
+                    <p className="admin-empty-state">
+                      {isLoading ? "Memuat report..." : "Belum ada report pada tab ini."}
+                    </p>
+                  )}
+                </div>
+
+                <div className="admin-manage-pagination" aria-label="Pagination report">
+                  <button
+                    type="button"
+                    aria-label="Halaman report sebelumnya"
+                    disabled={currentContactPage === 1}
+                    onClick={() => setContactPage((page) => Math.max(1, page - 1))}
+                  >
+                    &lt;
+                  </button>
+                  {contactPaginationItems.map((item, index) =>
+                    typeof item === "string" ? (
+                      <span key={`${item}-${index}`} className="admin-manage-pagination__ellipsis">
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        key={item}
+                        className={currentContactPage === item ? "admin-manage-pagination__active" : ""}
+                        onClick={() => setContactPage(item)}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Halaman report berikutnya"
+                    disabled={currentContactPage === totalContactPages}
+                    onClick={() => setContactPage((page) => Math.min(totalContactPages, page + 1))}
                   >
                     &gt;
                   </button>
@@ -4221,6 +4499,94 @@ function AdminPage() {
           )}
         </div>
       </section>
+
+      {selectedContactMessage && (
+        <div
+          className="admin-review-report-modal admin-contact-detail-modal"
+          role="presentation"
+          onClick={() => setSelectedContactMessage(null)}
+        >
+          <article
+            className="admin-review-report-modal__card admin-contact-detail-modal__card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-contact-detail-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="admin-review-report-modal__head">
+              <div>
+                <span>Detail Report</span>
+                <h2 id="admin-contact-detail-title">{selectedContactMessage.subject}</h2>
+              </div>
+              <button
+                type="button"
+                className="admin-review-report-modal__close"
+                aria-label="Tutup detail report"
+                onClick={() => setSelectedContactMessage(null)}
+              >
+                <FiX aria-hidden="true" />
+              </button>
+            </header>
+
+            <section className="admin-contact-detail-modal__sender">
+              <span className="admin-contact-message__avatar">
+                {String(selectedContactMessage.name || "U").slice(0, 1).toUpperCase()}
+              </span>
+              <div>
+                <span>Pengirim</span>
+                <strong>{selectedContactMessage.name}</strong>
+                <small>{selectedContactMessage.email}</small>
+              </div>
+              <span className={`admin-contact-status admin-contact-status--${selectedContactMessage.status}`}>
+                {selectedContactMessage.statusLabel}
+              </span>
+            </section>
+
+            <dl className="admin-review-report-modal__meta">
+              <div>
+                <dt>Kategori</dt>
+                <dd>{selectedContactMessage.categoryLabel}</dd>
+              </div>
+              <div>
+                <dt>Tanggal Masuk</dt>
+                <dd>{selectedContactMessage.formattedDate}</dd>
+              </div>
+            </dl>
+
+            <section className="admin-review-report-modal__section">
+              <span>Isi Pesan</span>
+              <p>{selectedContactMessage.message}</p>
+            </section>
+
+            <footer className="admin-review-report-modal__actions">
+              <button
+                type="button"
+                className="admin-review-report-modal__action"
+                disabled={Boolean(contactActionLoading[String(selectedContactMessage.id)])}
+                onClick={() => handleUpdateContactStatus(selectedContactMessage, "reviewed")}
+              >
+                Tandai Ditinjau
+              </button>
+              <button
+                type="button"
+                className="admin-review-report-modal__action admin-review-report-modal__action--restore"
+                disabled={Boolean(contactActionLoading[String(selectedContactMessage.id)])}
+                onClick={() => handleUpdateContactStatus(selectedContactMessage, "resolved")}
+              >
+                Tandai Selesai
+              </button>
+              <button
+                type="button"
+                className="admin-review-report-modal__action admin-review-report-modal__action--reject"
+                disabled={Boolean(contactActionLoading[String(selectedContactMessage.id)])}
+                onClick={() => handleUpdateContactStatus(selectedContactMessage, "closed")}
+              >
+                Tutup
+              </button>
+            </footer>
+          </article>
+        </div>
+      )}
 
       {selectedTransactionDetail && (
         <div

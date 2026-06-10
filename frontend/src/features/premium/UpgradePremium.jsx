@@ -137,8 +137,19 @@ function UpgradePage() {
     premium: 1,
     annual: 2
   };
+  const hasPendingPayment =
+    String(user?.pending_payment_status || "").toLowerCase() === "pending";
 
   const getPackageAction = (pkg) => {
+    if (hasPendingPayment && pkg.id !== "free") {
+      return {
+        text: "Lanjutkan Pembayaran",
+        className: "btn-primary",
+        disabled: false,
+        hasArrow: true
+      };
+    }
+
     if (pkg.id === currentPackageId) {
       return {
         text: "Paket Saat Ini",
@@ -410,6 +421,11 @@ function UpgradePage() {
                 disabled={packageAction.disabled}
                 onClick={() => {
                   if (packageAction.disabled || pkg.id === "free") return; // Paket free tidak perlu diarahkan ke pembayaran
+
+                  if (hasPendingPayment) {
+                    navigate("/payment");
+                    return;
+                  }
 
                   // Konfigurasi data paket untuk dibawa ke halaman pembayaran
                   const selectedPkg = {

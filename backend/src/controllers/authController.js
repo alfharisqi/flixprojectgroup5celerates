@@ -113,7 +113,13 @@ export const login = async (req, res) => {
           active_package.package_code AS current_package_code,
           active_package.package_name AS current_package_name,
           active_package.premium_started_at,
-          active_package.premium_expired_at
+          active_package.premium_expired_at,
+          pending_payment.status AS pending_payment_status,
+          pending_payment.package_code AS pending_payment_package_code,
+          pending_payment.package_name AS pending_payment_package_name,
+          pending_payment.duration_months AS pending_payment_duration_months,
+          pending_payment.total_amount AS pending_payment_total_amount,
+          pending_payment.created_at AS pending_payment_created_at
        FROM flix.users u
        JOIN flix.roles r ON u.id_role = r.id_role
        LEFT JOIN LATERAL (
@@ -132,6 +138,20 @@ export const login = async (req, res) => {
          ORDER BY pt.verified_at DESC NULLS LAST, pt.created_at DESC
          LIMIT 1
        ) active_package ON TRUE
+       LEFT JOIN LATERAL (
+         SELECT
+           pt.status,
+           pt.package_code,
+           pt.package_name,
+           pt.duration_months,
+           pt.total_amount,
+           pt.created_at
+         FROM flix.payment_transactions pt
+         WHERE pt.id_user = u.id_user
+           AND pt.status = 'pending'
+         ORDER BY pt.created_at DESC
+         LIMIT 1
+       ) pending_payment ON TRUE
        WHERE u.email = $1`,
       [email]
     );
@@ -203,7 +223,13 @@ export const login = async (req, res) => {
         current_package_code: user.current_package_code,
         current_package_name: user.current_package_name,
         premium_started_at: user.premium_started_at,
-        premium_expired_at: user.premium_expired_at
+        premium_expired_at: user.premium_expired_at,
+        pending_payment_status: user.pending_payment_status,
+        pending_payment_package_code: user.pending_payment_package_code,
+        pending_payment_package_name: user.pending_payment_package_name,
+        pending_payment_duration_months: user.pending_payment_duration_months,
+        pending_payment_total_amount: user.pending_payment_total_amount,
+        pending_payment_created_at: user.pending_payment_created_at
       }
     });
   } catch (error) {

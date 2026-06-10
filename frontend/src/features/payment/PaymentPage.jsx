@@ -68,17 +68,32 @@ const getMethodIcon = (type) => {
 function PaymentPage() {
   const navigate = useNavigate();
   const location = useLocation();
-
-  // 1. Ambil data paket yang diteruskan dari halaman UpgradePremium
-  const selectedPackage = location.state?.package || {
-    name: "Premium Bulanan",
-    priceText: "Rp 29.000",
-    price: 29000,
-    durationMonths: 1,
-  };
-
   const token = localStorage.getItem("token");
   const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const pendingDurationMonths = Number(storedUser.pending_payment_duration_months || 0);
+
+  // 1. Ambil data paket yang diteruskan dari halaman UpgradePremium
+  const selectedPackage =
+    location.state?.package ||
+    (String(storedUser.pending_payment_status || "").toLowerCase() === "pending"
+      ? {
+          name: storedUser.pending_payment_package_name || "Premium Bulanan",
+          priceText: storedUser.pending_payment_total_amount
+            ? new Intl.NumberFormat("id-ID", {
+                style: "currency",
+                currency: "IDR",
+                maximumFractionDigits: 0,
+              }).format(Number(storedUser.pending_payment_total_amount || 0))
+            : "Rp 29.000",
+          price: Number(storedUser.pending_payment_total_amount || 29000),
+          durationMonths: pendingDurationMonths || 1,
+        }
+      : {
+          name: "Premium Bulanan",
+          priceText: "Rp 29.000",
+          price: 29000,
+          durationMonths: 1,
+        });
 
   // 2. State untuk Data Diri Pembayar
   const [fullName, setFullName] = useState(storedUser.username || "");
@@ -269,6 +284,28 @@ function PaymentPage() {
     return selectedPaymentMethod?.name || paymentTypeLabels[paymentMethod] || "QRIS";
   };
 
+  const pendingActivationFeatures = useMemo(() => {
+    const premiumFeatures = [
+      "Watchlist unlimited",
+      "Buat post, comment, dan reply Community",
+      "Like, reaction, dan share Community",
+      "Chat antar user",
+      "Add friend dan friendlist",
+      "Badge Premium di profil",
+      "Bebas iklan",
+    ];
+
+    if (Number(durationMonths) === 12) {
+      return [
+        ...premiumFeatures.filter((feature) => feature !== "Badge Premium di profil"),
+        "Badge Eksklusif di profil",
+        "Chatbot FLIX",
+      ];
+    }
+
+    return premiumFeatures;
+  }, [durationMonths]);
+
   // Ketika klik tombol "Bayar Sekarang"
   const handleOpenUploadModal = () => {
     if (!fullName.trim() || !email.trim() || !phoneNumber.trim()) {
@@ -330,6 +367,18 @@ function PaymentPage() {
       );
 
       setTransactionId(res.data?.transaction?.transactionId || "-");
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          ...storedUser,
+          pending_payment_status: "pending",
+          pending_payment_package_code: getPackageCode(),
+          pending_payment_package_name:
+            Number(durationMonths) === 12 ? "Eksklusif" : "Premium Bulanan",
+          pending_payment_duration_months: Number(durationMonths),
+          pending_payment_total_amount: totalPayment,
+        }),
+      );
 
       // Tutup modal upload, lalu tampilkan status pending verifikasi admin.
       setShowUploadModal(false);
@@ -781,29 +830,11 @@ function PaymentPage() {
             <div className="features-checklist-group">
               <h5>FITUR AKAN AKTIF SETELAH DISETUJUI:</h5>
               <ul>
-                <li>
-                  <span className="feat-check-icon">✓</span> Rekomendasi mood <strong>unlimited</strong>
-                </li>
-                <li>
-                  <span className="feat-check-icon">✓</span> Watchlist unlimited
-                </li>
-                <li>
-                  <span className="feat-check-icon">✓</span> Tulis review
-                </li>
-                <li>
-                  <span className="feat-check-icon">✓</span> Community
-                </li>
-                <li>
-                  {durationMonths === 12 ? (
-                    <>
-                      <span className="feat-check-icon">✓</span> Badge Premium di profil
-                    </>
-                  ) : (
-                    <>
-                      <span className="feat-cross-icon">✗</span> Badge Premium di profil
-                    </>
-                  )}
-                </li>
+                {pendingActivationFeatures.map((feature) => (
+                  <li key={feature}>
+                    <span className="feat-check-icon">✓</span> {feature}
+                  </li>
+                ))}
               </ul>
             </div>
 

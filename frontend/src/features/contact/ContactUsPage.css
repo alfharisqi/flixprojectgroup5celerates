@@ -54,6 +54,50 @@
   line-height: 1.65;
 }
 
+.contact-view-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 24px;
+  padding: 6px;
+  border-radius: 22px;
+  background: #0b0b0b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.contact-view-switch button {
+  min-height: 50px;
+  border: 0;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #bcbcbc;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.contact-view-switch button:hover,
+.contact-view-switch button:focus-visible {
+  color: #ffffff;
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.contact-view-switch button.is-active {
+  color: #ffffff;
+  background: #e50914;
+  box-shadow: 0 12px 24px rgba(229, 9, 20, 0.22);
+}
+
 .contact-alert {
   margin: 0 0 18px;
   padding: 12px 16px;
@@ -154,6 +198,154 @@
   box-shadow: none;
 }
 
+.contact-chatroom {
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0b0b0b;
+}
+
+.contact-chatroom__header {
+  min-height: 88px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, rgba(229, 9, 20, 0.14), rgba(0, 0, 0, 0));
+}
+
+.contact-chatroom__avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: #e50914;
+  box-shadow: 0 10px 22px rgba(229, 9, 20, 0.24);
+  flex: 0 0 auto;
+}
+
+.contact-chatroom__header h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.contact-chatroom__header p {
+  margin: 6px 0 0;
+  color: #979797;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.contact-chatroom__body {
+  height: 380px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+.contact-chatroom__body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.contact-chatroom__body::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.contact-chatroom__message {
+  display: flex;
+}
+
+.contact-chatroom__message.is-user {
+  justify-content: flex-end;
+}
+
+.contact-chatroom__message > div {
+  width: fit-content;
+  max-width: min(72%, 520px);
+  padding: 12px 14px 10px;
+  border-radius: 16px;
+  background: #232323;
+  color: #ffffff;
+}
+
+.contact-chatroom__message.is-user > div {
+  background: #e50914;
+  border-bottom-right-radius: 6px;
+}
+
+.contact-chatroom__message.is-support > div {
+  border-bottom-left-radius: 6px;
+}
+
+.contact-chatroom__message p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.contact-chatroom__message time {
+  display: block;
+  margin-top: 6px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 11px;
+  text-align: right;
+}
+
+.contact-chatroom__input {
+  display: grid;
+  grid-template-columns: 1fr 48px;
+  gap: 12px;
+  padding: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #141414;
+}
+
+.contact-chatroom__input input {
+  width: 100%;
+  height: 48px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  color: #ffffff;
+  background: #0b0b0b;
+  padding: 0 18px;
+  outline: 0;
+}
+
+.contact-chatroom__input input:focus {
+  border-color: #e50914;
+  box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.12);
+}
+
+.contact-chatroom__input button {
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: #e50914;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.contact-chatroom__input button:hover,
+.contact-chatroom__input button:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(229, 9, 20, 0.24);
+  outline: none;
+}
+
 .contact-footer {
   min-height: 163px;
   display: grid;
@@ -208,5 +400,18 @@
 
   .contact-form button {
     justify-self: stretch;
+  }
+
+  .contact-view-switch {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-chatroom__body {
+    height: 340px;
+    padding: 16px;
+  }
+
+  .contact-chatroom__message > div {
+    max-width: 86%;
   }
 }

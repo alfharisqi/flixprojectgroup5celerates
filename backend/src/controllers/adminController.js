@@ -2,6 +2,7 @@ import pool from "../config/db.js";
 import { initializeUserStatusColumns } from "../config/initUserStatus.js";
 import { initializePaymentTransactionsTable } from "../config/initPaymentTransactions.js";
 import { initializePaymentMethodsTable } from "../config/initPaymentMethods.js";
+import { initializeContactMessagesTable } from "../config/initContactMessages.js";
 import {
   getPaymentMethodRows,
   getPaymentPackageRows,
@@ -2430,6 +2431,126 @@ export const getAdminUserDetail = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Gagal mengambil detail user admin",
+      error: error.message,
+    });
+  }
+};
+
+const contactCategoryLabels = {
+  bug_report: "Bug Report",
+  kritik_saran: "Kritik & Saran",
+  kendala_akun: "Kendala Akun",
+  pertanyaan_umum: "Pertanyaan Umum",
+  lainnya: "Lainnya",
+};
+
+const contactStatusLabels = {
+  pending: "Pending",
+  reviewed: "Ditinjau",
+  resolved: "Selesai",
+  closed: "Ditutup",
+};
+
+const mapAdminContactMessage = (row) => ({
+  id: Number(row.id_contact_message),
+  userId: row.id_user ? Number(row.id_user) : null,
+  name: row.name || "-",
+  email: row.email || "-",
+  subject: row.subject || "-",
+  category: row.category || "lainnya",
+  categoryLabel: contactCategoryLabels[row.category] || "Lainnya",
+  message: row.message || "-",
+  status: row.status || "pending",
+  statusLabel: contactStatusLabels[row.status] || "Pending",
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  formattedDate: formatDateTime(row.created_at),
+});
+
+export const getAdminContactMessages = async (req, res) => {
+  try {
+    await initializeContactMessagesTable();
+
+    const result = await pool.query(
+      `SELECT
+          id_contact_message,
+          id_user,
+          name,
+          email,
+          subject,
+          category,
+          message,
+          status,
+          created_at,
+          updated_at
+       FROM flix.contact_messages
+       ORDER BY created_at DESC`,
+    );
+
+    const messages = result.rows.map(mapAdminContactMessage);
+    const summary = messages.reduce(
+      (accumulator, message) => {
+        accumulator.all += 1;
+        accumulator[message.status] = (accumulator[message.status] || 0) + 1;
+        return accumulator;
+      },
+      {
+        all: 0,
+        pending: 0,
+        reviewed: 0,
+        resolved: 0,
+        closed: 0,
+      },
+    );
+
+    return res.json({
+      message: "Pesan Contact Us berhasil dimuat",
+      summary,
+      messages,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal mengambil pesan Contact Us",
+      error: error.message,
+    });
+  }
+};
+
+export const updateAdminContactMessageStatus = async (req, res) => {
+  try {
+    await initializeContactMessagesTable();
+
+    const messageId = Number(req.params.id);
+    const nextStatus = String(req.body?.status || "").toLowerCase();
+
+    if (!Number.isFinite(messageId)) {
+      return res.status(400).json({ message: "ID pesan Contact Us tidak valid" });
+    }
+
+    if (!["pending", "reviewed", "resolved", "closed"].includes(nextStatus)) {
+      return res.status(400).json({ message: "Status Contact Us tidak valid" });
+    }
+
+    const result = await pool.query(
+      `UPDATE flix.contact_messages
+       SET status = $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id_contact_message = $2
+       RETURNING *`,
+      [nextStatus, messageId],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Pesan Contact Us tidak ditemukan" });
+    }
+
+    return res.json({
+      message: "Status pesan Contact Us berhasil diperbarui",
+      contactMessage: mapAdminContactMessage(result.rows[0]),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal memperbarui status Contact Us",
       error: error.message,
     });
   }

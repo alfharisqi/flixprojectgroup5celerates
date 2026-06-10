@@ -24,6 +24,12 @@ export const hasPremiumAccess = (user = getStoredUser()) =>
 export const hasExclusiveAccess = (user = getStoredUser()) =>
   normalizeSubscriptionPlan(user) === "exclusive";
 
+export const hasPendingPayment = (user = getStoredUser()) =>
+  String(user?.pending_payment_status || "").toLowerCase() === "pending";
+
+export const getUpgradeTargetPath = (user = getStoredUser()) =>
+  hasPendingPayment(user) ? "/payment" : "/premium";
+
 export const PREMIUM_FEATURE_MESSAGE =
   "Fitur ini hanya tersedia untuk pengguna Premium atau Eksklusif.";
 
@@ -42,7 +48,7 @@ export const showLoginRequired = () => {
 export const showUpgradeRequired = (message = PREMIUM_FEATURE_MESSAGE) => {
   window.dispatchEvent(
     new CustomEvent("flix:require-upgrade", {
-      detail: { message },
+      detail: { message, targetPath: getUpgradeTargetPath() },
     }),
   );
 };

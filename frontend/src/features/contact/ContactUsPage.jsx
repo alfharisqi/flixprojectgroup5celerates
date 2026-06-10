@@ -2,7 +2,9 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import {
+  FaComments,
   FaFacebookF,
+  FaHeadset,
   FaPaperPlane,
   FaTwitter,
   FaYoutube,
@@ -31,6 +33,7 @@ const getStoredUser = () => {
 function ContactUsPage() {
   const token = localStorage.getItem("token");
   const user = useMemo(() => getStoredUser(), []);
+  const [activeView, setActiveView] = useState("form");
   const [form, setForm] = useState({
     name: user?.username || "",
     email: user?.email || "",
@@ -41,6 +44,15 @@ function ContactUsPage() {
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [chatMessage, setChatMessage] = useState("");
+  const [chatMessages, setChatMessages] = useState([
+    {
+      id: 1,
+      sender: "support",
+      text: "Halo, selamat datang di Customer Service FLIX. Ada yang bisa kami bantu?",
+      time: "Sekarang",
+    },
+  ]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -81,6 +93,33 @@ function ContactUsPage() {
     }
   };
 
+  const handleChatSubmit = (event) => {
+    event.preventDefault();
+
+    const trimmedMessage = chatMessage.trim();
+
+    if (!trimmedMessage) {
+      return;
+    }
+
+    setChatMessages((currentMessages) => [
+      ...currentMessages,
+      {
+        id: Date.now(),
+        sender: "user",
+        text: trimmedMessage,
+        time: "Sekarang",
+      },
+      {
+        id: Date.now() + 1,
+        sender: "support",
+        text: "Pesan kamu sudah masuk. Tim FLIX akan membalas melalui chat ini setelah fitur customer service aktif penuh.",
+        time: "Sekarang",
+      },
+    ]);
+    setChatMessage("");
+  };
+
   return (
     <main className="contact-page">
       <SiteNavbar mode="fixed" />
@@ -96,74 +135,137 @@ function ContactUsPage() {
             </p>
           </div>
 
-          {successMessage && (
-            <p className="contact-alert contact-alert--success">{successMessage}</p>
-          )}
-          {errorMessage && <p className="contact-alert">{errorMessage}</p>}
+          <div className="contact-view-switch" aria-label="Pilih mode contact us">
+            <button
+              type="button"
+              className={activeView === "form" ? "is-active" : ""}
+              onClick={() => setActiveView("form")}
+            >
+              <FaComments />
+              Form Laporan / Kritik dan Saran
+            </button>
+            <button
+              type="button"
+              className={activeView === "chat" ? "is-active" : ""}
+              onClick={() => setActiveView("chat")}
+            >
+              <FaHeadset />
+              Customer Service
+            </button>
+          </div>
 
-          <form className="contact-form" onSubmit={handleSubmit}>
-            <div className="contact-form__grid">
-              <label>
-                Nama Pengguna
+          {activeView === "form" ? (
+            <>
+              {successMessage && (
+                <p className="contact-alert contact-alert--success">{successMessage}</p>
+              )}
+              {errorMessage && <p className="contact-alert">{errorMessage}</p>}
+
+              <form className="contact-form" onSubmit={handleSubmit}>
+                <div className="contact-form__grid">
+                  <label>
+                    Nama Pengguna
+                    <input
+                      type="text"
+                      name="name"
+                      value={form.name}
+                      onChange={handleChange}
+                      required
+                    />
+                  </label>
+
+                  <label>
+                    Email
+                    <input
+                      type="email"
+                      name="email"
+                      value={form.email}
+                      onChange={handleChange}
+                      required
+                    />
+                  </label>
+                </div>
+
+                <label>
+                  Subjek Pesan
+                  <input
+                    type="text"
+                    name="subject"
+                    value={form.subject}
+                    onChange={handleChange}
+                    required
+                  />
+                </label>
+
+                <label>
+                  Kategori Pesan
+                  <select name="category" value={form.category} onChange={handleChange} required>
+                    {contactCategories.map((category) => (
+                      <option key={category.value} value={category.value}>
+                        {category.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  Isi Pesan
+                  <textarea
+                    name="message"
+                    value={form.message}
+                    onChange={handleChange}
+                    rows={7}
+                    required
+                  />
+                </label>
+
+                <button type="submit" disabled={saving}>
+                  <FaPaperPlane />
+                  {saving ? "Mengirim..." : "Kirim Pesan"}
+                </button>
+              </form>
+            </>
+          ) : (
+            <section className="contact-chatroom" aria-label="Customer service chatroom">
+              <div className="contact-chatroom__header">
+                <span className="contact-chatroom__avatar">
+                  <FaHeadset />
+                </span>
+                <div>
+                  <h2>Customer Service FLIX</h2>
+                  <p>Online untuk membantu kendala akun, pembayaran, dan fitur website.</p>
+                </div>
+              </div>
+
+              <div className="contact-chatroom__body">
+                {chatMessages.map((message) => (
+                  <article
+                    key={message.id}
+                    className={`contact-chatroom__message ${
+                      message.sender === "user" ? "is-user" : "is-support"
+                    }`}
+                  >
+                    <div>
+                      <p>{message.text}</p>
+                      <time>{message.time}</time>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <form className="contact-chatroom__input" onSubmit={handleChatSubmit}>
                 <input
                   type="text"
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  required
+                  value={chatMessage}
+                  onChange={(event) => setChatMessage(event.target.value)}
+                  placeholder="Tulis pesan untuk customer service..."
                 />
-              </label>
-
-              <label>
-                Email
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  required
-                />
-              </label>
-            </div>
-
-            <label>
-              Subjek Pesan
-              <input
-                type="text"
-                name="subject"
-                value={form.subject}
-                onChange={handleChange}
-                required
-              />
-            </label>
-
-            <label>
-              Kategori Pesan
-              <select name="category" value={form.category} onChange={handleChange} required>
-                {contactCategories.map((category) => (
-                  <option key={category.value} value={category.value}>
-                    {category.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Isi Pesan
-              <textarea
-                name="message"
-                value={form.message}
-                onChange={handleChange}
-                rows={7}
-                required
-              />
-            </label>
-
-            <button type="submit" disabled={saving}>
-              <FaPaperPlane />
-              {saving ? "Mengirim..." : "Kirim Pesan"}
-            </button>
-          </form>
+                <button type="submit" aria-label="Kirim pesan customer service">
+                  <FaPaperPlane />
+                </button>
+              </form>
+            </section>
+          )}
         </div>
       </section>
 

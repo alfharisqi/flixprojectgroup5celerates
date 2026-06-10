@@ -3,6 +3,7 @@ import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 import {
   createAdminMovie,
   getAdminCommunity,
+  getAdminContactMessages,
   getAdminDashboard,
   getAdminMovies,
   getAdminPaymentSettings,
@@ -12,6 +13,7 @@ import {
   getAdminUsers,
   updateAdminTransactionStatus,
   updateAdminCommunityReportStatus,
+  updateAdminContactMessageStatus,
   updateAdminPaymentSettings,
   updateAdminReviewReportStatus,
   updateAdminUserStatus,
@@ -67,6 +69,20 @@ router.get(
   verifyToken,
   allowRoles("admin"),
   getAdminCommunity
+);
+
+router.get(
+  "/contact-us",
+  verifyToken,
+  allowRoles("admin"),
+  getAdminContactMessages
+);
+
+router.patch(
+  "/contact-us/:id/status",
+  verifyToken,
+  allowRoles("admin"),
+  updateAdminContactMessageStatus
 );
 
 router.get(
