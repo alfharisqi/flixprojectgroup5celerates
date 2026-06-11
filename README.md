@@ -1,200 +1,289 @@
+# FLIX - Website Rekomendasi Film
 
-# FLIX
+FLIX adalah website rekomendasi film dan TV series berbasis React, Node.js, Express, dan PostgreSQL. Website ini menggabungkan data TMDB, fitur komunitas, review, watchlist, subscription premium, chatbot FLIX, customer service, dan dashboard admin/moderator.
 
-## 1. Cara Clone Website Ini
+## Daftar Isi
 
-Clone repository dari GitHub:
+- [Fitur Utama](#fitur-utama)
+- [Role dan Akses Langganan](#role-dan-akses-langganan)
+- [User Flow](#user-flow)
+- [Admin dan Moderator Flow](#admin-dan-moderator-flow)
+- [Teknologi](#teknologi)
+- [Struktur Folder](#struktur-folder)
+- [Setup Project](#setup-project)
+- [Environment Variable](#environment-variable)
+- [Database](#database)
+- [API Eksternal](#api-eksternal)
+- [Endpoint Internal](#endpoint-internal)
+- [Email Lokal Dengan Mailpit](#email-lokal-dengan-mailpit)
+- [Deployment](#deployment)
+- [Catatan Pengembangan](#catatan-pengembangan)
 
-```bash
-git clone https://github.com/alfharisqi/flixprojectgroup5celerates.git
-```
+## Fitur Utama
 
-Masuk ke folder project:
+### Film, TV Series, dan Genre
 
-```bash
-cd flixprojectgroup5celerates
-```
-
-Install dependency backend:
-
-```bash
-cd backend
-npm install
-```
-
-Install dependency frontend:
-
-```bash
-cd ../frontend
-npm install
-```
-
-Buat file environment untuk backend di `backend/.env`:
-
-```env
-PORT=5000
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=nama_database
-DB_USER=postgres
-DB_PASSWORD=password_database
-JWT_SECRET=secret_jwt
-
-MAIL_HOST=localhost
-MAIL_PORT=1025
-MAIL_SECURE=false
-MAIL_USER=
-MAIL_PASS=
-MAIL_FROM="FLIX Local <no-reply@flix.local>"
-
-TMDB_API_KEY=api_key_tmdb
-FRONTEND_URL=http://localhost:5173
-```
-
-Konfigurasi email lokal memakai SMTP Mailpit. Detail cara menjalankan Mailpit ada di `README_MAILPIT.md`.
-
-Buat file environment untuk frontend di `frontend/.env`:
-
-```env
-VITE_API_URL=http://localhost:5000
-VITE_GIPHY_API_KEY=api_key_giphy
-```
-
-Jalankan backend:
-
-```bash
-cd backend
-npm run dev
-```
-
-Jalankan frontend di terminal lain:
-
-```bash
-cd frontend
-npm run dev
-```
-
-Setelah berjalan, buka website di:
-
-```text
-http://localhost:5173
-```
-
-Backend API berjalan di:
-
-```text
-http://localhost:5000
-```
-
-## 2. API Yang Digunakan
-
-### API Eksternal
-
-| API | Fungsi | Lokasi Penggunaan |
-| --- | --- | --- |
-| TMDB API | Mengambil data film, TV series, genre, trending, popular, detail, trailer, cast, rekomendasi, dan watch provider. | Backend `movieController.js` dan `tvController.js` |
-| TMDB Image API | Menampilkan poster dan backdrop film/series. | Frontend dan hasil mapping backend |
-| GIPHY API | Mencari dan menampilkan GIF pada editor post komunitas. | Frontend `GifPickerModal.jsx` |
-| SMTP/Mailpit/Mailtrap via Nodemailer | Mengirim email verifikasi akun dan reset password. | Backend `mail.js` dan `sendEmail.js` |
-
-### API Internal Backend
-
-Base URL lokal:
-
-```text
-http://localhost:5000
-```
-
-Endpoint utama:
-
-| Endpoint | Method | Fungsi |
-| --- | --- | --- |
-| `/api/auth/register` | POST | Registrasi user baru |
-| `/api/auth/login` | POST | Login dan mendapatkan JWT |
-| `/api/auth/verify-email` | GET, POST | Verifikasi akun dari token email |
-| `/api/auth/forgot-password` | POST | Mengirim link reset password ke email |
-| `/api/auth/reset-password` | POST | Mengatur password baru |
-| `/api/chats/conversations` | GET | Mengambil inbox private chat user login |
-| `/api/chats/conversations/:userId` | POST | Membuka atau membuat chat dengan teman |
-| `/api/chats/conversations/:conversationId/messages` | GET, POST | Mengambil dan mengirim pesan private chat |
-| `/api/friends` | GET | Mengambil friendlist user login |
-| `/api/friends/ids` | GET | Mengambil daftar ID teman user login |
-| `/api/friends/requests` | GET | Mengambil request pertemanan masuk |
-| `/api/friends/requests/:friendId/accept` | PUT | Menerima request pertemanan |
-| `/api/friends/requests/:friendId/decline` | DELETE | Menolak request pertemanan |
-| `/api/friends/:userId` | POST, DELETE | Mengirim request pertemanan atau menghapus teman |
-| `/api/profile/me` | GET, PUT | Melihat dan mengubah profile user login |
-| `/api/profile/activity` | GET | Mengambil ringkasan aktivitas user login |
-| `/api/profile/media` | PUT | Menyimpan URL foto profile dan banner user |
-| `/api/movies/*` | GET | Search, popular, top rated, now playing, upcoming, trending, genre, discover, detail, video, cast, provider, rekomendasi film |
-| `/api/tmdb/*` | GET | Alias untuk endpoint movie/TMDB |
-| `/api/tv-series/*` | GET | Search, popular, top rated, on the air, trending, genre, discover, detail, video, provider TV series |
-| `/api/tv-series/:id/seasons/:seasonNumber` | GET | Mengambil daftar episode berdasarkan season TV series |
-| `/api/tv/*` | GET | Alias untuk endpoint TV series |
-| `/api/posts` | GET, POST | Melihat dan membuat post komunitas |
-| `/api/posts/:id` | GET, DELETE | Detail post dan hapus post |
-| `/api/comments/:postId` | GET, POST | Melihat dan membuat komentar/reply |
-| `/api/post-likes/:postId` | POST | Like/unlike post |
-| `/api/post-reactions/:postId` | POST | Memberikan reaction ke post |
-| `/api/post-shares/:postId` | POST | Mencatat share post |
-| `/api/post-views/:postId` | POST | Mencatat view post |
-| `/api/post-insights/:postId` | GET | Statistik post seperti view, like, komentar, share, reaction, dan polling |
-| `/api/polls/post/:postId` | GET | Mengambil polling berdasarkan post |
-| `/api/polls/:pollId/vote` | POST | Vote polling |
-| `/api/notifications` | GET | Mengambil notifikasi user login |
-| `/api/notifications/:id/read` | PUT | Menandai satu notifikasi sudah dibaca |
-| `/api/notifications/read-all` | PUT | Menandai semua notifikasi sudah dibaca |
-| `/api/uploads/editor-image` | POST | Upload gambar dari rich text editor |
-| `/api/movie-reviews/:movieId` | GET, POST | Melihat dan membuat review film |
-| `/api/movie-reviews/:reviewId` | PUT, DELETE | Mengubah dan menghapus review film milik user |
-| `/api/movie-reviews/likes/:reviewId` | POST | Like/unlike review film |
-| `/api/tv-series-reviews/:seriesId` | GET, POST | Melihat dan membuat review TV series |
-| `/api/tv-series-reviews/:reviewId` | PUT, DELETE | Mengubah dan menghapus review TV series milik user |
-| `/api/tv-series-reviews/likes/:reviewId` | POST | Like/unlike review TV series |
-| `/api/admin/dashboard` | GET | Dashboard khusus admin |
-| `/api/moderator/dashboard` | GET | Dashboard moderator dan admin |
-
-Beberapa endpoint membutuhkan header authorization:
-
-```text
-Authorization: Bearer <token>
-```
-
-## 3. Deskripsi Website
-
-FLIX dibuat sebagai platform rekomendasi tontonan. User dapat mencari film atau TV series, melihat detail lengkap, membaca trailer/cast/provider streaming, lalu berdiskusi melalui fitur komunitas dan review.
-
-### Fitur Utama
-
-- Rekomendasi film berdasarkan mood, seperti Santai, Seru, Sedih, Menegangkan, Romantis, dan Pikiran.
-- Homepage dengan hero film hits, carousel rekomendasi, filter genre, filter platform streaming, dan sorting.
-- Halaman Movies untuk mencari dan menelusuri film dari TMDB.
-- Halaman TV Series untuk mencari dan menelusuri series dari TMDB.
-- Halaman Genre untuk eksplorasi konten berdasarkan genre.
-- Detail film dan TV series berisi poster, backdrop, sinopsis, rating, genre, trailer, cast, rekomendasi, dan watch provider.
-- Detail TV series memiliki pilihan season, daftar episode, dan checklist episode yang sudah ditonton.
-- Review film dan TV series dengan rating 1 sampai 5, reply review, dan like review.
-- Review film dan TV series milik user dapat diedit dan dihapus dari halaman profile.
+- Homepage dengan hero carousel film hits dan rekomendasi berdasarkan mood.
+- Halaman Movies untuk trending, watchlist user, dan daftar film.
+- Halaman TV Series dengan section jelajahi series dan series populer.
+- Halaman Genre dengan card genre, filter film/TV series, kategori umur, dan tahun.
+- Detail film dan TV series berisi poster, backdrop, sinopsis, genre, cast, rating, trailer, watch provider, dan review penonton.
+- TV series memiliki pilihan season, daftar episode, dan progres episode yang sudah ditonton.
+- Genre pada detail film/series dapat diklik untuk membuka halaman genre sesuai pilihan.
 - Search modal untuk mencari film dan TV series dari navbar.
-- Watchlist film dan TV series dengan status sudah ditonton atau belum ditonton.
-- Watchlist TV series memiliki pilihan season dan dropdown episode untuk menandai progres tontonan per episode.
-- Checklist episode memakai pola progres berurutan: jika episode 3 ditandai, episode 1 sampai 3 ikut tertandai; jika progres diturunkan, episode setelahnya ikut dibatalkan.
-- Community page untuk melihat post dari user lain.
-- Popup Add Friend / Message / Report User pada nama user post dan reply Community.
-- Request pertemanan masuk dengan tombol Accept / Decline di halaman Profile.
-- Friendlist di halaman Profile dan private chat antar teman yang tersimpan di PostgreSQL.
-- Create post dengan rich text editor, upload gambar, tag, GIF, dan polling.
-- Detail post dengan komentar, reply komentar, like, reaction, share, view, dan insight.
-- Polling komunitas dengan pilihan vote.
-- Notifikasi untuk interaksi pada post, komentar, reply, share, reaction, dan polling user.
-- Profile user untuk melihat aktivitas, review, postingan, statistik watchlist, mengubah data akun, foto profile, dan banner.
-- Autentikasi user menggunakan register, login, JWT, forgot password, dan reset password.
-- Pop up konfirmasi untuk logout, simpan watchlist, dan hapus item watchlist.
-- Role user terdiri dari `registered_user`, `moderator`, dan `admin`.
-- Moderator dan admin dapat mengakses dashboard sesuai role.
-- Moderator/admin atau owner post dapat menghapus post.
+- Card film/series mendukung hover detail singkat, genre, dan aksi simpan watchlist.
 
-## 4. Teknologi Yang Digunakan
+### Watchlist
+
+- Watchlist tersimpan per user melalui backend.
+- User dapat menyimpan film dan TV series.
+- User dapat menandai status sudah ditonton atau belum ditonton.
+- Untuk TV series, progres dapat ditandai per season dan episode.
+- Jika episode 3 ditandai, episode sebelumnya ikut ditandai otomatis.
+- User Free dibatasi maksimal 10 item watchlist.
+- User Premium dan Eksklusif mendapat watchlist unlimited.
+
+### Review
+
+- User login dapat membuat review film dan TV series.
+- Review memakai rating bintang, teks review, dan mood saat menonton.
+- Form review ditampilkan sebagai modal.
+- User dapat mengedit dan menghapus review dari halaman profile.
+- Review dapat dilaporkan.
+- Admin/moderator dapat melihat detail review, alasan laporan, blokir review, tolak laporan, dan mengembalikan review yang diblokir.
+
+### Community
+
+- Community post menggunakan rich text editor.
+- Mendukung hashtag, gambar, GIF, emoji, polling, like, reaction, share, comment, dan reply.
+- Insight post menghitung total interaksi, termasuk view, like, reply, share, reaction, dan polling.
+- Detail post mencatat view user login satu kali per post.
+- Hashtag dapat diklik untuk menampilkan post terkait.
+- Post, comment, reply, dan user dapat dilaporkan.
+- Admin/moderator dapat memoderasi post community seperti sistem moderasi review.
+
+### Profile, Friendlist, dan Chat
+
+- Halaman Profile menampilkan banner, avatar, statistik, review saya, postingan saya, friendlist, dan riwayat mood.
+- User dapat mengubah profile, foto profile, dan banner dengan crop image.
+- Avatar Premium/Eksklusif menampilkan badge diamond.
+- Friendlist tersedia untuk user Premium dan Eksklusif.
+- User dapat add friend, accept/decline request, remove friend, dan message friend.
+- Private chat antar user tersimpan di database.
+- Chat mendukung emoji dan tampilan bubble pengirim/penerima.
+
+### Subscription dan Payment
+
+- Plan user: Free, Premium, dan Eksklusif.
+- Premium dan Eksklusif dibeli melalui halaman Premium/Payment.
+- Admin mengatur metode pembayaran, harga paket, dan logo/QR metode pembayaran.
+- Payment user mendukung pilihan QR Code, E-Wallet, dan Bank.
+- User upload bukti pembayaran.
+- Jika transaksi masih pending, tombol upgrade diarahkan ke page payment sampai transaksi disetujui admin.
+- Admin dapat menyetujui atau menolak transaksi.
+- Setelah disetujui, subscription_plan user berubah sesuai paket.
+
+### Chatbot FLIX
+
+- Chatbot FLIX memakai Gemini API.
+- Chatbot berperan sebagai asisten general dan spesialis FLIX.
+- Chatbot dapat memberi rekomendasi film, menjawab pertanyaan umum, menjelaskan fitur website, dan memberi tautan ke halaman terkait.
+- Chatbot hanya tersedia untuk user Eksklusif.
+
+### Contact Us dan Customer Service
+
+- Contact Us memiliki form laporan/kritik/saran.
+- Pesan Contact Us masuk ke menu Report pada dashboard admin/moderator.
+- Customer Service memiliki chat flow:
+  - Bot meminta kategori masalah.
+  - User menjelaskan masalah.
+  - User dapat mengirim lampiran.
+  - Sistem membuat tiket.
+  - Admin/moderator mengambil tiket dan membalas.
+  - Tiket dapat diselesaikan dan riwayat tetap tersimpan.
+
+### Admin dan Moderator
+
+- Admin dashboard menampilkan statistik, chart aktivitas, aktivitas terbaru, dan film paling banyak disimpan di watchlist.
+- Kelola Film: list film manual, tambah film, edit film.
+- Kelola User: list user, detail user, nonaktifkan/aktifkan user.
+- Moderasi Review: review masuk, report review, review terblokir.
+- Moderasi Community: semua post, post dilaporkan, post terblokir.
+- Transaksi: list transaksi, filter paket/metode/status, detail transaksi, setuju/tolak.
+- Report: Contact Us dan Customer Service ticket.
+- Settings: pengaturan profile dan password admin/user.
+
+## Role dan Akses Langganan
+
+### Role Sistem
+
+| Role | Akses |
+| --- | --- |
+| registered_user | Menggunakan fitur user sesuai subscription_plan |
+| moderator | Kelola film, review, community, transaksi, dan report |
+| admin | Semua akses user, moderator, kelola user, dashboard penuh, dan settings admin |
+
+### Akses Subscription
+
+| Fitur | Free | Premium | Eksklusif |
+| --- | --- | --- | --- |
+| Lihat film dan TV series | Ya | Ya | Ya |
+| Search film dan TV series | Ya | Ya | Ya |
+| Watchlist | Maksimal 10 | Unlimited | Unlimited |
+| Review film/series | Ya | Ya | Ya |
+| Community post | Tidak | Ya | Ya |
+| Comment/reply community | Tidak | Ya | Ya |
+| Like/reaction/share community | Tidak | Ya | Ya |
+| Friendlist dan add friend | Tidak | Ya | Ya |
+| Private chat antar user | Tidak | Ya | Ya |
+| Badge profile | Tidak | Premium | Eksklusif |
+| Bebas iklan | Tidak | Ya | Ya |
+| Chatbot FLIX | Tidak | Tidak | Ya |
+
+Pesan pembatasan fitur:
+
+```text
+Fitur ini hanya tersedia untuk pengguna Premium atau Eksklusif.
+Chatbot FLIX hanya tersedia untuk pengguna Eksklusif.
+```
+
+Pembatasan fitur diterapkan di backend melalui middleware, sehingga route tetap aman walaupun diakses langsung dari Postman.
+
+## User Flow
+
+Versi ringkas user flow juga tersedia di file:
+
+```text
+USER_FLOW.md
+```
+
+### 1. Flow Pengunjung Baru
+
+```mermaid
+flowchart TD
+  A["Buka FLIX"] --> B["Lihat Home, Movies, TV Series, Genre"]
+  B --> C["Search film atau series"]
+  C --> D["Buka detail film/series"]
+  D --> E{"Ingin simpan, review, community, chat?"}
+  E -- "Ya" --> F["Popup login/daftar"]
+  E -- "Tidak" --> B
+  F --> G["Register atau Login"]
+```
+
+### 2. Flow Register dan Login
+
+```mermaid
+flowchart TD
+  A["User daftar akun"] --> B["Backend membuat user subscription_plan free"]
+  B --> C["Email verifikasi dikirim"]
+  C --> D["User klik tombol verifikasi email"]
+  D --> E["Login"]
+  E --> F["Masuk homepage dengan navbar user"]
+```
+
+### 3. Flow Menonton dan Watchlist
+
+```mermaid
+flowchart TD
+  A["User login"] --> B["Cari film/series"]
+  B --> C["Buka detail"]
+  C --> D["Tonton trailer atau simpan watchlist"]
+  D --> E{"Plan user"}
+  E -- "Free dan watchlist < 10" --> F["Item tersimpan"]
+  E -- "Free dan watchlist sudah 10" --> G["Popup upgrade Premium/Eksklusif"]
+  E -- "Premium/Eksklusif" --> F
+  F --> H["Kelola status sudah/belum ditonton di Watchlist"]
+```
+
+### 4. Flow Review
+
+```mermaid
+flowchart TD
+  A["Buka detail film/series"] --> B["Klik tab Review"]
+  B --> C["Klik Berikan Review"]
+  C --> D["Isi rating, review, mood"]
+  D --> E["Submit review"]
+  E --> F["Review tampil di detail dan Profile"]
+  F --> G["User dapat edit/hapus review miliknya"]
+```
+
+### 5. Flow Community
+
+```mermaid
+flowchart TD
+  A["User buka Community"] --> B{"Plan user Premium/Eksklusif?"}
+  B -- "Tidak" --> C["Tombol fitur terkunci dan diarahkan upgrade"]
+  B -- "Ya" --> D["Buat post / comment / reply / reaction / share"]
+  D --> E["Notifikasi dikirim ke pemilik konten"]
+  E --> F["Post dapat dilihat di Community dan Detail Post"]
+```
+
+### 6. Flow Premium dan Eksklusif
+
+```mermaid
+flowchart TD
+  A["User klik Upgrade Premium"] --> B{"Ada transaksi pending?"}
+  B -- "Ya" --> C["Diarahkan ke Payment pending"]
+  B -- "Tidak" --> D["Pilih paket dan durasi"]
+  D --> E["Pilih metode pembayaran"]
+  E --> F["Upload bukti pembayaran"]
+  F --> G["Status transaksi pending"]
+  G --> H["Admin setujui atau tolak"]
+  H -- "Disetujui" --> I["subscription_plan aktif"]
+  H -- "Ditolak" --> J["User dapat upload ulang / transaksi baru"]
+```
+
+### 7. Flow Customer Service
+
+```mermaid
+flowchart TD
+  A["User buka Customer Service"] --> B["Bot meminta kategori"]
+  B --> C["User memilih kategori dan menulis masalah"]
+  C --> D["User menambahkan data/lampiran jika perlu"]
+  D --> E["Sistem membuat tiket"]
+  E --> F["Admin/moderator mengambil tiket"]
+  F --> G["Admin/moderator membalas chat"]
+  G --> H["Tiket selesai dan riwayat read-only"]
+```
+
+## Admin dan Moderator Flow
+
+### Moderasi Review dan Community
+
+```mermaid
+flowchart TD
+  A["User report konten"] --> B["Laporan masuk admin/moderator"]
+  B --> C["Admin buka detail laporan"]
+  C --> D{"Keputusan"}
+  D -- "Blokir" --> E["Konten masuk tab terblokir"]
+  D -- "Tolak" --> F["Laporan ditolak dan konten tetap tampil"]
+  E --> G["Admin dapat mengembalikan konten"]
+```
+
+### Kelola Transaksi
+
+```mermaid
+flowchart TD
+  A["User upload bukti pembayaran"] --> B["Transaksi pending"]
+  B --> C["Admin buka detail transaksi"]
+  C --> D{"Valid?"}
+  D -- "Ya" --> E["Setujui transaksi"]
+  E --> F["Plan user diperbarui"]
+  D -- "Tidak" --> G["Tolak transaksi"]
+```
+
+### Customer Service Admin
+
+```mermaid
+flowchart TD
+  A["Tiket baru"] --> B["Admin/moderator melihat daftar tiket"]
+  B --> C["Ambil tiket"]
+  C --> D["Status sedang ditangani"]
+  D --> E["Balas chat dan cek lampiran"]
+  E --> F["Selesaikan tiket"]
+```
+
+## Teknologi
 
 ### Frontend
 
@@ -205,6 +294,7 @@ FLIX dibuat sebagai platform rekomendasi tontonan. User dapat mencari film atau 
 - Tiptap Rich Text Editor
 - Emoji Picker React
 - React Icons
+- CSS modular per feature
 
 ### Backend
 
@@ -218,7 +308,14 @@ FLIX dibuat sebagai platform rekomendasi tontonan. User dapat mencari film atau 
 - Dotenv
 - CORS
 
-## 5. Struktur Folder
+### Integrasi Eksternal
+
+- TMDB API untuk data film, TV series, genre, trailer, cast, dan watch provider.
+- GIPHY API untuk GIF pada editor community.
+- Gemini API untuk Chatbot FLIX.
+- SMTP Mailpit atau Mailtrap untuk email verifikasi dan reset password.
+
+## Struktur Folder
 
 ```text
 flix/
@@ -232,6 +329,7 @@ flix/
     sql/
     uploads/
   frontend/
+    public/
     src/
       app/
       assets/
@@ -245,57 +343,320 @@ flix/
         admin/
         auth/
         community/
+        contact/
         genre/
         home/
         movies/
+        payment/
+        premium/
         profile/
+        settings/
         tv-series/
         watchlist/
       utils/
-    public/
+  flix_db.sql
+  README.md
+  README_MAILPIT.md
 ```
 
-Frontend menggunakan alias import `@/` yang mengarah ke `frontend/src`.
+Frontend memakai alias import `@/` untuk `frontend/src`.
 
-## 6. Catatan Database
+## Setup Project
 
-Backend menggunakan schema PostgreSQL bernama `flix`. Beberapa tabel tambahan dibuat otomatis saat backend dijalankan, seperti:
+Clone repository:
 
-- `flix.password_reset_tokens`
-- `flix.post_views`
-- `flix.movie_reviews`
-- `flix.movie_review_likes`
-- `flix.tv_series_reviews`
-- `flix.tv_series_review_likes`
-- `flix.notifications`
-- `flix.user_friends`
-- `flix.chat_conversations`
-- `flix.chat_messages`
-- Kolom `profile_image_url` dan `banner_image_url` pada `flix.users`
+```bash
+git clone https://github.com/alfharisqi/flixprojectgroup5celerates.git
+cd flixprojectgroup5celerates
+```
 
-File SQL tambahan tersedia di folder `backend/sql`.
+Install backend:
 
-Pastikan tabel utama seperti `users`, `roles`, `posts`, `comments`, `post_likes`, `post_reactions`, `post_shares`, `post_polls`, `post_poll_options`, dan `post_poll_votes` sudah tersedia agar semua fitur komunitas berjalan.
+```bash
+cd backend
+npm install
+```
 
-Saat ini data watchlist disimpan di frontend melalui `localStorage` dengan key berdasarkan user login:
+Install frontend:
 
-- `flix_movie_watchlist_<id_user>` untuk daftar film tersimpan
-- `flix_tv_watchlist_<id_user>` untuk daftar TV series tersimpan
-- `flix_watchlist_status_<id_user>` untuk status sudah/belum ditonton
+```bash
+cd ../frontend
+npm install
+```
 
-Format status watchlist:
+Jalankan backend:
 
-- `movie:<movie_id>` untuk status film
-- `tv:<series_id>` untuk status selesai seluruh TV series
-- `tv:<series_id>:s<season_number>:e<episode_number>` untuk status episode TV series
+```bash
+cd backend
+npm run dev
+```
 
-Progress episode TV series dibuat berurutan. Contoh: jika user menandai episode 3, maka episode 1, 2, dan 3 ikut tersimpan sebagai sudah ditonton. Jika ingin watchlist tersimpan permanen lintas device, perlu dibuat tabel dan endpoint watchlist di backend.
+Jalankan frontend:
 
-## 7. Sistem Email Testing Lokal Dengan Mailpit
+```bash
+cd frontend
+npm run dev
+```
 
-Project ini memakai SMTP Mailpit untuk testing email lokal. Mailpit menangkap email verifikasi akun dan reset password dari backend, lalu menampilkannya di web inbox lokal tanpa mengirim email ke inbox asli user.
+URL lokal:
 
-Konfigurasi SMTP backend:
+```text
+Frontend: http://localhost:5173
+Backend:  http://localhost:5000
+```
+
+Build frontend:
+
+```bash
+cd frontend
+npm run build
+```
+
+Start backend production:
+
+```bash
+cd backend
+npm start
+```
+
+## Environment Variable
+
+### Backend `.env`
+
+Backend mendukung `DATABASE_URL` atau konfigurasi host PostgreSQL manual.
+
+```env
+PORT=5000
+
+# Pilihan 1: connection string
+DATABASE_URL=postgresql://user:password@host:5432/database?sslmode=require
+DB_SSL=true
+
+# Pilihan 2: konfigurasi manual
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=flix
+DB_USER=postgres
+DB_PASSWORD=password
+
+JWT_SECRET=flix_jwt_secret
+FRONTEND_URL=http://localhost:5173
+
+TMDB_API_KEY=tmdb_api_key
+GEMINI_API_KEY=gemini_api_key
+GEMINI_MODEL=gemini-1.5-flash
+
+MAIL_HOST=localhost
+MAIL_PORT=1025
+MAIL_SECURE=false
+MAIL_USER=
+MAIL_PASS=
+MAIL_FROM="FLIX Local <no-reply@flix.local>"
+```
+
+### Frontend `.env`
+
+```env
+VITE_API_URL=http://localhost:5000
+VITE_GIPHY_API_KEY=giphy_api_key
+```
+
+## Database
+
+Project memakai schema PostgreSQL `flix`.
+
+Import database awal:
+
+```bash
+psql "DATABASE_URL_KAMU" -f flix_db.sql
+```
+
+Jika `psql` tidak tersedia, bisa import melalui Node dengan package `pg` dari backend:
+
+```bash
+node -e "const fs=require('fs'); const { Client }=require('./backend/node_modules/pg'); const client=new Client({connectionString:process.env.DATABASE_URL, ssl:{rejectUnauthorized:false}}); (async()=>{await client.connect(); await client.query(fs.readFileSync('flix_db.sql','utf8')); await client.end(); console.log('Import database selesai');})().catch(e=>{console.error(e); process.exit(1);});"
+```
+
+Beberapa tabel/kolom dibuat atau dipastikan otomatis saat backend berjalan, termasuk:
+
+- User status dan subscription: `is_active`, `is_premium`, `subscription_plan`.
+- Password reset token.
+- Post views dan post insights.
+- Movie reviews dan TV series reviews.
+- Notifications.
+- Friends dan private chat.
+- Watchlist.
+- Payment packages, methods, dan transactions.
+- Contact Us messages.
+- Customer service tickets, messages, dan attachments.
+- Report untuk review, community post, comment, reply, dan user.
+
+Upload file disimpan di:
+
+```text
+backend/uploads/
+```
+
+Folder upload tidak perlu ikut masuk Git karena berisi file user/admin saat runtime.
+
+## API Eksternal
+
+| API | Fungsi |
+| --- | --- |
+| TMDB API | Film, TV series, genre, trending, discover, detail, trailer, cast, watch provider |
+| TMDB Image API | Poster dan backdrop |
+| GIPHY API | GIF picker pada community post |
+| Gemini API | Chatbot FLIX |
+| SMTP Mailpit/Mailtrap | Email verifikasi akun dan reset password |
+
+## Endpoint Internal
+
+Base URL lokal:
+
+```text
+http://localhost:5000
+```
+
+Header untuk endpoint login:
+
+```text
+Authorization: Bearer <token>
+```
+
+### Auth
+
+| Method | Endpoint | Fungsi |
+| --- | --- | --- |
+| POST | `/api/auth/register` | Registrasi user Free |
+| POST | `/api/auth/login` | Login dan mendapatkan JWT |
+| GET/POST | `/api/auth/verify-email` | Verifikasi akun |
+| POST | `/api/auth/forgot-password` | Kirim link reset password |
+| POST | `/api/auth/reset-password` | Reset password |
+
+### Profile dan Settings
+
+| Method | Endpoint | Fungsi |
+| --- | --- | --- |
+| GET | `/api/profile/me` | Profile user login |
+| PUT | `/api/profile/me` | Update data profile |
+| PUT | `/api/profile/password` | Update password |
+| PUT | `/api/profile/media` | Update avatar/banner |
+| GET | `/api/profile/activity` | Statistik aktivitas profile |
+| DELETE | `/api/profile/me` | Hapus akun user |
+
+### Movies dan TV Series
+
+| Method | Endpoint | Fungsi |
+| --- | --- | --- |
+| GET | `/api/movies/search` | Search movie |
+| GET | `/api/movies/popular` | Popular movies |
+| GET | `/api/movies/trending` | Trending movies |
+| GET | `/api/movies/discover` | Discover/filter movies |
+| GET | `/api/movies/:id` | Detail movie |
+| GET | `/api/movies/:id/videos` | Trailer movie |
+| GET | `/api/movies/:id/credits` | Cast movie |
+| GET | `/api/movies/:id/watch-providers` | Provider streaming movie |
+| GET | `/api/tv-series/search` | Search TV series |
+| GET | `/api/tv-series/popular` | Popular TV series |
+| GET | `/api/tv-series/trending` | Trending TV series |
+| GET | `/api/tv-series/discover` | Discover/filter TV series |
+| GET | `/api/tv-series/:id` | Detail TV series |
+| GET | `/api/tv-series/:id/seasons/:seasonNumber` | Episode per season |
+| GET | `/api/tv-series/:id/videos` | Trailer TV series |
+| GET | `/api/tv-series/:id/watch-providers` | Provider streaming TV series |
+
+### Watchlist dan Reviews
+
+| Method | Endpoint | Fungsi |
+| --- | --- | --- |
+| GET | `/api/watchlist` | Watchlist user login |
+| POST | `/api/watchlist` | Simpan film/series |
+| DELETE | `/api/watchlist/:mediaType/:tmdbId` | Hapus watchlist |
+| GET/POST | `/api/movie-reviews/:movieId` | List dan buat review movie |
+| PUT/DELETE | `/api/movie-reviews/:reviewId` | Edit/hapus review movie |
+| POST | `/api/movie-reviews/likes/:reviewId` | Like review movie |
+| GET/POST | `/api/tv-series-reviews/:seriesId` | List dan buat review TV series |
+| PUT/DELETE | `/api/tv-series-reviews/:reviewId` | Edit/hapus review TV series |
+| POST | `/api/tv-series-reviews/likes/:reviewId` | Like review TV series |
+
+### Community
+
+| Method | Endpoint | Fungsi |
+| --- | --- | --- |
+| GET/POST | `/api/posts` | List dan buat post |
+| GET/DELETE | `/api/posts/:id` | Detail/hapus post |
+| GET/POST | `/api/comments/:postId` | List dan buat comment/reply |
+| POST | `/api/post-likes/:postId` | Like/unlike post |
+| POST | `/api/post-reactions/:postId` | Reaction post |
+| POST | `/api/post-shares/:postId` | Share post |
+| POST | `/api/post-views/:postId` | Record view post |
+| GET | `/api/post-insights/:postId` | Insight post |
+| GET | `/api/polls/post/:postId` | Polling post |
+| POST | `/api/polls/:pollId/vote` | Vote polling |
+| POST | `/api/reports` | Buat report konten/user |
+| GET | `/api/reports/categories` | Kategori report |
+
+### Friend, Chat, Notification, Chatbot
+
+| Method | Endpoint | Fungsi |
+| --- | --- | --- |
+| GET | `/api/friends` | Friendlist |
+| GET | `/api/friends/search` | Cari user untuk add friend |
+| GET | `/api/friends/requests` | Request pertemanan |
+| POST/DELETE | `/api/friends/:userId` | Add/remove friend |
+| PUT | `/api/friends/requests/:friendId/accept` | Accept request |
+| DELETE | `/api/friends/requests/:friendId/decline` | Decline request |
+| GET | `/api/chats/conversations` | Inbox chat |
+| POST | `/api/chats/conversations/:userId` | Mulai chat |
+| GET/POST | `/api/chats/conversations/:conversationId/messages` | List/kirim chat |
+| GET | `/api/notifications` | Notifikasi user |
+| PUT | `/api/notifications/read-all` | Tandai semua dibaca |
+| PUT | `/api/notifications/:id/read` | Tandai satu notifikasi dibaca |
+| POST | `/api/chatbot` | Chatbot FLIX Eksklusif |
+
+### Payment, Contact, dan Customer Service
+
+| Method | Endpoint | Fungsi |
+| --- | --- | --- |
+| GET | `/api/payment/settings` | Setting harga dan metode pembayaran |
+| GET | `/api/payment/current` | Transaksi aktif/pending user |
+| POST | `/api/payment/checkout` | Kirim bukti pembayaran |
+| POST | `/api/contact-us` | Kirim laporan/kritik/saran |
+| GET/POST | `/api/customer-service/tickets` | List dan buat tiket CS |
+| GET | `/api/customer-service/tickets/:id` | Detail tiket CS |
+| POST | `/api/customer-service/tickets/:id/messages` | Kirim pesan tiket CS |
+
+### Admin dan Moderator
+
+| Method | Endpoint | Fungsi |
+| --- | --- | --- |
+| GET | `/api/admin/dashboard` | Statistik dashboard admin |
+| GET/POST | `/api/admin/movies` | List/tambah film manual |
+| PUT | `/api/admin/movies/:id` | Edit film manual |
+| GET | `/api/admin/users` | List user |
+| GET | `/api/admin/users/:id` | Detail user |
+| PATCH | `/api/admin/users/:id/status` | Aktif/nonaktif user |
+| GET | `/api/admin/reviews` | Moderasi review |
+| PATCH | `/api/admin/reviews/reports/:reportId/status` | Update status report review |
+| GET | `/api/admin/community` | Moderasi community |
+| PATCH | `/api/admin/community/reports/:reportId/status` | Update status report community |
+| GET | `/api/admin/transactions` | List transaksi |
+| PATCH | `/api/admin/transactions/:id/status` | Setujui/tolak transaksi |
+| GET/PUT | `/api/admin/payment-settings` | Lihat/update payment settings |
+| GET | `/api/admin/contact-us` | Pesan Contact Us |
+| PATCH | `/api/admin/contact-us/:id/status` | Update status Contact Us |
+| GET | `/api/admin/customer-service/tickets` | List tiket CS |
+| GET | `/api/admin/customer-service/tickets/:id` | Detail tiket CS |
+| PATCH | `/api/admin/customer-service/tickets/:id/claim` | Ambil tiket CS |
+| POST | `/api/admin/customer-service/tickets/:id/messages` | Balas tiket CS |
+| PATCH | `/api/admin/customer-service/tickets/:id/close` | Selesaikan tiket CS |
+| GET | `/api/moderator/dashboard` | Dashboard moderator |
+
+## Email Lokal Dengan Mailpit
+
+Project mendukung Mailpit untuk testing email lokal.
+
+Konfigurasi backend:
 
 ```env
 MAIL_HOST=localhost
@@ -306,15 +667,58 @@ MAIL_PASS=
 MAIL_FROM="FLIX Local <no-reply@flix.local>"
 ```
 
-Alamat Mailpit lokal:
+Alamat Mailpit:
 
 ```text
 SMTP server: localhost:1025
 Web inbox: http://localhost:8025
 ```
 
-Panduan lengkap menjalankan Mailpit tersedia di:
+Panduan lengkap ada di:
 
 ```text
 README_MAILPIT.md
 ```
+
+## Deployment
+
+Rekomendasi deployment:
+
+- Frontend: Vercel.
+- Backend: Render, Railway, Fly.io, atau VPS Node.js.
+- Database: Neon PostgreSQL, Supabase PostgreSQL, Railway PostgreSQL, atau database PostgreSQL lain.
+- Upload runtime: untuk production sebaiknya gunakan object storage seperti Cloudinary, Supabase Storage, S3, atau layanan sejenis. Folder `backend/uploads` cocok untuk lokal, tetapi tidak ideal untuk server stateless.
+
+Environment frontend production:
+
+```env
+VITE_API_URL=https://domain-backend-kamu
+VITE_GIPHY_API_KEY=giphy_api_key
+```
+
+Environment backend production:
+
+```env
+DATABASE_URL=postgresql://...
+DB_SSL=true
+JWT_SECRET=secret_production
+FRONTEND_URL=https://domain-frontend-kamu
+TMDB_API_KEY=...
+GEMINI_API_KEY=...
+MAIL_HOST=...
+MAIL_PORT=...
+MAIL_USER=...
+MAIL_PASS=...
+MAIL_FROM=...
+```
+
+## Catatan Pengembangan
+
+- Jangan commit file upload runtime dari `backend/uploads`.
+- Jangan simpan API key asli di Git.
+- Fitur Premium/Eksklusif harus divalidasi di backend dan frontend.
+- Admin memiliki semua hak akses.
+- Moderator dapat mengelola film, review, community, transaksi, dan report.
+- User Free tetap boleh melihat/search konten dan membuat review, tetapi fitur community, friendlist, chat, dan watchlist unlimited membutuhkan upgrade.
+- Chatbot FLIX hanya untuk plan Eksklusif.
+- Jika menambah fitur baru yang berhubungan dengan akses user, tambahkan pengecekan di middleware backend dan util frontend.
