@@ -707,6 +707,11 @@ const moderatorAdminPageIds = new Set(["movies", "reviews", "community", "transa
 const canAccessAdminPage = (role, pageId) =>
   role === "admin" || moderatorAdminPageIds.has(pageId);
 
+const adminRoleOptions = [
+  { value: "registered_user", label: "User Biasa" },
+  { value: "moderator", label: "Moderator" }
+];
+
 const createLocalJsonResponse = (data) => ({
   ok: true,
   json: async () => data
@@ -737,6 +742,49 @@ function AdminAvatar({ imageUrl, name, isPremium }) {
       isPremium={Boolean(isPremium)}
       alt={name || "User FLIX"}
     />
+  );
+}
+
+function AdminFilterButton({ id, openFilter, setOpenFilter, groups }) {
+  const isOpen = openFilter === id;
+
+  return (
+    <div className="admin-filter-popover">
+      <button
+        type="button"
+        className="admin-manage-film__filter"
+        aria-expanded={isOpen}
+        onClick={() => setOpenFilter((currentFilter) => (currentFilter === id ? null : id))}
+      >
+        <FiFilter aria-hidden="true" />
+        Filter
+      </button>
+
+      {isOpen && (
+        <div className="admin-filter-popover__menu" role="menu">
+          {groups.map((group) => (
+            <section key={group.id} className="admin-filter-popover__group">
+              <span>{group.label}</span>
+              <div>
+                {group.options.map((option) => (
+                  <button
+                    type="button"
+                    key={option}
+                    className={group.value === option ? "is-active" : ""}
+                    onClick={() => {
+                      group.onChange(option);
+                      setOpenFilter(null);
+                    }}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -955,6 +1003,19 @@ function AdminPage() {
   const [isCroppingPaymentImage, setIsCroppingPaymentImage] = useState(false);
   const [selectedUserDetail, setSelectedUserDetail] = useState(null);
   const [isUserDetailLoading, setIsUserDetailLoading] = useState(false);
+  const [isUserEditOpen, setIsUserEditOpen] = useState(false);
+  const [userEditForm, setUserEditForm] = useState({
+    username: "",
+    email: "",
+    role: "registered_user"
+  });
+  const [isSavingUserEdit, setIsSavingUserEdit] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [resetPasswordForm, setResetPasswordForm] = useState({
+    password: "",
+    confirmPassword: ""
+  });
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [addMovieForm, setAddMovieForm] = useState(defaultAddMovieForm);
   const [addMovieFeedback, setAddMovieFeedback] = useState("");
   const [isSavingMovie, setIsSavingMovie] = useState(false);
@@ -993,6 +1054,14 @@ function AdminPage() {
   const [selectedChartYear, setSelectedChartYear] = useState(currentAdminYear);
   const [openChartFilter, setOpenChartFilter] = useState(null);
   const [openTransactionFilter, setOpenTransactionFilter] = useState(null);
+  const [openAdminFilter, setOpenAdminFilter] = useState(null);
+  const [movieTypeFilter, setMovieTypeFilter] = useState("Semua Tipe");
+  const [movieStatusFilter, setMovieStatusFilter] = useState("Semua Status");
+  const [movieGenreFilter, setMovieGenreFilter] = useState("Semua Genre");
+  const [userRoleFilter, setUserRoleFilter] = useState("Semua Role");
+  const [userStatusFilter, setUserStatusFilter] = useState("Semua Status");
+  const [reviewMediaFilter, setReviewMediaFilter] = useState("Semua Media");
+  const [reviewRatingFilter, setReviewRatingFilter] = useState("Semua Rating");
   const [transactionPackageFilter, setTransactionPackageFilter] = useState("Semua Paket");
   const [transactionPaymentFilter, setTransactionPaymentFilter] = useState("Semua Pembayaran");
   const [transactionDateFilter, setTransactionDateFilter] = useState("Bulan ini");
@@ -1362,6 +1431,18 @@ function AdminPage() {
     setTransactionPage(1);
   }, [activeTransactionTab, transactionPackageFilter, transactionPaymentFilter, transactionDateFilter]);
 
+  useEffect(() => {
+    setFilmPage(1);
+  }, [movieTypeFilter, movieStatusFilter, movieGenreFilter]);
+
+  useEffect(() => {
+    setUserPage(1);
+  }, [userRoleFilter, userStatusFilter]);
+
+  useEffect(() => {
+    setReviewPage(1);
+  }, [reviewMediaFilter, reviewRatingFilter]);
+
   const filteredActivities = useMemo(() => {
     if (!normalizedSearch) {
       return dashboard.activities;
@@ -1386,17 +1467,56 @@ function AdminPage() {
 
   const visibleWatchlistMovies = filteredWatchlistMovies.slice(0, tableLimit);
 
-  const filteredManagedMovies = useMemo(() => {
-    if (!normalizedSearch) {
-      return managedMovies;
-    }
+  const movieGenreOptions = useMemo(() => {
+    const genres = new Set();
 
-    return managedMovies.filter((movie) =>
-      `${movie.title} ${movie.year} ${movie.genre} ${movie.status} ${movie.mediaType}`
-        .toLowerCase()
-        .includes(normalizedSearch)
+    managedMovies.forEach((movie) => {
+      String(movie.genre || "")
+        .split(",")
+        .map((genre) => genre.trim())
+        .filter((genre) => genre && genre !== "-")
+        .forEach((genre) => genres.add(genre));
+    });
+
+    return ["Semua Genre", ...Array.from(genres).sort((a, b) => a.localeCompare(b))];
+  }, [managedMovies]);
+
+  const movieStatusOptions = useMemo(() => {
+    const statuses = new Set(
+      managedMovies
+        .map((movie) => String(movie.status || "").trim())
+        .filter(Boolean)
     );
-  }, [managedMovies, normalizedSearch]);
+
+    return ["Semua Status", ...Array.from(statuses)];
+  }, [managedMovies]);
+
+  const filteredManagedMovies = useMemo(() => {
+    return managedMovies.filter((movie) => {
+      const mediaTypeLabel = movie.mediaType === "tv" ? "TV Series" : "Film";
+      const matchesSearch =
+        !normalizedSearch ||
+        `${movie.title} ${movie.year} ${movie.genre} ${movie.status} ${movie.mediaType}`
+          .toLowerCase()
+          .includes(normalizedSearch);
+      const matchesType = movieTypeFilter === "Semua Tipe" || mediaTypeLabel === movieTypeFilter;
+      const matchesStatus = movieStatusFilter === "Semua Status" || movie.status === movieStatusFilter;
+      const matchesGenre =
+        movieGenreFilter === "Semua Genre" ||
+        String(movie.genre || "")
+          .split(",")
+          .map((genre) => genre.trim())
+          .includes(movieGenreFilter);
+
+      return matchesSearch && matchesType && matchesStatus && matchesGenre;
+    });
+  }, [
+    managedMovies,
+    movieGenreFilter,
+    movieStatusFilter,
+    movieTypeFilter,
+    normalizedSearch
+  ]);
 
   const filmRowsPerPage = 8;
   const totalFilmPages = Math.max(1, Math.ceil(filteredManagedMovies.length / filmRowsPerPage));
@@ -1412,16 +1532,18 @@ function AdminPage() {
   const isMovieFormPanel = activeMoviePanel === "add" || isEditingMovie;
 
   const filteredAdminUsers = useMemo(() => {
-    if (!normalizedSearch) {
-      return adminUsers;
-    }
+    return adminUsers.filter((item) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        `${item.username} ${item.email} ${item.roleLabel} ${item.status}`
+          .toLowerCase()
+          .includes(normalizedSearch);
+      const matchesRole = userRoleFilter === "Semua Role" || item.roleLabel === userRoleFilter;
+      const matchesStatus = userStatusFilter === "Semua Status" || item.status === userStatusFilter;
 
-    return adminUsers.filter((item) =>
-      `${item.username} ${item.email} ${item.roleLabel} ${item.status}`
-        .toLowerCase()
-        .includes(normalizedSearch)
-    );
-  }, [adminUsers, normalizedSearch]);
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [adminUsers, normalizedSearch, userRoleFilter, userStatusFilter]);
 
   const userRowsPerPage = 9;
   const totalUserPages = Math.max(1, Math.ceil(filteredAdminUsers.length / userRowsPerPage));
@@ -1477,16 +1599,21 @@ function AdminPage() {
       : [];
   }, [activeReviewTab, adminReviews]);
   const filteredAdminReviews = useMemo(() => {
-    if (!normalizedSearch) {
-      return activeReviewRows;
-    }
+    return activeReviewRows.filter((item) => {
+      const mediaLabel = item.mediaType === "tv" ? "TV Series" : "Film";
+      const matchesSearch =
+        !normalizedSearch ||
+        `${item.user?.name} ${item.title} ${item.content} ${item.reason} ${item.date} ${item.status}`
+          .toLowerCase()
+          .includes(normalizedSearch);
+      const matchesMedia = reviewMediaFilter === "Semua Media" || mediaLabel === reviewMediaFilter;
+      const matchesRating =
+        reviewRatingFilter === "Semua Rating" ||
+        Number(item.rating || 0) === Number(reviewRatingFilter);
 
-    return activeReviewRows.filter((item) =>
-      `${item.user?.name} ${item.title} ${item.content} ${item.reason} ${item.date} ${item.status}`
-        .toLowerCase()
-        .includes(normalizedSearch)
-    );
-  }, [activeReviewRows, normalizedSearch]);
+      return matchesSearch && matchesMedia && matchesRating;
+    });
+  }, [activeReviewRows, normalizedSearch, reviewMediaFilter, reviewRatingFilter]);
   const reviewRowsPerPage = 8;
   const totalReviewPages = Math.max(1, Math.ceil(filteredAdminReviews.length / reviewRowsPerPage));
   const currentReviewPage = Math.min(reviewPage, totalReviewPages);
@@ -2034,6 +2161,234 @@ function AdminPage() {
     setSelectedUserDetail(null);
     setUserDetailError("");
     setUserStatusFeedback("");
+    setIsUserEditOpen(false);
+    setIsResetPasswordOpen(false);
+  };
+
+  const syncAdminUserState = (updatedUser) => {
+    if (!updatedUser?.id) {
+      return;
+    }
+
+    setSelectedUserDetail((currentDetail) => {
+      if (!currentDetail?.user) {
+        return currentDetail;
+      }
+
+      return {
+        ...currentDetail,
+        user: {
+          ...currentDetail.user,
+          ...updatedUser,
+        },
+      };
+    });
+
+    setAdminUsers((currentUsers) =>
+      currentUsers.map((item) =>
+        item.id === updatedUser.id
+          ? {
+              ...item,
+              ...updatedUser,
+              activities: item.activities,
+            }
+          : item
+      )
+    );
+
+    try {
+      const storedUser = getStoredUser();
+      if (Number(storedUser.id_user || storedUser.id) === Number(updatedUser.id)) {
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            ...storedUser,
+            id_user: updatedUser.id,
+            id: updatedUser.id,
+            username: updatedUser.username,
+            name: updatedUser.username,
+            email: updatedUser.email,
+            role: updatedUser.role,
+            role_name: updatedUser.role,
+            profile_image_url: updatedUser.profileImageUrl || storedUser.profile_image_url,
+            profileImageUrl: updatedUser.profileImageUrl || storedUser.profileImageUrl,
+          })
+        );
+      }
+    } catch {
+      // Ignore localStorage sync failure; backend state is already updated.
+    }
+  };
+
+  const openEditUserModal = () => {
+    if (!detailUser) {
+      return;
+    }
+
+    setUserEditForm({
+      username: detailUser.username || "",
+      email: detailUser.email || "",
+      role: detailUser.role || "registered_user",
+    });
+    setUserStatusFeedback("");
+    setIsUserEditOpen(true);
+  };
+
+  const closeEditUserModal = () => {
+    if (isSavingUserEdit) {
+      return;
+    }
+
+    setIsUserEditOpen(false);
+  };
+
+  const handleSaveUserEdit = async (event) => {
+    event.preventDefault();
+
+    if (!detailUser?.id) {
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setUserStatusFeedback("Sesi admin tidak tersedia.");
+      return;
+    }
+
+    setIsSavingUserEdit(true);
+    setUserStatusFeedback("");
+
+    try {
+      const response = await fetch(`${API_URL}/api/admin/users/${detailUser.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(userEditForm),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.user) {
+        setUserStatusFeedback(data?.message || "Data user belum bisa diperbarui.");
+        return;
+      }
+
+      syncAdminUserState(data.user);
+      setAdminUsersSummary((currentSummary) => {
+        const oldRole = detailUser.role;
+        const nextRole = data.user.role;
+
+        if (oldRole === nextRole) {
+          return currentSummary;
+        }
+
+        const roleToSummaryKey = {
+          admin: "admin",
+          moderator: "moderator",
+          registered_user: "registeredUser"
+        };
+        const oldKey = roleToSummaryKey[oldRole] || "registeredUser";
+        const nextKey = roleToSummaryKey[nextRole] || "registeredUser";
+
+        return {
+          ...currentSummary,
+          [oldKey]: Math.max(0, Number(currentSummary[oldKey] || 0) - 1),
+          [nextKey]: Number(currentSummary[nextKey] || 0) + 1,
+        };
+      });
+      setIsUserEditOpen(false);
+      setUserStatusFeedback(data.message || "Data user berhasil diperbarui.");
+    } catch {
+      setUserStatusFeedback("Data user belum bisa diperbarui.");
+    } finally {
+      setIsSavingUserEdit(false);
+    }
+  };
+
+  const openResetPasswordModal = () => {
+    setResetPasswordForm({
+      password: "",
+      confirmPassword: ""
+    });
+    setUserStatusFeedback("");
+    setIsResetPasswordOpen(true);
+  };
+
+  const closeResetPasswordModal = () => {
+    if (isResettingPassword) {
+      return;
+    }
+
+    setIsResetPasswordOpen(false);
+  };
+
+  const handleGeneratePassword = () => {
+    const randomPassword = `Flix${Math.random().toString(36).slice(2, 8)}${Math.floor(10 + Math.random() * 90)}`;
+    setResetPasswordForm({
+      password: randomPassword,
+      confirmPassword: randomPassword,
+    });
+  };
+
+  const handleResetUserPassword = async (event) => {
+    event.preventDefault();
+
+    if (!detailUser?.id) {
+      return;
+    }
+
+    if (resetPasswordForm.password.length < 6) {
+      setUserStatusFeedback("Password baru minimal 6 karakter.");
+      return;
+    }
+
+    if (resetPasswordForm.password !== resetPasswordForm.confirmPassword) {
+      setUserStatusFeedback("Konfirmasi password tidak sama.");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setUserStatusFeedback("Sesi admin tidak tersedia.");
+      return;
+    }
+
+    if (!window.confirm(`Reset password untuk ${detailUser.username}?`)) {
+      return;
+    }
+
+    setIsResettingPassword(true);
+    setUserStatusFeedback("");
+
+    try {
+      const response = await fetch(`${API_URL}/api/admin/users/${detailUser.id}/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          password: resetPasswordForm.password,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.user) {
+        setUserStatusFeedback(data?.message || "Password user belum bisa direset.");
+        return;
+      }
+
+      syncAdminUserState(data.user);
+      setIsResetPasswordOpen(false);
+      setUserStatusFeedback("Password user berhasil direset. Berikan password baru ke user secara aman.");
+    } catch {
+      setUserStatusFeedback("Password user belum bisa direset.");
+    } finally {
+      setIsResettingPassword(false);
+    }
   };
 
   const handleToggleUserStatus = async () => {
@@ -2083,32 +2438,7 @@ function AdminPage() {
         return;
       }
 
-      setSelectedUserDetail((currentDetail) => {
-        if (!currentDetail?.user) {
-          return currentDetail;
-        }
-
-        return {
-          ...currentDetail,
-          user: {
-            ...currentDetail.user,
-            ...data.user,
-          },
-        };
-      });
-
-      setAdminUsers((currentUsers) =>
-        currentUsers.map((item) =>
-          item.id === data.user.id
-            ? {
-                ...item,
-                ...data.user,
-                activities: item.activities,
-              }
-            : item
-        )
-      );
-
+      syncAdminUserState(data.user);
       setUserStatusFeedback(data.message || "Status user berhasil diubah.");
     } catch {
       setUserStatusFeedback("Status user belum bisa diubah.");
@@ -3085,10 +3415,34 @@ function AdminPage() {
                       <FiPlus aria-hidden="true" />
                       Tambah Film
                     </button>
-                    <button type="button" className="admin-manage-film__filter">
-                      <FiFilter aria-hidden="true" />
-                      Filter
-                    </button>
+                    <AdminFilterButton
+                      id="movies"
+                      openFilter={openAdminFilter}
+                      setOpenFilter={setOpenAdminFilter}
+                      groups={[
+                        {
+                          id: "type",
+                          label: "Tipe",
+                          value: movieTypeFilter,
+                          onChange: setMovieTypeFilter,
+                          options: ["Semua Tipe", "Film", "TV Series"]
+                        },
+                        {
+                          id: "status",
+                          label: "Status",
+                          value: movieStatusFilter,
+                          onChange: setMovieStatusFilter,
+                          options: movieStatusOptions
+                        },
+                        {
+                          id: "genre",
+                          label: "Genre",
+                          value: movieGenreFilter,
+                          onChange: setMovieGenreFilter,
+                          options: movieGenreOptions
+                        }
+                      ]}
+                    />
                   </div>
                 </div>
 
@@ -3186,10 +3540,27 @@ function AdminPage() {
                     </p>
                   </div>
 
-                  <button type="button" className="admin-manage-film__filter">
-                    <FiFilter aria-hidden="true" />
-                    Filter
-                  </button>
+                  <AdminFilterButton
+                    id="reviews"
+                    openFilter={openAdminFilter}
+                    setOpenFilter={setOpenAdminFilter}
+                    groups={[
+                      {
+                        id: "media",
+                        label: "Media",
+                        value: reviewMediaFilter,
+                        onChange: setReviewMediaFilter,
+                        options: ["Semua Media", "Film", "TV Series"]
+                      },
+                      {
+                        id: "rating",
+                        label: "Rating",
+                        value: reviewRatingFilter,
+                        onChange: setReviewRatingFilter,
+                        options: ["Semua Rating", "5", "4", "3", "2", "1"]
+                      }
+                    ]}
+                  />
                 </div>
 
                 <div className="admin-review-tabs" role="tablist" aria-label="Filter moderasi review">
@@ -4377,11 +4748,11 @@ function AdminPage() {
                         </div>
 
                         <div className="admin-user-detail__profile-actions">
-                          <button type="button">
+                          <button type="button" onClick={openEditUserModal}>
                             <FiEdit3 aria-hidden="true" />
                             Edit User
                           </button>
-                          <button type="button">
+                          <button type="button" onClick={openResetPasswordModal}>
                             <FiKey aria-hidden="true" />
                             Reset Password
                           </button>
@@ -4547,10 +4918,27 @@ function AdminPage() {
                     <h2>Semua User</h2>
                     <p>Admin dan moderator ditampilkan terlebih dahulu, lalu user biasa.</p>
                   </div>
-                  <button type="button" className="admin-manage-film__filter">
-                    <FiFilter aria-hidden="true" />
-                    Filter
-                  </button>
+                  <AdminFilterButton
+                    id="users"
+                    openFilter={openAdminFilter}
+                    setOpenFilter={setOpenAdminFilter}
+                    groups={[
+                      {
+                        id: "role",
+                        label: "Role",
+                        value: userRoleFilter,
+                        onChange: setUserRoleFilter,
+                        options: ["Semua Role", "Admin", "Moderator", "User Biasa"]
+                      },
+                      {
+                        id: "status",
+                        label: "Status",
+                        value: userStatusFilter,
+                        onChange: setUserStatusFilter,
+                        options: ["Semua Status", "Aktif", "Belum Verifikasi", "Nonaktif"]
+                      }
+                    ]}
+                  />
                 </div>
 
                 <div className="admin-user-table" role="table" aria-label="Daftar user admin">
@@ -5302,6 +5690,173 @@ function AdminPage() {
           </article>
         </div>
       )}
+      {isUserEditOpen && detailUser && (
+        <div
+          className="admin-user-modal"
+          role="presentation"
+          onClick={closeEditUserModal}
+        >
+          <form
+            className="admin-user-modal__card"
+            onSubmit={handleSaveUserEdit}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="admin-user-modal__head">
+              <div>
+                <span>Kelola User</span>
+                <h2>Edit User</h2>
+              </div>
+              <button type="button" aria-label="Tutup edit user" onClick={closeEditUserModal}>
+                <FiX aria-hidden="true" />
+              </button>
+            </header>
+
+            <label className="admin-user-modal__field">
+              <span>Username</span>
+              <input
+                type="text"
+                value={userEditForm.username}
+                minLength={3}
+                onChange={(event) =>
+                  setUserEditForm((currentForm) => ({
+                    ...currentForm,
+                    username: event.target.value,
+                  }))
+                }
+                required
+              />
+            </label>
+
+            <label className="admin-user-modal__field">
+              <span>Email</span>
+              <input
+                type="email"
+                value={userEditForm.email}
+                onChange={(event) =>
+                  setUserEditForm((currentForm) => ({
+                    ...currentForm,
+                    email: event.target.value,
+                  }))
+                }
+                required
+              />
+            </label>
+
+            <label className="admin-user-modal__field">
+              <span>Role</span>
+              <select
+                value={userEditForm.role}
+                onChange={(event) =>
+                  setUserEditForm((currentForm) => ({
+                    ...currentForm,
+                    role: event.target.value,
+                  }))
+                }
+              >
+                {adminRoleOptions.map((roleOption) => (
+                  <option key={roleOption.value} value={roleOption.value}>
+                    {roleOption.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <p className="admin-user-modal__note">
+              User Biasa mengikuti akses langganan. Moderator dapat mengelola film,
+              review, community, transaksi, dan report.
+            </p>
+
+            <footer className="admin-user-modal__actions">
+              <button type="button" onClick={closeEditUserModal}>
+                Batal
+              </button>
+              <button type="submit" disabled={isSavingUserEdit}>
+                {isSavingUserEdit ? "Menyimpan..." : "Simpan User"}
+              </button>
+            </footer>
+          </form>
+        </div>
+      )}
+
+      {isResetPasswordOpen && detailUser && (
+        <div
+          className="admin-user-modal"
+          role="presentation"
+          onClick={closeResetPasswordModal}
+        >
+          <form
+            className="admin-user-modal__card"
+            onSubmit={handleResetUserPassword}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="admin-user-modal__head">
+              <div>
+                <span>Reset Password</span>
+                <h2>{detailUser.username}</h2>
+              </div>
+              <button type="button" aria-label="Tutup reset password" onClick={closeResetPasswordModal}>
+                <FiX aria-hidden="true" />
+              </button>
+            </header>
+
+            <label className="admin-user-modal__field">
+              <span>Password Baru</span>
+              <input
+                type="text"
+                value={resetPasswordForm.password}
+                minLength={6}
+                onChange={(event) =>
+                  setResetPasswordForm((currentForm) => ({
+                    ...currentForm,
+                    password: event.target.value,
+                  }))
+                }
+                placeholder="Minimal 6 karakter"
+                required
+              />
+            </label>
+
+            <label className="admin-user-modal__field">
+              <span>Konfirmasi Password</span>
+              <input
+                type="text"
+                value={resetPasswordForm.confirmPassword}
+                minLength={6}
+                onChange={(event) =>
+                  setResetPasswordForm((currentForm) => ({
+                    ...currentForm,
+                    confirmPassword: event.target.value,
+                  }))
+                }
+                placeholder="Ulangi password baru"
+                required
+              />
+            </label>
+
+            <button
+              type="button"
+              className="admin-user-modal__generate"
+              onClick={handleGeneratePassword}
+            >
+              Generate Password
+            </button>
+
+            <p className="admin-user-modal__note">
+              Setelah reset berhasil, berikan password baru ke user melalui kanal yang aman.
+            </p>
+
+            <footer className="admin-user-modal__actions">
+              <button type="button" onClick={closeResetPasswordModal}>
+                Batal
+              </button>
+              <button type="submit" disabled={isResettingPassword}>
+                {isResettingPassword ? "Mereset..." : "Reset Password"}
+              </button>
+            </footer>
+          </form>
+        </div>
+      )}
+
       <AdminPaymentImageCropModal
         cropData={paymentImageCropData}
         saving={isCroppingPaymentImage}

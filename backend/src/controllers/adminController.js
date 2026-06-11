@@ -1,4 +1,5 @@
 import pool from "../config/db.js";
+import bcrypt from "bcrypt";
 import { initializeUserStatusColumns } from "../config/initUserStatus.js";
 import { initializePaymentTransactionsTable } from "../config/initPaymentTransactions.js";
 import { initializePaymentMethodsTable } from "../config/initPaymentMethods.js";
@@ -655,6 +656,22 @@ const mapAdminUsers = (rows) =>
       reply: Number(row.reply_count || 0),
     },
   }));
+
+const mapAdminUserResponse = (row) => ({
+  id: Number(row.id_user),
+  username: row.username,
+  email: row.email,
+  role: row.role_name,
+  roleLabel: normalizeUserRole(row.role_name),
+  status: formatAdminUserStatus(row),
+  isActive: row.is_active !== false,
+  isPremium: Boolean(row.is_premium),
+  joinedAt: formatDate(row.created_at),
+  joinedAtDetail: row.created_at ? formatDateTime(row.created_at) : null,
+  deactivatedAt: row.deactivated_at ? formatDateTime(row.deactivated_at) : null,
+  profileImageUrl: row.profile_image_url,
+  bannerImageUrl: row.banner_image_url,
+});
 
 const getAdminTransactionRows = async () =>
   safeRows(`
@@ -2090,6 +2107,201 @@ export const updateAdminUserStatus = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Gagal mengubah status user",
+      error: error.message,
+    });
+  }
+};
+
+export const updateAdminUser = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const userId = Number(req.params.id);
+    const username = String(req.body?.username || "").trim();
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const role = String(req.body?.role || "").trim();
+    const allowedRoles = new Set(["registered_user", "moderator"]);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({
+        message: "ID user tidak valid",
+      });
+    }
+
+    if (!username || username.length < 3) {
+      return res.status(400).json({
+        message: "Username minimal 3 karakter",
+      });
+    }
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({
+        message: "Format email tidak valid",
+      });
+    }
+
+    if (!allowedRoles.has(role)) {
+      return res.status(400).json({
+        message: "Role hanya bisa diubah ke User Biasa atau Moderator",
+      });
+    }
+
+    if (Number(req.user?.id_user) === userId && role !== "admin") {
+      return res.status(400).json({
+        message: "Admin tidak bisa menurunkan role akun sendiri",
+      });
+    }
+
+    await client.query("BEGIN");
+
+    const targetResult = await client.query(
+      `SELECT id_user, username, email
+       FROM flix.users
+       WHERE id_user = $1
+       FOR UPDATE`,
+      [userId],
+    );
+
+    if (!targetResult.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        message: "User tidak ditemukan",
+      });
+    }
+
+    const duplicateResult = await client.query(
+      `SELECT id_user
+       FROM flix.users
+       WHERE id_user <> $1
+         AND (LOWER(email) = LOWER($2) OR LOWER(username) = LOWER($3))
+       LIMIT 1`,
+      [userId, email, username],
+    );
+
+    if (duplicateResult.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: "Email atau username sudah digunakan user lain",
+      });
+    }
+
+    const roleResult = await client.query(
+      `SELECT id_role, role_name
+       FROM flix.roles
+       WHERE role_name = $1`,
+      [role],
+    );
+
+    if (!roleResult.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: "Role tidak tersedia di database",
+      });
+    }
+
+    const result = await client.query(
+      `WITH updated_user AS (
+        UPDATE flix.users
+        SET
+          username = $1,
+          email = $2,
+          id_role = $3,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id_user = $4
+        RETURNING
+          id_user,
+          username,
+          email,
+          email_verified,
+          is_active,
+          is_premium,
+          profile_image_url,
+          banner_image_url,
+          created_at,
+          deactivated_at,
+          id_role
+      )
+      SELECT updated_user.*, roles.role_name
+      FROM updated_user
+      JOIN flix.roles roles ON updated_user.id_role = roles.id_role`,
+      [username, email, roleResult.rows[0].id_role, userId],
+    );
+
+    await client.query("COMMIT");
+
+    return res.json({
+      message: "Data user berhasil diperbarui",
+      user: mapAdminUserResponse(result.rows[0]),
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    return res.status(500).json({
+      message: "Gagal memperbarui user",
+      error: error.message,
+    });
+  } finally {
+    client.release();
+  }
+};
+
+export const resetAdminUserPassword = async (req, res) => {
+  try {
+    const userId = Number(req.params.id);
+    const password = String(req.body?.password || "").trim();
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({
+        message: "ID user tidak valid",
+      });
+    }
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({
+        message: "Password baru minimal 6 karakter",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await pool.query(
+      `WITH updated_user AS (
+        UPDATE flix.users
+        SET
+          password = $1,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id_user = $2
+        RETURNING
+          id_user,
+          username,
+          email,
+          email_verified,
+          is_active,
+          is_premium,
+          profile_image_url,
+          banner_image_url,
+          created_at,
+          deactivated_at,
+          id_role
+      )
+      SELECT updated_user.*, roles.role_name
+      FROM updated_user
+      JOIN flix.roles roles ON updated_user.id_role = roles.id_role`,
+      [hashedPassword, userId],
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).json({
+        message: "User tidak ditemukan",
+      });
+    }
+
+    return res.json({
+      message: "Password user berhasil direset",
+      user: mapAdminUserResponse(result.rows[0]),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal reset password user",
       error: error.message,
     });
   }

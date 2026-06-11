@@ -1045,7 +1045,7 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
                 Login
               </Link>
               <Link className="site-navbar__signin" to="/register">
-                Sign In
+                Sign Up
               </Link>
             </>
           )}

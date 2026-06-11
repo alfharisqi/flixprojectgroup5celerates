@@ -20,11 +20,13 @@ import {
   getAdminTransactions,
   getAdminUserDetail,
   getAdminUsers,
+  resetAdminUserPassword,
   updateAdminTransactionStatus,
   updateAdminCommunityReportStatus,
   updateAdminContactMessageStatus,
   updateAdminPaymentSettings,
   updateAdminReviewReportStatus,
+  updateAdminUser,
   updateAdminUserStatus,
   updateAdminMovie
 } from "../controllers/adminController.js";
@@ -213,6 +215,20 @@ router.get(
   verifyToken,
   allowRoles("admin"),
   getAdminUserDetail
+);
+
+router.put(
+  "/users/:id",
+  verifyToken,
+  allowRoles("admin"),
+  updateAdminUser
+);
+
+router.post(
+  "/users/:id/reset-password",
+  verifyToken,
+  allowRoles("admin"),
+  resetAdminUserPassword
 );
 
 router.patch(
