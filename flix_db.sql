@@ -2,8 +2,6 @@
 -- Please log an issue at https://github.com/pgadmin-org/pgadmin4/issues/new/choose if you find any bugs, including reproduction steps.
 BEGIN;
 
-CREATE SCHEMA IF NOT EXISTS flix;
-
 
 CREATE TABLE IF NOT EXISTS flix.admin_movies
 (
@@ -80,53 +78,6 @@ CREATE TABLE IF NOT EXISTS flix.contact_messages
     CONSTRAINT contact_messages_pkey PRIMARY KEY (id_contact_message)
 );
 
-CREATE TABLE IF NOT EXISTS flix.customer_service_tickets
-(
-    id_ticket bigserial NOT NULL,
-    ticket_code character varying(40) COLLATE pg_catalog."default" NOT NULL,
-    id_user bigint,
-    category character varying(30) COLLATE pg_catalog."default" NOT NULL,
-    subject character varying(180) COLLATE pg_catalog."default" NOT NULL,
-    description text COLLATE pg_catalog."default" NOT NULL,
-    detail jsonb DEFAULT '{}'::jsonb,
-    status character varying(30) COLLATE pg_catalog."default" NOT NULL DEFAULT 'waiting_admin'::character varying,
-    assigned_admin_id bigint,
-    resolution_note text COLLATE pg_catalog."default",
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    closed_at timestamp without time zone,
-    CONSTRAINT customer_service_tickets_pkey PRIMARY KEY (id_ticket),
-    CONSTRAINT customer_service_tickets_ticket_code_key UNIQUE (ticket_code),
-    CONSTRAINT chk_customer_service_ticket_category CHECK (category IN ('account', 'payment', 'feature', 'other')),
-    CONSTRAINT chk_customer_service_ticket_status CHECK (status IN ('waiting_admin', 'in_progress', 'done'))
-);
-
-CREATE TABLE IF NOT EXISTS flix.customer_service_messages
-(
-    id_message bigserial NOT NULL,
-    id_ticket bigint NOT NULL,
-    sender_user_id bigint,
-    sender_type character varying(20) COLLATE pg_catalog."default" NOT NULL,
-    message text COLLATE pg_catalog."default" NOT NULL,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT customer_service_messages_pkey PRIMARY KEY (id_message),
-    CONSTRAINT chk_customer_service_message_sender_type CHECK (sender_type IN ('user', 'bot', 'admin', 'moderator', 'system'))
-);
-
-CREATE TABLE IF NOT EXISTS flix.customer_service_attachments
-(
-    id_attachment bigserial NOT NULL,
-    id_ticket bigint NOT NULL,
-    id_message bigint,
-    uploaded_by_user_id bigint,
-    file_url text COLLATE pg_catalog."default" NOT NULL,
-    file_name character varying(255) COLLATE pg_catalog."default" NOT NULL,
-    file_type character varying(120) COLLATE pg_catalog."default",
-    file_size bigint,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT customer_service_attachments_pkey PRIMARY KEY (id_attachment)
-);
-
 CREATE TABLE IF NOT EXISTS flix.email_verification_tokens
 (
     id_verification serial NOT NULL,
@@ -156,11 +107,11 @@ CREATE TABLE IF NOT EXISTS flix.movie_reviews
     parent_review_id integer,
     content text COLLATE pg_catalog."default" NOT NULL,
     rating smallint,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     moderation_status character varying(20) COLLATE pg_catalog."default" NOT NULL DEFAULT 'active'::character varying,
     blocked_at timestamp without time zone,
     blocked_by_user_id bigint,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT movie_reviews_pkey PRIMARY KEY (id_review)
 );
 
@@ -190,6 +141,64 @@ CREATE TABLE IF NOT EXISTS flix.password_reset_tokens
     used_at timestamp without time zone,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT password_reset_tokens_pkey PRIMARY KEY (id_reset)
+);
+
+CREATE TABLE IF NOT EXISTS flix.payment_methods
+(
+    id_method character varying(80) COLLATE pg_catalog."default" NOT NULL,
+    type character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    name character varying(120) COLLATE pg_catalog."default" NOT NULL,
+    category character varying(80) COLLATE pg_catalog."default",
+    account_number text COLLATE pg_catalog."default",
+    account_name character varying(160) COLLATE pg_catalog."default",
+    image_url text COLLATE pg_catalog."default",
+    image_name character varying(180) COLLATE pg_catalog."default",
+    is_active boolean NOT NULL DEFAULT true,
+    sort_order integer NOT NULL DEFAULT 0,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT payment_methods_pkey PRIMARY KEY (id_method)
+);
+
+CREATE TABLE IF NOT EXISTS flix.payment_packages
+(
+    package_code character varying(40) COLLATE pg_catalog."default" NOT NULL,
+    package_name character varying(120) COLLATE pg_catalog."default" NOT NULL,
+    duration_months integer NOT NULL DEFAULT 1,
+    price integer NOT NULL DEFAULT 0,
+    is_active boolean NOT NULL DEFAULT true,
+    sort_order integer NOT NULL DEFAULT 0,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT payment_packages_pkey PRIMARY KEY (package_code)
+);
+
+CREATE TABLE IF NOT EXISTS flix.payment_transactions
+(
+    id_transaction bigserial NOT NULL,
+    id_user bigint NOT NULL,
+    package_code character varying(40) COLLATE pg_catalog."default" NOT NULL DEFAULT 'premium'::character varying,
+    package_name character varying(120) COLLATE pg_catalog."default" NOT NULL DEFAULT 'Premium Bulanan'::character varying,
+    duration_months integer NOT NULL DEFAULT 1,
+    payment_method character varying(50) COLLATE pg_catalog."default" NOT NULL DEFAULT 'qris'::character varying,
+    payment_method_detail character varying(120) COLLATE pg_catalog."default",
+    amount integer NOT NULL DEFAULT 0,
+    admin_fee integer NOT NULL DEFAULT 0,
+    total_amount integer NOT NULL DEFAULT 0,
+    payer_name character varying(160) COLLATE pg_catalog."default",
+    payer_email character varying(160) COLLATE pg_catalog."default",
+    payer_phone character varying(60) COLLATE pg_catalog."default",
+    ewallet_phone character varying(60) COLLATE pg_catalog."default",
+    payment_proof character varying(255) COLLATE pg_catalog."default",
+    status character varying(30) COLLATE pg_catalog."default" NOT NULL DEFAULT 'pending'::character varying,
+    admin_note text COLLATE pg_catalog."default",
+    verified_by_user_id bigint,
+    verified_at timestamp without time zone,
+    premium_started_at timestamp without time zone,
+    premium_expired_at timestamp without time zone,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT payment_transactions_pkey PRIMARY KEY (id_transaction)
 );
 
 CREATE TABLE IF NOT EXISTS flix.post_likes
@@ -322,11 +331,11 @@ CREATE TABLE IF NOT EXISTS flix.tv_series_reviews
     parent_review_id integer,
     content text COLLATE pg_catalog."default" NOT NULL,
     rating smallint,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     moderation_status character varying(20) COLLATE pg_catalog."default" NOT NULL DEFAULT 'active'::character varying,
     blocked_at timestamp without time zone,
     blocked_by_user_id bigint,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT tv_series_reviews_pkey PRIMARY KEY (id_review)
 );
 
@@ -339,6 +348,23 @@ CREATE TABLE IF NOT EXISTS flix.user_friends
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT user_friends_pkey PRIMARY KEY (id_friend)
+);
+
+CREATE TABLE IF NOT EXISTS flix.user_watchlist
+(
+    id_watchlist bigserial NOT NULL,
+    id_user bigint NOT NULL,
+    media_type character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    tmdb_id bigint NOT NULL,
+    title character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    poster_url text COLLATE pg_catalog."default",
+    release_year character varying(20) COLLATE pg_catalog."default",
+    rating character varying(20) COLLATE pg_catalog."default",
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT user_watchlist_pkey PRIMARY KEY (id_watchlist),
+    CONSTRAINT user_watchlist_id_user_media_type_tmdb_id_key UNIQUE (id_user, media_type, tmdb_id)
 );
 
 CREATE TABLE IF NOT EXISTS flix.users
@@ -357,6 +383,9 @@ CREATE TABLE IF NOT EXISTS flix.users
     is_active boolean NOT NULL DEFAULT true,
     deactivated_at timestamp without time zone,
     deactivated_by_user_id bigint,
+    is_premium boolean NOT NULL DEFAULT false,
+    payment_proof character varying(255) COLLATE pg_catalog."default",
+    subscription_plan character varying(20) COLLATE pg_catalog."default" NOT NULL DEFAULT 'free'::character varying,
     CONSTRAINT users_pkey PRIMARY KEY (id_user),
     CONSTRAINT users_email_key UNIQUE (email),
     CONSTRAINT users_username_key UNIQUE (username)
@@ -402,6 +431,13 @@ ALTER TABLE IF EXISTS flix.chat_messages
 
 
 ALTER TABLE IF EXISTS flix.comments
+    ADD CONSTRAINT comments_blocked_by_user_id_fkey FOREIGN KEY (blocked_by_user_id)
+    REFERENCES flix.users (id_user) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS flix.comments
     ADD CONSTRAINT fk_comments_parent FOREIGN KEY (parent_comment_id)
     REFERENCES flix.comments (id_comment) MATCH SIMPLE
     ON UPDATE NO ACTION
@@ -427,58 +463,6 @@ ALTER TABLE IF EXISTS flix.contact_messages
     REFERENCES flix.users (id_user) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE SET NULL;
-
-
-ALTER TABLE IF EXISTS flix.customer_service_tickets
-    ADD CONSTRAINT customer_service_tickets_id_user_fkey FOREIGN KEY (id_user)
-    REFERENCES flix.users (id_user) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE SET NULL;
-
-ALTER TABLE IF EXISTS flix.customer_service_tickets
-    ADD CONSTRAINT customer_service_tickets_assigned_admin_id_fkey FOREIGN KEY (assigned_admin_id)
-    REFERENCES flix.users (id_user) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE SET NULL;
-
-ALTER TABLE IF EXISTS flix.customer_service_messages
-    ADD CONSTRAINT customer_service_messages_id_ticket_fkey FOREIGN KEY (id_ticket)
-    REFERENCES flix.customer_service_tickets (id_ticket) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE CASCADE;
-
-ALTER TABLE IF EXISTS flix.customer_service_messages
-    ADD CONSTRAINT customer_service_messages_sender_user_id_fkey FOREIGN KEY (sender_user_id)
-    REFERENCES flix.users (id_user) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE SET NULL;
-
-ALTER TABLE IF EXISTS flix.customer_service_attachments
-    ADD CONSTRAINT customer_service_attachments_id_ticket_fkey FOREIGN KEY (id_ticket)
-    REFERENCES flix.customer_service_tickets (id_ticket) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE CASCADE;
-
-ALTER TABLE IF EXISTS flix.customer_service_attachments
-    ADD CONSTRAINT customer_service_attachments_id_message_fkey FOREIGN KEY (id_message)
-    REFERENCES flix.customer_service_messages (id_message) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE CASCADE;
-
-ALTER TABLE IF EXISTS flix.customer_service_attachments
-    ADD CONSTRAINT customer_service_attachments_uploaded_by_user_id_fkey FOREIGN KEY (uploaded_by_user_id)
-    REFERENCES flix.users (id_user) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE SET NULL;
-
-CREATE INDEX IF NOT EXISTS idx_customer_service_tickets_status_created
-    ON flix.customer_service_tickets(status, created_at DESC);
-
-CREATE INDEX IF NOT EXISTS idx_customer_service_tickets_user_created
-    ON flix.customer_service_tickets(id_user, created_at DESC);
-
-CREATE INDEX IF NOT EXISTS idx_customer_service_messages_ticket_created
-    ON flix.customer_service_messages(id_ticket, created_at ASC);
 
 
 ALTER TABLE IF EXISTS flix.email_verification_tokens
@@ -507,22 +491,17 @@ ALTER TABLE IF EXISTS flix.movie_review_likes
 
 
 ALTER TABLE IF EXISTS flix.movie_reviews
-    ADD CONSTRAINT movie_reviews_id_user_fkey FOREIGN KEY (id_user)
-    REFERENCES flix.users (id_user) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE CASCADE;
-
-ALTER TABLE IF EXISTS flix.movie_reviews
     ADD CONSTRAINT movie_reviews_blocked_by_user_id_fkey FOREIGN KEY (blocked_by_user_id)
     REFERENCES flix.users (id_user) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE SET NULL;
 
-ALTER TABLE IF EXISTS flix.movie_reviews
-    ADD CONSTRAINT chk_movie_reviews_moderation_status CHECK (moderation_status IN ('active', 'blocked'));
 
-CREATE INDEX IF NOT EXISTS idx_movie_reviews_moderation_status
-    ON flix.movie_reviews(moderation_status);
+ALTER TABLE IF EXISTS flix.movie_reviews
+    ADD CONSTRAINT movie_reviews_id_user_fkey FOREIGN KEY (id_user)
+    REFERENCES flix.users (id_user) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
 
 
 ALTER TABLE IF EXISTS flix.movie_reviews
@@ -569,6 +548,22 @@ ALTER TABLE IF EXISTS flix.password_reset_tokens
     ON DELETE CASCADE;
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_id_user
     ON flix.password_reset_tokens(id_user);
+
+
+ALTER TABLE IF EXISTS flix.payment_transactions
+    ADD CONSTRAINT payment_transactions_id_user_fkey FOREIGN KEY (id_user)
+    REFERENCES flix.users (id_user) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_payment_transactions_user
+    ON flix.payment_transactions(id_user);
+
+
+ALTER TABLE IF EXISTS flix.payment_transactions
+    ADD CONSTRAINT payment_transactions_verified_by_user_id_fkey FOREIGN KEY (verified_by_user_id)
+    REFERENCES flix.users (id_user) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE SET NULL;
 
 
 ALTER TABLE IF EXISTS flix.post_likes
@@ -675,6 +670,13 @@ ALTER TABLE IF EXISTS flix.posts
     ON DELETE CASCADE;
 
 
+ALTER TABLE IF EXISTS flix.posts
+    ADD CONSTRAINT posts_blocked_by_user_id_fkey FOREIGN KEY (blocked_by_user_id)
+    REFERENCES flix.users (id_user) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE SET NULL;
+
+
 ALTER TABLE IF EXISTS flix.reports
     ADD CONSTRAINT reports_community_comment_id_fkey FOREIGN KEY (community_comment_id)
     REFERENCES flix.comments (id_comment) MATCH SIMPLE
@@ -734,22 +736,17 @@ ALTER TABLE IF EXISTS flix.tv_series_review_likes
 
 
 ALTER TABLE IF EXISTS flix.tv_series_reviews
-    ADD CONSTRAINT tv_series_reviews_id_user_fkey FOREIGN KEY (id_user)
-    REFERENCES flix.users (id_user) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE CASCADE;
-
-ALTER TABLE IF EXISTS flix.tv_series_reviews
     ADD CONSTRAINT tv_series_reviews_blocked_by_user_id_fkey FOREIGN KEY (blocked_by_user_id)
     REFERENCES flix.users (id_user) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE SET NULL;
 
-ALTER TABLE IF EXISTS flix.tv_series_reviews
-    ADD CONSTRAINT chk_tv_series_reviews_moderation_status CHECK (moderation_status IN ('active', 'blocked'));
 
-CREATE INDEX IF NOT EXISTS idx_tv_series_reviews_moderation_status
-    ON flix.tv_series_reviews(moderation_status);
+ALTER TABLE IF EXISTS flix.tv_series_reviews
+    ADD CONSTRAINT tv_series_reviews_id_user_fkey FOREIGN KEY (id_user)
+    REFERENCES flix.users (id_user) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
 
 
 ALTER TABLE IF EXISTS flix.tv_series_reviews
@@ -777,6 +774,13 @@ ALTER TABLE IF EXISTS flix.user_friends
     ON DELETE CASCADE;
 CREATE INDEX IF NOT EXISTS idx_user_friends_requester
     ON flix.user_friends(requester_user_id);
+
+
+ALTER TABLE IF EXISTS flix.user_watchlist
+    ADD CONSTRAINT user_watchlist_id_user_fkey FOREIGN KEY (id_user)
+    REFERENCES flix.users (id_user) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
 
 
 ALTER TABLE IF EXISTS flix.users
