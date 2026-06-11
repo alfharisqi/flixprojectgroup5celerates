@@ -1013,9 +1013,9 @@ function SiteNavbar({ mode = "absolute", activeKey }) {
                   </Link>
 
                   {user?.role === "moderator" && (
-                    <Link className="site-navbar__profile-item" to="/moderator">
+                    <Link className="site-navbar__profile-item" to="/admin">
                       <img src={settingIcon} alt="" />
-                      <span>Moderator</span>
+                      <span>Panel Moderator</span>
                     </Link>
                   )}
 

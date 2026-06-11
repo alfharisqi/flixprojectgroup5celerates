@@ -215,6 +215,11 @@
   background: linear-gradient(135deg, rgba(229, 9, 20, 0.14), rgba(0, 0, 0, 0));
 }
 
+.contact-chatroom__header > div {
+  min-width: 0;
+  flex: 1;
+}
+
 .contact-chatroom__avatar {
   width: 50px;
   height: 50px;
@@ -238,6 +243,17 @@
   color: #979797;
   font-size: 14px;
   line-height: 1.5;
+}
+
+.contact-chatroom__new-ticket {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 9px 14px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .contact-chatroom__body {
@@ -290,6 +306,22 @@
   line-height: 1.55;
 }
 
+.contact-chatroom__attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.contact-chatroom__attachments a {
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 11px;
+  text-decoration: none;
+}
+
 .contact-chatroom__message time {
   display: block;
   margin-top: 6px;
@@ -307,6 +339,12 @@
   background: #141414;
 }
 
+.contact-chatroom__composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
 .contact-chatroom__input input {
   width: 100%;
   height: 48px;
@@ -317,6 +355,25 @@
   background: #0b0b0b;
   padding: 0 18px;
   outline: 0;
+}
+
+.contact-chatroom__file {
+  min-width: 74px;
+  height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #d2d2d2;
+  background: #0b0b0b;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.contact-chatroom__file input {
+  display: none;
 }
 
 .contact-chatroom__input input:focus {
@@ -344,6 +401,76 @@
   transform: translateY(-1px);
   box-shadow: 0 10px 20px rgba(229, 9, 20, 0.24);
   outline: none;
+}
+
+.contact-chatroom__categories {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #141414;
+}
+
+.contact-chatroom__categories button {
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: #ffffff;
+  background: #0b0b0b;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.contact-chatroom__categories button:hover,
+.contact-chatroom__categories button:focus-visible {
+  border-color: #e50914;
+  background: rgba(229, 9, 20, 0.18);
+  outline: none;
+}
+
+.contact-chatroom__pending-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 16px 12px;
+  background: #141414;
+}
+
+.contact-chatroom__pending-files span {
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: #d2d2d2;
+  background: #232323;
+  font-size: 11px;
+}
+
+.contact-chatroom__readonly {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 18px;
+  color: #bcbcbc;
+  background: #141414;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+
+.contact-chatroom__readonly a,
+.contact-chatroom__readonly button {
+  border: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  color: #ffffff;
+  background: #e50914;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .contact-footer {
@@ -409,6 +536,11 @@
   .contact-chatroom__body {
     height: 340px;
     padding: 16px;
+  }
+
+  .contact-chatroom__categories,
+  .contact-chatroom__composer {
+    grid-template-columns: 1fr;
   }
 
   .contact-chatroom__message > div {

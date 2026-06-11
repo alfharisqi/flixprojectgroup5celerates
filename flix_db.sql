@@ -80,6 +80,53 @@ CREATE TABLE IF NOT EXISTS flix.contact_messages
     CONSTRAINT contact_messages_pkey PRIMARY KEY (id_contact_message)
 );
 
+CREATE TABLE IF NOT EXISTS flix.customer_service_tickets
+(
+    id_ticket bigserial NOT NULL,
+    ticket_code character varying(40) COLLATE pg_catalog."default" NOT NULL,
+    id_user bigint,
+    category character varying(30) COLLATE pg_catalog."default" NOT NULL,
+    subject character varying(180) COLLATE pg_catalog."default" NOT NULL,
+    description text COLLATE pg_catalog."default" NOT NULL,
+    detail jsonb DEFAULT '{}'::jsonb,
+    status character varying(30) COLLATE pg_catalog."default" NOT NULL DEFAULT 'waiting_admin'::character varying,
+    assigned_admin_id bigint,
+    resolution_note text COLLATE pg_catalog."default",
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    closed_at timestamp without time zone,
+    CONSTRAINT customer_service_tickets_pkey PRIMARY KEY (id_ticket),
+    CONSTRAINT customer_service_tickets_ticket_code_key UNIQUE (ticket_code),
+    CONSTRAINT chk_customer_service_ticket_category CHECK (category IN ('account', 'payment', 'feature', 'other')),
+    CONSTRAINT chk_customer_service_ticket_status CHECK (status IN ('waiting_admin', 'in_progress', 'done'))
+);
+
+CREATE TABLE IF NOT EXISTS flix.customer_service_messages
+(
+    id_message bigserial NOT NULL,
+    id_ticket bigint NOT NULL,
+    sender_user_id bigint,
+    sender_type character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    message text COLLATE pg_catalog."default" NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT customer_service_messages_pkey PRIMARY KEY (id_message),
+    CONSTRAINT chk_customer_service_message_sender_type CHECK (sender_type IN ('user', 'bot', 'admin', 'moderator', 'system'))
+);
+
+CREATE TABLE IF NOT EXISTS flix.customer_service_attachments
+(
+    id_attachment bigserial NOT NULL,
+    id_ticket bigint NOT NULL,
+    id_message bigint,
+    uploaded_by_user_id bigint,
+    file_url text COLLATE pg_catalog."default" NOT NULL,
+    file_name character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    file_type character varying(120) COLLATE pg_catalog."default",
+    file_size bigint,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT customer_service_attachments_pkey PRIMARY KEY (id_attachment)
+);
+
 CREATE TABLE IF NOT EXISTS flix.email_verification_tokens
 (
     id_verification serial NOT NULL,
@@ -380,6 +427,58 @@ ALTER TABLE IF EXISTS flix.contact_messages
     REFERENCES flix.users (id_user) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS flix.customer_service_tickets
+    ADD CONSTRAINT customer_service_tickets_id_user_fkey FOREIGN KEY (id_user)
+    REFERENCES flix.users (id_user) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE SET NULL;
+
+ALTER TABLE IF EXISTS flix.customer_service_tickets
+    ADD CONSTRAINT customer_service_tickets_assigned_admin_id_fkey FOREIGN KEY (assigned_admin_id)
+    REFERENCES flix.users (id_user) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE SET NULL;
+
+ALTER TABLE IF EXISTS flix.customer_service_messages
+    ADD CONSTRAINT customer_service_messages_id_ticket_fkey FOREIGN KEY (id_ticket)
+    REFERENCES flix.customer_service_tickets (id_ticket) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS flix.customer_service_messages
+    ADD CONSTRAINT customer_service_messages_sender_user_id_fkey FOREIGN KEY (sender_user_id)
+    REFERENCES flix.users (id_user) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE SET NULL;
+
+ALTER TABLE IF EXISTS flix.customer_service_attachments
+    ADD CONSTRAINT customer_service_attachments_id_ticket_fkey FOREIGN KEY (id_ticket)
+    REFERENCES flix.customer_service_tickets (id_ticket) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS flix.customer_service_attachments
+    ADD CONSTRAINT customer_service_attachments_id_message_fkey FOREIGN KEY (id_message)
+    REFERENCES flix.customer_service_messages (id_message) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS flix.customer_service_attachments
+    ADD CONSTRAINT customer_service_attachments_uploaded_by_user_id_fkey FOREIGN KEY (uploaded_by_user_id)
+    REFERENCES flix.users (id_user) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_customer_service_tickets_status_created
+    ON flix.customer_service_tickets(status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_customer_service_tickets_user_created
+    ON flix.customer_service_tickets(id_user, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_customer_service_messages_ticket_created
+    ON flix.customer_service_messages(id_ticket, created_at ASC);
 
 
 ALTER TABLE IF EXISTS flix.email_verification_tokens

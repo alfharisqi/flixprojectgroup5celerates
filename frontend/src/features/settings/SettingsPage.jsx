@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { FiCheck, FiImage, FiTrash2 } from "react-icons/fi";
+import { FaFacebookF, FaTwitter, FaYoutube } from "react-icons/fa";
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import { resolveMediaUrl } from "@/utils/media";
 import "./SettingsPage.css";
@@ -9,11 +10,7 @@ import "./SettingsPage.css";
 const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const preferenceDefaults = {
-  displayName: "",
   gender: "",
-  country: "",
-  language: "",
-  timezone: ""
 };
 
 const getStoredUser = () => {
@@ -137,6 +134,12 @@ function SettingsPage() {
       );
 
       updateStoredUser(response.data.user);
+      localStorage.setItem(
+        "flix_user_settings",
+        JSON.stringify({
+          gender: accountForm.gender,
+        }),
+      );
       setMessage(response.data.message || "Informasi profile berhasil disimpan");
     } catch (error) {
       setErrorMessage(error.response?.data?.message || "Gagal menyimpan informasi profile");
@@ -146,17 +149,7 @@ function SettingsPage() {
   };
 
   const handlePreferenceSave = () => {
-    const preferences = {
-      displayName: accountForm.displayName,
-      gender: accountForm.gender,
-      country: accountForm.country,
-      language: accountForm.language,
-      timezone: accountForm.timezone
-    };
-
-    localStorage.setItem("flix_user_settings", JSON.stringify(preferences));
-    setMessage("Informasi data diri berhasil disimpan");
-    setErrorMessage("");
+    handleProfileSave();
   };
 
   const handlePasswordSave = async () => {
@@ -306,14 +299,6 @@ function SettingsPage() {
               />
             </label>
             <label>
-              Nama panggilan
-              <input
-                type="text"
-                value={accountForm.displayName}
-                onChange={(event) => handleAccountChange("displayName", event.target.value)}
-              />
-            </label>
-            <label>
               Email
               <input
                 type="email"
@@ -330,36 +315,15 @@ function SettingsPage() {
                 <option value="Lainnya">Lainnya</option>
               </select>
             </label>
-            <label>
-              Negara
-              <select value={accountForm.country} onChange={(event) => handleAccountChange("country", event.target.value)}>
-                <option value="">Pilih negara</option>
-                <option value="Indonesia">Indonesia</option>
-                <option value="Malaysia">Malaysia</option>
-                <option value="Singapura">Singapura</option>
-              </select>
-            </label>
-            <label>
-              Bahasa
-              <select value={accountForm.language} onChange={(event) => handleAccountChange("language", event.target.value)}>
-                <option value="">Pilih bahasa</option>
-                <option value="Indonesia">Indonesia</option>
-                <option value="English">English</option>
-              </select>
-            </label>
-            <label>
-              Zona Waktu
-              <select value={accountForm.timezone} onChange={(event) => handleAccountChange("timezone", event.target.value)}>
-                <option value="">Pilih zona waktu</option>
-                <option value="WIB">WIB</option>
-                <option value="WITA">WITA</option>
-                <option value="WIT">WIT</option>
-              </select>
-            </label>
           </div>
-          <button type="button" className="settings-save-button settings-save-button--right" onClick={handlePreferenceSave}>
+          <button
+            type="button"
+            className="settings-save-button settings-save-button--right"
+            onClick={handlePreferenceSave}
+            disabled={savingSection !== ""}
+          >
             <FiCheck aria-hidden="true" />
-            Simpan Perubahan
+            {savingSection === "profile" ? "Menyimpan..." : "Simpan Perubahan"}
           </button>
         </section>
 
@@ -437,6 +401,23 @@ function SettingsPage() {
           </section>
         </div>
       )}
+
+      <footer className="settings-footer">
+        <nav aria-label="Footer navigation">
+          <Link to="/">Home</Link>
+          <Link to="/movies">Movie</Link>
+          <Link to="/tv-series">TV Series</Link>
+          <Link to="/genre">Genre</Link>
+          <Link to="/community">Community</Link>
+          <Link to="/contact-us">Contact Us</Link>
+        </nav>
+        <div aria-label="Social media">
+          <FaFacebookF />
+          <FaTwitter />
+          <FaYoutube />
+        </div>
+        <p>Copyright 2026 - Kelompok 5</p>
+      </footer>
     </main>
   );
 }

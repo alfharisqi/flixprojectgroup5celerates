@@ -2433,7 +2433,7 @@
 
 .admin-contact-message {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 190px;
+  grid-template-columns: minmax(0, 1fr) 118px;
   gap: 16px;
   padding: 18px;
   border-radius: 16px;
@@ -2529,6 +2529,15 @@
   cursor: pointer;
 }
 
+.admin-contact-message__actions .admin-contact-message__claim {
+  width: auto;
+  min-width: 74px;
+  border-radius: 999px;
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .admin-contact-message__actions button:hover {
   background: #e50914;
 }
@@ -2560,17 +2569,17 @@
   font-weight: 800;
 }
 
-.admin-contact-status--pending {
+.admin-contact-status--waiting_admin {
   color: #ffd75d;
   background: rgba(255, 199, 0, 0.16);
 }
 
-.admin-contact-status--reviewed {
+.admin-contact-status--in_progress {
   color: #8fc7ff;
   background: rgba(65, 142, 255, 0.16);
 }
 
-.admin-contact-status--resolved {
+.admin-contact-status--done {
   color: #46d369;
   background: rgba(70, 211, 105, 0.16);
 }
@@ -2578,6 +2587,71 @@
 .admin-contact-status--closed {
   color: #ff8f95;
   background: rgba(229, 9, 20, 0.16);
+}
+
+.admin-contact-detail-page {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.admin-contact-detail-page__head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.admin-contact-detail-page__head span {
+  display: block;
+  margin-bottom: 6px;
+  color: #bcbcbc;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.admin-contact-detail-page__head h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(22px, 2vw, 30px);
+  line-height: 1.25;
+}
+
+.admin-contact-detail-page__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 14px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.admin-contact-detail-page__back:hover {
+  background: rgba(229, 9, 20, 0.28);
+  transform: translateX(-2px);
+}
+
+.admin-contact-detail-page .admin-contact-thread {
+  min-height: 360px;
+}
+
+.admin-contact-detail-page .admin-contact-reply textarea {
+  min-height: 112px;
+  max-height: none;
+}
+
+.admin-contact-detail-page .admin-contact-resolve textarea {
+  min-height: 84px;
+  max-height: none;
 }
 
 .admin-contact-detail-modal__sender {
@@ -2606,6 +2680,171 @@
   display: block;
   margin-top: 4px;
   color: #979797;
+}
+
+.admin-contact-detail-modal__card {
+  width: min(1120px, calc(100vw - 48px));
+  max-width: min(1120px, calc(100vw - 48px));
+  height: min(88vh, 860px);
+  max-height: min(88vh, 860px);
+  display: grid;
+  grid-template-rows: auto auto auto auto minmax(240px, 1fr) auto auto;
+  gap: 14px;
+  overflow: hidden;
+  padding: 28px 30px;
+}
+
+.admin-contact-detail-modal__extra {
+  margin-top: 10px !important;
+  color: #bcbcbc !important;
+}
+
+.admin-contact-detail-modal__claim {
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.admin-contact-thread {
+  display: grid;
+  gap: 12px;
+  min-height: 240px;
+  max-height: none;
+  overflow-y: auto;
+  align-content: start;
+  padding: 16px;
+  border-radius: 16px;
+  background: #0b0b0b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-contact-thread__message {
+  display: flex;
+}
+
+.admin-contact-thread__message--admin,
+.admin-contact-thread__message--moderator {
+  justify-content: flex-end;
+}
+
+.admin-contact-thread__message > div {
+  max-width: 74%;
+  padding: 11px 13px;
+  border-radius: 14px;
+  background: #232323;
+}
+
+.admin-contact-thread__message--admin > div,
+.admin-contact-thread__message--moderator > div {
+  background: rgba(229, 9, 20, 0.92);
+}
+
+.admin-contact-thread__message--bot > div,
+.admin-contact-thread__message--system > div {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.admin-contact-thread__message strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #ffffff;
+  font-size: 12px;
+}
+
+.admin-contact-thread__message p {
+  margin: 0;
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.admin-contact-thread__message time {
+  display: block;
+  margin-top: 6px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 10px;
+  text-align: right;
+}
+
+.admin-contact-thread__attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.admin-contact-thread__attachments a {
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.28);
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.admin-contact-reply,
+.admin-contact-resolve {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #0b0b0b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-contact-reply textarea,
+.admin-contact-resolve textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: #ffffff;
+  background: #141414;
+  padding: 12px;
+  outline: 0;
+}
+
+.admin-contact-reply textarea {
+  min-height: 82px;
+  max-height: 120px;
+}
+
+.admin-contact-resolve textarea {
+  min-height: 58px;
+  max-height: 90px;
+}
+
+.admin-contact-reply > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-contact-reply label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #d2d2d2;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.admin-contact-reply input {
+  max-width: 190px;
+  color: #979797;
+}
+
+.admin-contact-resolve--done span {
+  color: #979797;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-contact-resolve--done p {
+  margin: 0;
+  color: #ffffff;
+  line-height: 1.5;
 }
 
 .admin-payment-settings {
@@ -4843,6 +5082,15 @@
   .admin-review-report-modal__card {
     max-height: calc(100vh - 32px);
     padding: 18px;
+  }
+
+  .admin-contact-detail-modal__card {
+    width: calc(100vw - 32px);
+    max-width: calc(100vw - 32px);
+    height: calc(100vh - 32px);
+    max-height: calc(100vh - 32px);
+    grid-template-rows: auto auto auto auto minmax(220px, 1fr) auto auto;
+    overflow: hidden;
   }
 
   .admin-review-report-modal__user {

@@ -6,6 +6,7 @@ import authRoutes from "./routes/authRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import chatbotRoutes from "./routes/chatbotRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
+import customerServiceRoutes from "./routes/customerServiceRoutes.js";
 import friendRoutes from "./routes/friendRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
@@ -43,6 +44,7 @@ import { initializeUserStatusColumns } from "./config/initUserStatus.js";
 import { initializeReportsTable } from "./config/initReports.js";
 import { initializeAdminMoviesTable } from "./config/initAdminMovies.js";
 import { initializeContactMessagesTable } from "./config/initContactMessages.js";
+import { initializeCustomerServiceTables } from "./config/initCustomerService.js";
 import { initializePaymentTransactionsTable } from "./config/initPaymentTransactions.js";
 import { initializePaymentMethodsTable } from "./config/initPaymentMethods.js";
 import { initializeWatchlistTable } from "./config/initWatchlist.js";
@@ -71,6 +73,7 @@ const initializeDatabase = () => {
       initializeFriendsTable(),
       initializeAdminMoviesTable(),
       initializeContactMessagesTable(),
+      initializeCustomerServiceTables(),
       initializePaymentTransactionsTable(),
       initializePaymentMethodsTable(),
       initializeWatchlistTable(),
@@ -116,6 +119,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/chats", chatRoutes);
 app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/contact-us", contactRoutes);
+app.use("/api/customer-service", customerServiceRoutes);
 app.use("/api/friends", friendRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/reports", reportRoutes);

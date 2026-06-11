@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import {
@@ -6,10 +6,12 @@ import {
   FaFacebookF,
   FaHeadset,
   FaPaperPlane,
+  FaPlus,
   FaTwitter,
   FaYoutube,
 } from "react-icons/fa";
 import SiteNavbar from "@/components/layout/SiteNavbar";
+import { resolveMediaUrl } from "@/utils/media";
 import "./ContactUsPage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -22,6 +24,20 @@ const contactCategories = [
   { value: "lainnya", label: "Lainnya" },
 ];
 
+const serviceCategories = [
+  { value: "account", label: "Kendala Akun" },
+  { value: "payment", label: "Pembayaran" },
+  { value: "feature", label: "Fitur Website" },
+  { value: "other", label: "Lainnya" },
+];
+
+const extraPrompts = {
+  account: "Tuliskan username/email yang bermasalah. Jika ada, unggah screenshot bukti.",
+  payment: "Tuliskan kode transaksi atau invoice. Jika ada, unggah bukti pembayaran.",
+  feature: "Tuliskan nama fitur yang bermasalah. Jika ada, unggah screenshot bukti.",
+  other: "Tambahkan informasi lain yang menurut kamu perlu diketahui tim FLIX.",
+};
+
 const getStoredUser = () => {
   try {
     return JSON.parse(localStorage.getItem("user"));
@@ -29,6 +45,20 @@ const getStoredUser = () => {
     return null;
   }
 };
+
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("token");
+  return token ? { Authorization: `Bearer ${token}` } : undefined;
+};
+
+const createInitialBotMessages = () => [
+  {
+    id: "bot-welcome",
+    senderType: "bot",
+    message: "Halo, selamat datang di Customer Service FLIX. Pilih kategori laporan terlebih dahulu.",
+    formattedDate: "Sekarang",
+  },
+];
 
 function ContactUsPage() {
   const token = localStorage.getItem("token");
@@ -44,15 +74,91 @@ function ContactUsPage() {
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [chatMessage, setChatMessage] = useState("");
-  const [chatMessages, setChatMessages] = useState([
-    {
-      id: 1,
-      sender: "support",
-      text: "Halo, selamat datang di Customer Service FLIX. Ada yang bisa kami bantu?",
-      time: "Sekarang",
-    },
-  ]);
+  const [chatError, setChatError] = useState("");
+  const [chatSaving, setChatSaving] = useState(false);
+  const [chatStep, setChatStep] = useState("category");
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [issueDescription, setIssueDescription] = useState("");
+  const [extraInfo, setExtraInfo] = useState("");
+  const [chatDraft, setChatDraft] = useState("");
+  const [chatFiles, setChatFiles] = useState([]);
+  const [currentTicket, setCurrentTicket] = useState(null);
+  const [ticketMessages, setTicketMessages] = useState(createInitialBotMessages);
+  const [ticketAttachments, setTicketAttachments] = useState([]);
+
+  const isTicketDone = currentTicket?.status === "done";
+  const currentCategoryLabel =
+    serviceCategories.find((category) => category.value === selectedCategory)?.label ||
+    currentTicket?.categoryLabel ||
+    "";
+
+  const setTicketPayload = (payload) => {
+    if (payload?.ticket) {
+      setCurrentTicket(payload.ticket);
+    }
+
+    if (Array.isArray(payload?.messages)) {
+      setTicketMessages(payload.messages);
+    }
+
+    if (Array.isArray(payload?.attachments)) {
+      setTicketAttachments(payload.attachments);
+    }
+  };
+
+  const resetChatFlow = () => {
+    setCurrentTicket(null);
+    setTicketMessages(createInitialBotMessages());
+    setTicketAttachments([]);
+    setChatStep("category");
+    setSelectedCategory(null);
+    setIssueDescription("");
+    setExtraInfo("");
+    setChatDraft("");
+    setChatFiles([]);
+    setChatError("");
+  };
+
+  useEffect(() => {
+    if (activeView !== "chat" || !token) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadLatestTicket = async () => {
+      try {
+        const response = await axios.get(`${apiUrl}/api/customer-service/tickets`, {
+          headers: getAuthHeaders(),
+        });
+        const latestOpenTicket = response.data.tickets?.find((ticket) => ticket.status !== "done");
+        const latestTicket = latestOpenTicket || response.data.tickets?.[0];
+
+        if (!isMounted || !latestTicket) {
+          return;
+        }
+
+        const detailResponse = await axios.get(
+          `${apiUrl}/api/customer-service/tickets/${latestTicket.id}`,
+          {
+            headers: getAuthHeaders(),
+          },
+        );
+        setTicketPayload(detailResponse.data);
+        setChatStep("ticket");
+      } catch {
+        if (isMounted) {
+          setChatError("Tiket customer service belum bisa dimuat.");
+        }
+      }
+    };
+
+    loadLatestTicket();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeView, token]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -79,7 +185,9 @@ function ContactUsPage() {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
 
-      setSuccessMessage(response.data.message || "Pesan berhasil dikirim");
+      setSuccessMessage(
+        response.data.message || "Report berhasil dikirim dan masuk ke dashboard admin.",
+      );
       setForm((currentForm) => ({
         ...currentForm,
         subject: "",
@@ -93,31 +201,244 @@ function ContactUsPage() {
     }
   };
 
-  const handleChatSubmit = (event) => {
+  const addLocalChatMessage = (message) => {
+    setTicketMessages((messages) => [
+      ...messages,
+      {
+        id: `${Date.now()}-${Math.random()}`,
+        formattedDate: "Sekarang",
+        ...message,
+      },
+    ]);
+  };
+
+  const handleSelectServiceCategory = (category) => {
+    setSelectedCategory(category.value);
+    setChatStep("description");
+    addLocalChatMessage({
+      senderType: "user",
+      message: category.label,
+    });
+    addLocalChatMessage({
+      senderType: "bot",
+      message: "Ceritakan masalah kamu secara singkat.",
+    });
+  };
+
+  const handleDescriptionSubmit = (event) => {
     event.preventDefault();
+    const text = chatDraft.trim();
 
-    const trimmedMessage = chatMessage.trim();
-
-    if (!trimmedMessage) {
+    if (!text) {
       return;
     }
 
-    setChatMessages((currentMessages) => [
-      ...currentMessages,
-      {
-        id: Date.now(),
-        sender: "user",
-        text: trimmedMessage,
-        time: "Sekarang",
-      },
-      {
-        id: Date.now() + 1,
-        sender: "support",
-        text: "Pesan kamu sudah masuk. Tim FLIX akan membalas melalui chat ini setelah fitur customer service aktif penuh.",
-        time: "Sekarang",
-      },
-    ]);
-    setChatMessage("");
+    setIssueDescription(text);
+    setChatDraft("");
+    setChatStep("extra");
+    addLocalChatMessage({
+      senderType: "user",
+      message: text,
+    });
+    addLocalChatMessage({
+      senderType: "bot",
+      message: extraPrompts[selectedCategory] || extraPrompts.other,
+    });
+  };
+
+  const handleCreateTicket = async (event) => {
+    event.preventDefault();
+    const text = chatDraft.trim();
+    const finalExtraInfo = text || extraInfo;
+
+    try {
+      setChatSaving(true);
+      setChatError("");
+
+      if (!token) {
+        throw new Error("Login dulu untuk membuat tiket customer service.");
+      }
+
+      if (text) {
+        addLocalChatMessage({
+          senderType: "user",
+          message: text,
+        });
+      }
+
+      const formData = new FormData();
+      formData.append("category", selectedCategory);
+      formData.append("subject", currentCategoryLabel || "Customer Service FLIX");
+      formData.append("description", issueDescription);
+      formData.append(
+        "detail",
+        JSON.stringify({
+          extraInfo: finalExtraInfo,
+          requestedFields: extraPrompts[selectedCategory] || extraPrompts.other,
+        }),
+      );
+      chatFiles.forEach((file) => formData.append("attachments", file));
+
+      const response = await axios.post(`${apiUrl}/api/customer-service/tickets`, formData, {
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setTicketPayload(response.data);
+      setChatStep("ticket");
+      setChatDraft("");
+      setExtraInfo("");
+      setChatFiles([]);
+    } catch (error) {
+      setChatError(error.response?.data?.message || error.message || "Gagal membuat tiket.");
+    } finally {
+      setChatSaving(false);
+    }
+  };
+
+  const handleTicketReply = async (event) => {
+    event.preventDefault();
+
+    if (!currentTicket || isTicketDone) {
+      return;
+    }
+
+    const text = chatDraft.trim();
+
+    if (!text && !chatFiles.length) {
+      return;
+    }
+
+    try {
+      setChatSaving(true);
+      setChatError("");
+
+      const formData = new FormData();
+      formData.append("message", text);
+      chatFiles.forEach((file) => formData.append("attachments", file));
+
+      const response = await axios.post(
+        `${apiUrl}/api/customer-service/tickets/${currentTicket.id}/messages`,
+        formData,
+        {
+          headers: {
+            ...getAuthHeaders(),
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
+
+      setTicketPayload(response.data);
+      setChatDraft("");
+      setChatFiles([]);
+    } catch (error) {
+      setChatError(error.response?.data?.message || "Gagal mengirim pesan.");
+    } finally {
+      setChatSaving(false);
+    }
+  };
+
+  const renderAttachmentLinks = (attachments = []) => {
+    if (!attachments.length) {
+      return null;
+    }
+
+    return (
+      <div className="contact-chatroom__attachments">
+        {attachments.map((attachment) => (
+          <a
+            key={attachment.id}
+            href={resolveMediaUrl(attachment.fileUrl)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {attachment.fileName}
+          </a>
+        ))}
+      </div>
+    );
+  };
+
+  const renderChatInput = () => {
+    if (!token) {
+      return (
+        <div className="contact-chatroom__readonly">
+          Login dulu untuk membuat tiket dan chat dengan Customer Service.
+          <Link to="/login">Login</Link>
+        </div>
+      );
+    }
+
+    if (isTicketDone) {
+      return (
+        <div className="contact-chatroom__readonly">
+          Tiket ini sudah selesai. Buat tiket baru jika masih ada kendala.
+          <button type="button" onClick={resetChatFlow}>
+            <FaPlus />
+            Tiket Baru
+          </button>
+        </div>
+      );
+    }
+
+    if (chatStep === "category" && !currentTicket) {
+      return (
+        <div className="contact-chatroom__categories">
+          {serviceCategories.map((category) => (
+            <button
+              type="button"
+              key={category.value}
+              onClick={() => handleSelectServiceCategory(category)}
+            >
+              {category.label}
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    const submitHandler =
+      chatStep === "description"
+        ? handleDescriptionSubmit
+        : currentTicket
+          ? handleTicketReply
+          : handleCreateTicket;
+
+    const placeholder =
+      chatStep === "description"
+        ? "Jelaskan masalah kamu..."
+        : currentTicket
+          ? "Balas pesan customer service..."
+          : "Tambahkan informasi pendukung...";
+
+    return (
+      <form className="contact-chatroom__input" onSubmit={submitHandler}>
+        <div className="contact-chatroom__composer">
+          <input
+            type="text"
+            value={chatDraft}
+            onChange={(event) => setChatDraft(event.target.value)}
+            placeholder={placeholder}
+          />
+          {chatStep !== "description" && (
+            <label className="contact-chatroom__file">
+              <input
+                type="file"
+                multiple
+                accept="image/png,image/jpeg,image/webp,application/pdf,.doc,.docx"
+                onChange={(event) => setChatFiles(Array.from(event.target.files || []))}
+              />
+              Bukti
+            </label>
+          )}
+        </div>
+        <button type="submit" aria-label="Kirim pesan customer service" disabled={chatSaving}>
+          <FaPaperPlane />
+        </button>
+      </form>
+    );
   };
 
   return (
@@ -131,7 +452,7 @@ function ContactUsPage() {
             <h1>Hubungi Tim FLIX</h1>
             <p>
               Punya pertanyaan, menemukan bug, atau ingin memberikan saran?
-              Kirim pesan kepada tim FLIX melalui form berikut.
+              Kirim laporan ke tim FLIX melalui form atau Customer Service Chat.
             </p>
           </div>
 
@@ -221,7 +542,7 @@ function ContactUsPage() {
 
                 <button type="submit" disabled={saving}>
                   <FaPaperPlane />
-                  {saving ? "Mengirim..." : "Kirim Pesan"}
+                  {saving ? "Mengirim..." : "Kirim ke Report Admin"}
                 </button>
               </form>
             </>
@@ -233,37 +554,48 @@ function ContactUsPage() {
                 </span>
                 <div>
                   <h2>Customer Service FLIX</h2>
-                  <p>Online untuk membantu kendala akun, pembayaran, dan fitur website.</p>
+                  <p>
+                    {currentTicket
+                      ? `${currentTicket.ticketCode} - ${currentTicket.statusLabel}`
+                      : "Chatbot akan mengumpulkan informasi sebelum diteruskan ke admin/moderator."}
+                  </p>
                 </div>
+                {currentTicket && (
+                  <button type="button" className="contact-chatroom__new-ticket" onClick={resetChatFlow}>
+                    Tiket Baru
+                  </button>
+                )}
               </div>
 
+              {chatError && <p className="contact-alert">{chatError}</p>}
+
               <div className="contact-chatroom__body">
-                {chatMessages.map((message) => (
+                {ticketMessages.map((message) => (
                   <article
                     key={message.id}
                     className={`contact-chatroom__message ${
-                      message.sender === "user" ? "is-user" : "is-support"
+                      message.senderType === "user" ? "is-user" : "is-support"
                     }`}
                   >
                     <div>
-                      <p>{message.text}</p>
-                      <time>{message.time}</time>
+                      <p>{message.message}</p>
+                      {renderAttachmentLinks(message.attachments)}
+                      <time>{message.formattedDate}</time>
                     </div>
                   </article>
                 ))}
+                {renderAttachmentLinks(ticketAttachments)}
               </div>
 
-              <form className="contact-chatroom__input" onSubmit={handleChatSubmit}>
-                <input
-                  type="text"
-                  value={chatMessage}
-                  onChange={(event) => setChatMessage(event.target.value)}
-                  placeholder="Tulis pesan untuk customer service..."
-                />
-                <button type="submit" aria-label="Kirim pesan customer service">
-                  <FaPaperPlane />
-                </button>
-              </form>
+              {chatFiles.length > 0 && (
+                <div className="contact-chatroom__pending-files">
+                  {chatFiles.map((file) => (
+                    <span key={`${file.name}-${file.size}`}>{file.name}</span>
+                  ))}
+                </div>
+              )}
+
+              {renderChatInput()}
             </section>
           )}
         </div>

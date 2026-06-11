@@ -65,19 +65,17 @@ const transactionTabs = [
 
 const contactTabs = [
   { id: "all", label: "Semua", countKey: "all" },
-  { id: "pending", label: "Pending", countKey: "pending" },
-  { id: "reviewed", label: "Ditinjau", countKey: "reviewed" },
-  { id: "resolved", label: "Selesai", countKey: "resolved" },
-  { id: "closed", label: "Ditutup", countKey: "closed" }
+  { id: "waiting_admin", label: "Menunggu Admin", countKey: "waiting_admin" },
+  { id: "in_progress", label: "Sedang Ditangani", countKey: "in_progress" },
+  { id: "done", label: "Selesai", countKey: "done" }
 ];
 
 const fallbackContactMessages = {
   summary: {
     all: 0,
-    pending: 0,
-    reviewed: 0,
-    resolved: 0,
-    closed: 0
+    waiting_admin: 0,
+    in_progress: 0,
+    done: 0
   },
   messages: []
 };
@@ -704,6 +702,16 @@ const navItems = [
   { id: "settings", label: "Pengaturan", icon: FiSettings }
 ];
 
+const moderatorAdminPageIds = new Set(["movies", "reviews", "community", "transactions", "contact"]);
+
+const canAccessAdminPage = (role, pageId) =>
+  role === "admin" || moderatorAdminPageIds.has(pageId);
+
+const createLocalJsonResponse = (data) => ({
+  ok: true,
+  json: async () => data
+});
+
 const activityIcons = {
   user: FiUserPlus,
   review: FiMessageSquare,
@@ -967,6 +975,9 @@ function AdminPage() {
   const [selectedCommunityReport, setSelectedCommunityReport] = useState(null);
   const [contactActionLoading, setContactActionLoading] = useState({});
   const [selectedContactMessage, setSelectedContactMessage] = useState(null);
+  const [contactReplyText, setContactReplyText] = useState("");
+  const [contactResolutionNote, setContactResolutionNote] = useState("");
+  const [contactReplyFiles, setContactReplyFiles] = useState([]);
   const [transactionActionLoading, setTransactionActionLoading] = useState({});
   const [selectedTransactionDetail, setSelectedTransactionDetail] = useState(null);
   const [dashboardError, setDashboardError] = useState("");
@@ -989,6 +1000,13 @@ function AdminPage() {
   const didSkipInitialChartFetch = useRef(false);
 
   const user = useMemo(getStoredUser, []);
+  const currentRole = user?.role || "admin";
+  const isModerator = currentRole === "moderator";
+  const isAdmin = currentRole === "admin";
+  const visibleNavItems = useMemo(
+    () => navItems.filter((item) => canAccessAdminPage(currentRole, item.id)),
+    [currentRole]
+  );
   const adminName = user?.username || user?.name || "Marsyanda F";
   const adminProfileImageUrl = user?.profile_image_url || user?.profileImageUrl || user?.avatarUrl || "";
   const selectedChartActivityLabel =
@@ -1001,6 +1019,12 @@ function AdminPage() {
 
     return `${API_URL}/api/admin/dashboard?${params.toString()}`;
   }, [selectedChartActivity, selectedChartYear]);
+
+  useEffect(() => {
+    if (!canAccessAdminPage(currentRole, activeAdminPage)) {
+      setActiveAdminPage(visibleNavItems[0]?.id || "movies");
+    }
+  }, [activeAdminPage, currentRole, visibleNavItems]);
 
   useEffect(
     () => () => {
@@ -1023,6 +1047,9 @@ function AdminPage() {
 
     const loadAdminData = async () => {
       try {
+        const authHeaders = {
+          Authorization: `Bearer ${token}`
+        };
         const [
           dashboardResponse,
           moviesResponse,
@@ -1033,45 +1060,36 @@ function AdminPage() {
           transactionsResponse,
           paymentSettingsResponse
         ] = await Promise.all([
-          fetch(dashboardUrl, {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }),
+          isAdmin
+            ? fetch(dashboardUrl, {
+                headers: authHeaders
+              })
+            : createLocalJsonResponse(fallbackDashboard),
           fetch(`${API_URL}/api/admin/movies`, {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
+            headers: authHeaders
           }),
-          fetch(`${API_URL}/api/admin/users`, {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }),
+          isAdmin
+            ? fetch(`${API_URL}/api/admin/users`, {
+                headers: authHeaders
+              })
+            : createLocalJsonResponse({
+                users: [],
+                summary: fallbackUsersSummary
+              }),
           fetch(`${API_URL}/api/admin/reviews`, {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
+            headers: authHeaders
           }),
           fetch(`${API_URL}/api/admin/community`, {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
+            headers: authHeaders
           }),
-          fetch(`${API_URL}/api/admin/contact-us`, {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
+          fetch(`${API_URL}/api/admin/customer-service/tickets`, {
+            headers: authHeaders
           }),
           fetch(`${API_URL}/api/admin/transactions`, {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
+            headers: authHeaders
           }),
           fetch(`${API_URL}/api/admin/payment-settings`, {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
+            headers: authHeaders
           })
         ]);
 
@@ -1170,8 +1188,8 @@ function AdminPage() {
         });
         setCommunityError(communityResponse.ok ? "" : "Kelola community belum bisa mengambil data backend.");
 
-        const contactItems = Array.isArray(contactData?.messages)
-          ? contactData.messages
+        const contactItems = Array.isArray(contactData?.tickets)
+          ? contactData.tickets
           : fallbackContactMessages.messages;
         setAdminContactMessages({
           summary: contactData?.summary || {
@@ -1246,6 +1264,10 @@ function AdminPage() {
   }, []);
 
   useEffect(() => {
+    if (!isAdmin) {
+      return;
+    }
+
     if (!didSkipInitialChartFetch.current) {
       didSkipInitialChartFetch.current = true;
       return;
@@ -1286,7 +1308,7 @@ function AdminPage() {
     return () => {
       isMounted = false;
     };
-  }, [dashboardUrl]);
+  }, [dashboardUrl, isAdmin]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -1295,7 +1317,7 @@ function AdminPage() {
   };
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
-  const activeNavItem = navItems.find((item) => item.id === activeAdminPage) || navItems[0];
+  const activeNavItem = visibleNavItems.find((item) => item.id === activeAdminPage) || visibleNavItems[0] || navItems[0];
   const adminPageTitle =
     activeAdminPage === "movies" && activeMoviePanel === "add"
       ? "Tambah Film"
@@ -1523,6 +1545,56 @@ function AdminPage() {
     { value: adminCommunity.summary?.blocked || 0, label: "Post Terblokir" }
   ];
 
+  const getTransactionPackageCategory = (transaction) => {
+    const packageText = String(transaction.package || "").toLowerCase();
+    const packageCode = String(transaction.packageCode || "").toLowerCase();
+    const duration = Number(transaction.durationMonths || 0);
+
+    if (
+      duration >= 12 ||
+      packageText.includes("eksklusif") ||
+      packageText.includes("tahunan") ||
+      packageCode.includes("year")
+    ) {
+      return "Eksklusif";
+    }
+
+    return "Premium";
+  };
+
+  const getTransactionPaymentCategory = (transaction) => {
+    const methodCode = String(transaction.methodCode || "").toLowerCase();
+    const methodText = String(transaction.method || "").toLowerCase();
+
+    if (methodCode === "qris" || methodText.includes("qris") || methodText.includes("qr")) {
+      return "QR Code";
+    }
+
+    if (
+      methodCode === "ewallet" ||
+      methodText.includes("wallet") ||
+      methodText.includes("gopay") ||
+      methodText.includes("dana") ||
+      methodText.includes("ovo") ||
+      methodText.includes("shopeepay")
+    ) {
+      return "E Wallet";
+    }
+
+    if (
+      methodCode === "bank" ||
+      methodText.includes("bank") ||
+      methodText.includes("bca") ||
+      methodText.includes("mandiri") ||
+      methodText.includes("bni") ||
+      methodText.includes("bri")
+    ) {
+      return "Bank";
+    }
+
+    return transaction.method || "-";
+  };
+
   const filteredTransactions = useMemo(() => {
     const activeStatus = transactionStatusMap[activeTransactionTab];
     const items = Array.isArray(adminTransactions.items) ? adminTransactions.items : [];
@@ -1531,10 +1603,10 @@ function AdminPage() {
       const matchesTab = !activeStatus || transaction.status === activeStatus;
       const matchesPackage =
         transactionPackageFilter === "Semua Paket" ||
-        transaction.package === transactionPackageFilter;
+        getTransactionPackageCategory(transaction) === transactionPackageFilter;
       const matchesPayment =
         transactionPaymentFilter === "Semua Pembayaran" ||
-        transaction.method === transactionPaymentFilter;
+        getTransactionPaymentCategory(transaction) === transactionPaymentFilter;
       const matchesSearch =
         !normalizedSearch ||
         `${transaction.transactionId} ${transaction.user?.name} ${transaction.user?.email} ${transaction.package} ${transaction.method} ${transaction.status}`
@@ -1567,7 +1639,7 @@ function AdminPage() {
       const matchesTab = activeContactTab === "all" || message.status === activeContactTab;
       const matchesSearch =
         !normalizedSearch ||
-        `${message.name} ${message.email} ${message.subject} ${message.categoryLabel} ${message.message} ${message.statusLabel}`
+        `${message.ticketCode} ${message.userName} ${message.userEmail} ${message.subject} ${message.categoryLabel} ${message.description} ${message.statusLabel} ${message.assignedAdminName || ""}`
           .toLowerCase()
           .includes(normalizedSearch);
 
@@ -1602,6 +1674,10 @@ function AdminPage() {
   }, [dashboard.chart]);
 
   const handleAdminNavClick = (itemId) => {
+    if (!canAccessAdminPage(currentRole, itemId)) {
+      return;
+    }
+
     setActiveAdminPage(itemId);
 
     if (itemId === "movies") {
@@ -2246,14 +2322,57 @@ function AdminPage() {
     }
   };
 
-  const handleUpdateContactStatus = async (message, status) => {
-    const actionKey = String(message.id);
+  const updateContactTicketState = (ticket) => {
+    if (!ticket) {
+      return;
+    }
+
+    setAdminContactMessages((currentMessages) => {
+      const hasTicket = currentMessages.messages.some((item) => String(item.id) === String(ticket.id));
+      const nextMessages = hasTicket
+        ? currentMessages.messages.map((item) => (String(item.id) === String(ticket.id) ? ticket : item))
+        : [ticket, ...currentMessages.messages];
+      const nextSummary = nextMessages.reduce(
+        (accumulator, item) => {
+          accumulator.all += 1;
+          accumulator[item.status] = (accumulator[item.status] || 0) + 1;
+          return accumulator;
+        },
+        {
+          all: 0,
+          waiting_admin: 0,
+          in_progress: 0,
+          done: 0,
+        },
+      );
+
+      return {
+        summary: nextSummary,
+        messages: nextMessages,
+      };
+    });
+
+    setSelectedContactMessage((currentMessage) =>
+      currentMessage && String(currentMessage.id) === String(ticket.id)
+        ? { ...currentMessage, ...ticket }
+        : currentMessage
+    );
+  };
+
+  const openContactTicketDetail = async (ticket) => {
     const token = localStorage.getItem("token");
 
-    setContactError("");
+    setSelectedContactMessage({
+      ...ticket,
+      messages: ticket.messages || [],
+      attachments: ticket.attachments || [],
+    });
+    setContactReplyText("");
+    setContactResolutionNote("");
+    setContactReplyFiles([]);
     setContactActionLoading((current) => ({
       ...current,
-      [actionKey]: status,
+      [String(ticket.id)]: "detail",
     }));
 
     try {
@@ -2261,60 +2380,168 @@ function AdminPage() {
         throw new Error("Sesi admin tidak tersedia.");
       }
 
-      const response = await fetch(`${API_URL}/api/admin/contact-us/${message.id}/status`, {
-        method: "PATCH",
+      const response = await fetch(`${API_URL}/api/admin/customer-service/tickets/${ticket.id}`, {
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status }),
       });
 
       const responseData = await response.json().catch(() => null);
 
       if (!response.ok) {
-        throw new Error(responseData?.message || "Status report belum bisa diubah.");
+        throw new Error(responseData?.message || "Detail tiket belum bisa dimuat.");
       }
 
-      const updatedMessage = responseData?.contactMessage || {
-        ...message,
-        status,
-        statusLabel:
-          contactTabs.find((tab) => tab.id === status)?.label || message.statusLabel,
-      };
-
-      setAdminContactMessages((currentMessages) => {
-        const nextMessages = currentMessages.messages.map((item) =>
-          String(item.id) === String(message.id) ? updatedMessage : item
-        );
-        const nextSummary = nextMessages.reduce(
-          (accumulator, item) => {
-            accumulator.all += 1;
-            accumulator[item.status] = (accumulator[item.status] || 0) + 1;
-            return accumulator;
-          },
-          {
-            all: 0,
-            pending: 0,
-            reviewed: 0,
-            resolved: 0,
-            closed: 0,
-          },
-        );
-
-        return {
-          summary: nextSummary,
-          messages: nextMessages,
-        };
+      setSelectedContactMessage({
+        ...responseData.ticket,
+        messages: responseData.messages || [],
+        attachments: responseData.attachments || [],
       });
-
-      setSelectedContactMessage((currentMessage) =>
-        currentMessage && String(currentMessage.id) === String(message.id)
-          ? updatedMessage
-          : currentMessage
-      );
+      updateContactTicketState(responseData.ticket);
     } catch (error) {
-      setContactError(error.message || "Status report belum bisa diubah.");
+      setContactError(error.message || "Detail tiket belum bisa dimuat.");
+    } finally {
+      setContactActionLoading((current) => {
+        const next = { ...current };
+        delete next[String(ticket.id)];
+        return next;
+      });
+    }
+  };
+
+  const handleClaimContactTicket = async (ticket) => {
+    const token = localStorage.getItem("token");
+    const actionKey = String(ticket.id);
+
+    setContactError("");
+    setContactActionLoading((current) => ({ ...current, [actionKey]: "claim" }));
+
+    try {
+      const response = await fetch(`${API_URL}/api/admin/customer-service/tickets/${ticket.id}/claim`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const responseData = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(responseData?.message || "Tiket belum bisa diambil.");
+      }
+
+      setSelectedContactMessage({
+        ...responseData.ticket,
+        messages: responseData.messages || [],
+        attachments: responseData.attachments || [],
+      });
+      updateContactTicketState(responseData.ticket);
+    } catch (error) {
+      setContactError(error.message || "Tiket belum bisa diambil.");
+    } finally {
+      setContactActionLoading((current) => {
+        const next = { ...current };
+        delete next[actionKey];
+        return next;
+      });
+    }
+  };
+
+  const handleSendContactReply = async (event) => {
+    event.preventDefault();
+
+    if (!selectedContactMessage) {
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    const actionKey = String(selectedContactMessage.id);
+    const text = contactReplyText.trim();
+
+    if (!text && !contactReplyFiles.length) {
+      return;
+    }
+
+    setContactError("");
+    setContactActionLoading((current) => ({ ...current, [actionKey]: "reply" }));
+
+    try {
+      const formData = new FormData();
+      formData.append("message", text);
+      contactReplyFiles.forEach((file) => formData.append("attachments", file));
+
+      const response = await fetch(
+        `${API_URL}/api/admin/customer-service/tickets/${selectedContactMessage.id}/messages`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        },
+      );
+      const responseData = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(responseData?.message || "Balasan belum bisa dikirim.");
+      }
+
+      setSelectedContactMessage({
+        ...responseData.ticket,
+        messages: responseData.messages || [],
+        attachments: responseData.attachments || [],
+      });
+      updateContactTicketState(responseData.ticket);
+      setContactReplyText("");
+      setContactReplyFiles([]);
+    } catch (error) {
+      setContactError(error.message || "Balasan belum bisa dikirim.");
+    } finally {
+      setContactActionLoading((current) => {
+        const next = { ...current };
+        delete next[actionKey];
+        return next;
+      });
+    }
+  };
+
+  const handleCloseContactTicket = async () => {
+    if (!selectedContactMessage) {
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    const actionKey = String(selectedContactMessage.id);
+
+    setContactError("");
+    setContactActionLoading((current) => ({ ...current, [actionKey]: "close" }));
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/admin/customer-service/tickets/${selectedContactMessage.id}/close`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ resolutionNote: contactResolutionNote }),
+        },
+      );
+      const responseData = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(responseData?.message || "Tiket belum bisa diselesaikan.");
+      }
+
+      setSelectedContactMessage({
+        ...responseData.ticket,
+        messages: responseData.messages || [],
+        attachments: responseData.attachments || [],
+      });
+      updateContactTicketState(responseData.ticket);
+      setContactResolutionNote("");
+    } catch (error) {
+      setContactError(error.message || "Tiket belum bisa diselesaikan.");
     } finally {
       setContactActionLoading((current) => {
         const next = { ...current };
@@ -2470,7 +2697,7 @@ function AdminPage() {
         </div>
 
         <nav className="admin-nav">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
 
             return (
@@ -2527,7 +2754,7 @@ function AdminPage() {
             </div>
             <div className="admin-profile__meta">
               <strong>{adminName}</strong>
-              <span>Admin FLIX</span>
+              <span>{isModerator ? "Moderator FLIX" : "Admin FLIX"}</span>
             </div>
           </div>
         </div>
@@ -3342,123 +3569,279 @@ function AdminPage() {
               {contactError && <p className="admin-dashboard-alert">{contactError}</p>}
 
               <article className="admin-panel admin-contact-card">
-                <div className="admin-contact-card__header">
-                  <div>
-                    <h2>Report</h2>
-                    <p>Terima laporan, kritik, saran, dan pertanyaan dari pengguna.</p>
-                  </div>
-                </div>
-
-                <div className="admin-contact-tabs" role="tablist" aria-label="Filter report">
-                  {contactTabs.map((tab) => (
-                    <button
-                      type="button"
-                      key={tab.id}
-                      className={activeContactTab === tab.id ? "admin-contact-tabs__item--active" : ""}
-                      role="tab"
-                      aria-selected={activeContactTab === tab.id}
-                      onClick={() => setActiveContactTab(tab.id)}
-                    >
-                      <span>{tab.label}</span>
-                      <small>{formatChartNumber(adminContactMessages.summary?.[tab.countKey] || 0)}</small>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="admin-contact-list">
-                  {visibleContactMessages.map((message) => (
-                    <article className="admin-contact-message" key={message.id}>
-                      <div className="admin-contact-message__main">
-                        <div className="admin-contact-message__top">
-                          <span className="admin-contact-message__avatar">
-                            {String(message.name || "U").slice(0, 1).toUpperCase()}
-                          </span>
-                          <div>
-                            <strong>{message.name}</strong>
-                            <small>{message.email}</small>
-                          </div>
-                        </div>
-
-                        <div className="admin-contact-message__content">
-                          <div>
-                            <h3>{message.subject}</h3>
-                            <p>{formatPostPreview(message.message, 150)}</p>
-                          </div>
-                          <span className={`admin-contact-status admin-contact-status--${message.status}`}>
-                            {message.statusLabel}
-                          </span>
-                        </div>
-
-                        <div className="admin-contact-message__meta">
-                          <span>{message.categoryLabel}</span>
-                          <span>{message.formattedDate}</span>
-                        </div>
-                      </div>
-
-                      <div className="admin-contact-message__actions">
-                        <button
-                          type="button"
-                          aria-label="Lihat detail report"
-                          onClick={() => setSelectedContactMessage(message)}
-                        >
-                          <FiEye aria-hidden="true" />
-                        </button>
-                        <select
-                          value={message.status}
-                          disabled={Boolean(contactActionLoading[String(message.id)])}
-                          onChange={(event) => handleUpdateContactStatus(message, event.target.value)}
-                          aria-label="Ubah status report"
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="reviewed">Ditinjau</option>
-                          <option value="resolved">Selesai</option>
-                          <option value="closed">Ditutup</option>
-                        </select>
-                      </div>
-                    </article>
-                  ))}
-
-                  {!visibleContactMessages.length && (
-                    <p className="admin-empty-state">
-                      {isLoading ? "Memuat report..." : "Belum ada report pada tab ini."}
-                    </p>
-                  )}
-                </div>
-
-                <div className="admin-manage-pagination" aria-label="Pagination report">
-                  <button
-                    type="button"
-                    aria-label="Halaman report sebelumnya"
-                    disabled={currentContactPage === 1}
-                    onClick={() => setContactPage((page) => Math.max(1, page - 1))}
-                  >
-                    &lt;
-                  </button>
-                  {contactPaginationItems.map((item, index) =>
-                    typeof item === "string" ? (
-                      <span key={`${item}-${index}`} className="admin-manage-pagination__ellipsis">
-                        ...
-                      </span>
-                    ) : (
+                {selectedContactMessage ? (
+                  <div className="admin-contact-detail-page">
+                    <header className="admin-contact-detail-page__head">
                       <button
                         type="button"
-                        key={item}
-                        className={currentContactPage === item ? "admin-manage-pagination__active" : ""}
-                        onClick={() => setContactPage(item)}
+                        className="admin-contact-detail-page__back"
+                        onClick={() => {
+                          setSelectedContactMessage(null);
+                          setContactReplyFiles([]);
+                        }}
                       >
-                        {item}
+                        <FiArrowLeft aria-hidden="true" />
+                        Kembali ke daftar report
                       </button>
-                    )
-                  )}
-                  <button
-                    type="button"
-                    aria-label="Halaman report berikutnya"
-                    disabled={currentContactPage === totalContactPages}
-                    onClick={() => setContactPage((page) => Math.min(totalContactPages, page + 1))}
-                  >
-                    &gt;
-                  </button>
-                </div>
+                      <div>
+                        <span>Detail Tiket Customer Service</span>
+                        <h2>
+                          {selectedContactMessage.ticketCode} - {selectedContactMessage.subject}
+                        </h2>
+                      </div>
+                    </header>
+
+                    <section className="admin-contact-detail-modal__sender">
+                      <span className="admin-contact-message__avatar">
+                        {String(selectedContactMessage.userName || "U").slice(0, 1).toUpperCase()}
+                      </span>
+                      <div>
+                        <span>Pengirim</span>
+                        <strong>{selectedContactMessage.userName}</strong>
+                        <small>{selectedContactMessage.userEmail}</small>
+                      </div>
+                      <span className={`admin-contact-status admin-contact-status--${selectedContactMessage.status}`}>
+                        {selectedContactMessage.statusLabel}
+                      </span>
+                    </section>
+
+                    <dl className="admin-review-report-modal__meta">
+                      <div>
+                        <dt>Kategori</dt>
+                        <dd>{selectedContactMessage.categoryLabel}</dd>
+                      </div>
+                      <div>
+                        <dt>Tanggal Masuk</dt>
+                        <dd>{selectedContactMessage.formattedDate}</dd>
+                      </div>
+                      <div>
+                        <dt>Penanggung Jawab</dt>
+                        <dd>{selectedContactMessage.assignedAdminName || "Belum ditangani"}</dd>
+                      </div>
+                    </dl>
+
+                    <section className="admin-review-report-modal__section">
+                      <span>Detail Laporan</span>
+                      <p>{selectedContactMessage.description}</p>
+                      {selectedContactMessage.detail?.extraInfo && (
+                        <p className="admin-contact-detail-modal__extra">{selectedContactMessage.detail.extraInfo}</p>
+                      )}
+                    </section>
+
+                    <section className="admin-contact-thread" aria-label="Riwayat chat customer service">
+                      {(selectedContactMessage.messages || []).map((message) => (
+                        <article
+                          className={`admin-contact-thread__message admin-contact-thread__message--${message.senderType}`}
+                          key={message.id}
+                        >
+                          <div>
+                            <strong>{message.senderName}</strong>
+                            <p>{message.message}</p>
+                            {Boolean(message.attachments?.length) && (
+                              <div className="admin-contact-thread__attachments">
+                                {message.attachments.map((attachment) => (
+                                  <a
+                                    key={attachment.id}
+                                    href={resolveMediaUrl(attachment.fileUrl)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    {attachment.fileName}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                            <time>{message.formattedDate}</time>
+                          </div>
+                        </article>
+                      ))}
+                    </section>
+
+                    {selectedContactMessage.status !== "done" ? (
+                      <>
+                        {!selectedContactMessage.assignedAdminId && (
+                          <button
+                            type="button"
+                            className="admin-review-report-modal__action admin-contact-detail-modal__claim"
+                            disabled={Boolean(contactActionLoading[String(selectedContactMessage.id)])}
+                            onClick={() => handleClaimContactTicket(selectedContactMessage)}
+                          >
+                            Ambil Tiket
+                          </button>
+                        )}
+
+                        <form className="admin-contact-reply" onSubmit={handleSendContactReply}>
+                          <textarea
+                            value={contactReplyText}
+                            onChange={(event) => setContactReplyText(event.target.value)}
+                            placeholder="Tulis balasan untuk pengguna..."
+                            rows={3}
+                          />
+                          <div>
+                            <label>
+                              Lampiran
+                              <input
+                                type="file"
+                                multiple
+                                accept="image/png,image/jpeg,image/webp,application/pdf,.doc,.docx"
+                                onChange={(event) => setContactReplyFiles(Array.from(event.target.files || []))}
+                              />
+                            </label>
+                            <button
+                              type="submit"
+                              className="admin-review-report-modal__action"
+                              disabled={Boolean(contactActionLoading[String(selectedContactMessage.id)])}
+                            >
+                              Kirim Balasan
+                            </button>
+                          </div>
+                        </form>
+
+                        <section className="admin-contact-resolve">
+                          <textarea
+                            value={contactResolutionNote}
+                            onChange={(event) => setContactResolutionNote(event.target.value)}
+                            placeholder="Catatan penyelesaian..."
+                            rows={2}
+                          />
+                          <button
+                            type="button"
+                            className="admin-review-report-modal__action admin-review-report-modal__action--restore"
+                            disabled={Boolean(contactActionLoading[String(selectedContactMessage.id)])}
+                            onClick={handleCloseContactTicket}
+                          >
+                            Selesaikan Tiket
+                          </button>
+                        </section>
+                      </>
+                    ) : (
+                      <section className="admin-contact-resolve admin-contact-resolve--done">
+                        <span>Catatan Penyelesaian</span>
+                        <p>{selectedContactMessage.resolutionNote || "Tiket selesai ditangani."}</p>
+                      </section>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="admin-contact-card__header">
+                      <div>
+                        <h2>Report Customer Service</h2>
+                        <p>Kelola tiket bantuan pengguna, riwayat chat, lampiran, dan status penanganan.</p>
+                      </div>
+                    </div>
+
+                    <div className="admin-contact-tabs" role="tablist" aria-label="Filter report">
+                      {contactTabs.map((tab) => (
+                        <button
+                          type="button"
+                          key={tab.id}
+                          className={activeContactTab === tab.id ? "admin-contact-tabs__item--active" : ""}
+                          role="tab"
+                          aria-selected={activeContactTab === tab.id}
+                          onClick={() => setActiveContactTab(tab.id)}
+                        >
+                          <span>{tab.label}</span>
+                          <small>{formatChartNumber(adminContactMessages.summary?.[tab.countKey] || 0)}</small>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="admin-contact-list">
+                      {visibleContactMessages.map((message) => (
+                        <article className="admin-contact-message" key={message.id}>
+                          <div className="admin-contact-message__main">
+                            <div className="admin-contact-message__top">
+                              <span className="admin-contact-message__avatar">
+                                {String(message.userName || "U").slice(0, 1).toUpperCase()}
+                              </span>
+                              <div>
+                                <strong>{message.userName}</strong>
+                                <small>{message.userEmail}</small>
+                              </div>
+                            </div>
+
+                            <div className="admin-contact-message__content">
+                              <div>
+                                <h3>{message.ticketCode} - {message.subject}</h3>
+                                <p>{formatPostPreview(message.description, 150)}</p>
+                              </div>
+                              <span className={`admin-contact-status admin-contact-status--${message.status}`}>
+                                {message.statusLabel}
+                              </span>
+                            </div>
+
+                            <div className="admin-contact-message__meta">
+                              <span>{message.categoryLabel}</span>
+                              <span>PIC: {message.assignedAdminName || "Belum ditangani"}</span>
+                              <span>{message.formattedDate}</span>
+                            </div>
+                          </div>
+
+                          <div className="admin-contact-message__actions">
+                            <button
+                              type="button"
+                              aria-label="Lihat detail report"
+                              onClick={() => openContactTicketDetail(message)}
+                            >
+                              <FiEye aria-hidden="true" />
+                            </button>
+                            {message.status === "waiting_admin" && (
+                              <button
+                                type="button"
+                                className="admin-contact-message__claim"
+                                disabled={Boolean(contactActionLoading[String(message.id)])}
+                                onClick={() => handleClaimContactTicket(message)}
+                              >
+                                Ambil
+                              </button>
+                            )}
+                          </div>
+                        </article>
+                      ))}
+
+                      {!visibleContactMessages.length && (
+                        <p className="admin-empty-state">
+                          {isLoading ? "Memuat report..." : "Belum ada report pada tab ini."}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="admin-manage-pagination" aria-label="Pagination report">
+                      <button
+                        type="button"
+                        aria-label="Halaman report sebelumnya"
+                        disabled={currentContactPage === 1}
+                        onClick={() => setContactPage((page) => Math.max(1, page - 1))}
+                      >
+                        &lt;
+                      </button>
+                      {contactPaginationItems.map((item, index) =>
+                        typeof item === "string" ? (
+                          <span key={`${item}-${index}`} className="admin-manage-pagination__ellipsis">
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            key={item}
+                            className={currentContactPage === item ? "admin-manage-pagination__active" : ""}
+                            onClick={() => setContactPage(item)}
+                          >
+                            {item}
+                          </button>
+                        )
+                      )}
+                      <button
+                        type="button"
+                        aria-label="Halaman report berikutnya"
+                        disabled={currentContactPage === totalContactPages}
+                        onClick={() => setContactPage((page) => Math.min(totalContactPages, page + 1))}
+                      >
+                        &gt;
+                      </button>
+                    </div>
+                  </>
+                )}
               </article>
             </section>
           ) : activeAdminPage === "transactions" && activeTransactionPanel === "payment-settings" ? (
@@ -3753,20 +4136,13 @@ function AdminPage() {
                     {
                       id: "package",
                       value: transactionPackageFilter,
-                      options: ["Semua Paket", "Premium Tahunan"],
+                      options: ["Semua Paket", "Premium", "Eksklusif"],
                       onSelect: setTransactionPackageFilter
                     },
                     {
                       id: "payment",
                       value: transactionPaymentFilter,
-                      options: [
-                        "Semua Pembayaran",
-                        "QRIS",
-                        "Transfer Bank (BCA)",
-                        "Transfer Bank (MANDIRI)",
-                        "E-Wallet (GOPAY)",
-                        "E-Wallet (DANA)"
-                      ],
+                      options: ["Semua Pembayaran", "QR Code", "E Wallet", "Bank"],
                       onSelect: setTransactionPaymentFilter
                     },
                     {
@@ -4499,94 +4875,6 @@ function AdminPage() {
           )}
         </div>
       </section>
-
-      {selectedContactMessage && (
-        <div
-          className="admin-review-report-modal admin-contact-detail-modal"
-          role="presentation"
-          onClick={() => setSelectedContactMessage(null)}
-        >
-          <article
-            className="admin-review-report-modal__card admin-contact-detail-modal__card"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="admin-contact-detail-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <header className="admin-review-report-modal__head">
-              <div>
-                <span>Detail Report</span>
-                <h2 id="admin-contact-detail-title">{selectedContactMessage.subject}</h2>
-              </div>
-              <button
-                type="button"
-                className="admin-review-report-modal__close"
-                aria-label="Tutup detail report"
-                onClick={() => setSelectedContactMessage(null)}
-              >
-                <FiX aria-hidden="true" />
-              </button>
-            </header>
-
-            <section className="admin-contact-detail-modal__sender">
-              <span className="admin-contact-message__avatar">
-                {String(selectedContactMessage.name || "U").slice(0, 1).toUpperCase()}
-              </span>
-              <div>
-                <span>Pengirim</span>
-                <strong>{selectedContactMessage.name}</strong>
-                <small>{selectedContactMessage.email}</small>
-              </div>
-              <span className={`admin-contact-status admin-contact-status--${selectedContactMessage.status}`}>
-                {selectedContactMessage.statusLabel}
-              </span>
-            </section>
-
-            <dl className="admin-review-report-modal__meta">
-              <div>
-                <dt>Kategori</dt>
-                <dd>{selectedContactMessage.categoryLabel}</dd>
-              </div>
-              <div>
-                <dt>Tanggal Masuk</dt>
-                <dd>{selectedContactMessage.formattedDate}</dd>
-              </div>
-            </dl>
-
-            <section className="admin-review-report-modal__section">
-              <span>Isi Pesan</span>
-              <p>{selectedContactMessage.message}</p>
-            </section>
-
-            <footer className="admin-review-report-modal__actions">
-              <button
-                type="button"
-                className="admin-review-report-modal__action"
-                disabled={Boolean(contactActionLoading[String(selectedContactMessage.id)])}
-                onClick={() => handleUpdateContactStatus(selectedContactMessage, "reviewed")}
-              >
-                Tandai Ditinjau
-              </button>
-              <button
-                type="button"
-                className="admin-review-report-modal__action admin-review-report-modal__action--restore"
-                disabled={Boolean(contactActionLoading[String(selectedContactMessage.id)])}
-                onClick={() => handleUpdateContactStatus(selectedContactMessage, "resolved")}
-              >
-                Tandai Selesai
-              </button>
-              <button
-                type="button"
-                className="admin-review-report-modal__action admin-review-report-modal__action--reject"
-                disabled={Boolean(contactActionLoading[String(selectedContactMessage.id)])}
-                onClick={() => handleUpdateContactStatus(selectedContactMessage, "closed")}
-              >
-                Tutup
-              </button>
-            </footer>
-          </article>
-        </div>
-      )}
 
       {selectedTransactionDetail && (
         <div

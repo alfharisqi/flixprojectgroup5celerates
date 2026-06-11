@@ -1,4 +1,5 @@
 import pool from "../config/db.js";
+import { initializeContactMessagesTable } from "../config/initContactMessages.js";
 
 const allowedCategories = new Set([
   "bug_report",
@@ -12,6 +13,8 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const createContactMessage = async (req, res) => {
   try {
+    await initializeContactMessagesTable();
+
     const { name, email, subject, category, message } = req.body;
     const normalizedEmail = String(email || "").trim().toLowerCase();
     const normalizedCategory = String(category || "").trim();
@@ -56,8 +59,12 @@ export const createContactMessage = async (req, res) => {
     );
 
     return res.status(201).json({
-      message: "Pesan berhasil dikirim ke tim FLIX",
-      contactMessage: result.rows[0]
+      message: "Report berhasil dikirim dan masuk ke dashboard admin.",
+      contactMessage: {
+        id: Number(result.rows[0].id_contact_message),
+        status: result.rows[0].status,
+        createdAt: result.rows[0].created_at,
+      }
     });
   } catch (error) {
     return res.status(500).json({
