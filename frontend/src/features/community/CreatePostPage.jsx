@@ -243,10 +243,6 @@ function CreatePostPage() {
           )}
 
           <div className="create-post-actions">
-            <button className="create-post-draft" type="button" disabled>
-              Save Draft
-            </button>
-
             <button className="create-post-submit" type="submit">
               <FiSend />
               Post
