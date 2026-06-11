@@ -109,6 +109,16 @@
   background: #232323;
 }
 
+.login-input:-webkit-autofill,
+.login-input:-webkit-autofill:hover,
+.login-input:-webkit-autofill:focus,
+.login-input:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+  box-shadow: 0 0 0 1000px #232323 inset;
+  transition: background-color 9999s ease-out;
+}
+
 .login-password-input {
   padding-right: 56px;
 }
