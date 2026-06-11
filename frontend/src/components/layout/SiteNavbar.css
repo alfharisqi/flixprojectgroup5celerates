@@ -257,6 +257,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  margin-inline: -24px;
   overflow: hidden;
 }
 
@@ -271,7 +272,7 @@
   grid-template-columns: 60px minmax(0, 1fr) 52px;
   align-items: center;
   gap: 11px;
-  padding: 0;
+  padding: 0 24px;
   text-align: left;
   cursor: pointer;
 }
@@ -782,6 +783,7 @@
 }
 
 .site-navbar__notification-list {
+  margin-inline: -24px;
   max-height: 424px;
   overflow-y: auto;
   scrollbar-width: none;
@@ -802,7 +804,7 @@
   grid-template-columns: 10px 54px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  padding: 18px 0;
+  padding: 18px 24px;
   text-align: left;
   cursor: pointer;
 }
@@ -1209,6 +1211,14 @@
     padding: 24px 22px;
   }
 
+  .site-navbar__chat-list {
+    margin-inline: -22px;
+  }
+
+  .site-navbar__chat-item {
+    padding-inline: 22px;
+  }
+
   .site-navbar__chat-panel--expanded {
     top: 50vh;
     left: 50vw;
@@ -1231,9 +1241,14 @@
     padding: 20px 18px 14px;
   }
 
+  .site-navbar__notification-list {
+    margin-inline: -18px;
+  }
+
   .site-navbar__notification-item {
     grid-template-columns: 8px 46px minmax(0, 1fr);
     gap: 10px;
+    padding-inline: 18px;
   }
 
   .site-navbar__notification-item time {
