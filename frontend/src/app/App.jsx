@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/routing/ProtectedRoute";
 import FlixChatbot from "@/components/ui/FlixChatbot";
 import LoginRequiredModal from "@/components/ui/LoginRequiredModal";
+import PageLoadingOverlay from "@/components/ui/PageLoadingOverlay";
 import Login from "@/features/auth/Login";
 import ForgotPassword from "@/features/auth/ForgotPassword";
 import Register from "@/features/auth/Register";
@@ -28,6 +30,7 @@ import SettingsPage from "@/features/settings/SettingsPage";
 
 function App() {
   const location = useLocation();
+  const [isPageLoading, setIsPageLoading] = useState(true);
   const authAndHomePaths = [
     "/login",
     "/register",
@@ -65,8 +68,21 @@ function App() {
     ].includes(location.pathname) ||
     location.pathname.startsWith("/reset-password/");
 
+  useEffect(() => {
+    setIsPageLoading(true);
+
+    const loadingTimer = window.setTimeout(() => {
+      setIsPageLoading(false);
+    }, 520);
+
+    return () => {
+      window.clearTimeout(loadingTimer);
+    };
+  }, [location.pathname, location.search]);
+
   return (
     <>
+      <PageLoadingOverlay visible={isPageLoading} />
       {!hideNavbar && <Navbar />}
       <LoginRequiredModal />
       <Routes>
