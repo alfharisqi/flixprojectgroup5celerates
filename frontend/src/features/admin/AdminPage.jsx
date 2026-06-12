@@ -42,6 +42,7 @@ import emptyWalletIcon from "@/assets/icon/empty-wallet.png";
 import reviewIcon from "@/assets/icon/review-icon.png";
 import PremiumAvatar from "@/components/ui/PremiumAvatar";
 import AdminSettingsPanel from "@/features/settings/AdminSettingsPanel";
+import { confirmAction } from "@/utils/alerts";
 import { resolveMediaUrl } from "@/utils/media";
 import "./AdminPage.css";
 
@@ -2588,7 +2589,14 @@ function AdminPage() {
       return;
     }
 
-    if (!window.confirm(`Reset password untuk ${detailUser.username}?`)) {
+    const shouldReset = await confirmAction({
+      title: "Reset Password?",
+      text: `Reset password untuk ${detailUser.username}?`,
+      icon: "warning",
+      confirmButtonText: "Reset Password",
+    });
+
+    if (!shouldReset) {
       return;
     }
 
@@ -2633,7 +2641,14 @@ function AdminPage() {
       ? `Aktifkan kembali user ${detailUser.username}?`
       : `Nonaktifkan user ${detailUser.username}? User tidak bisa login sampai diaktifkan kembali.`;
 
-    if (!window.confirm(confirmationMessage)) {
+    const shouldUpdateStatus = await confirmAction({
+      title: nextIsActive ? "Aktifkan User?" : "Nonaktifkan User?",
+      text: confirmationMessage,
+      icon: "warning",
+      confirmButtonText: nextIsActive ? "Aktifkan" : "Nonaktifkan",
+    });
+
+    if (!shouldUpdateStatus) {
       return;
     }
 

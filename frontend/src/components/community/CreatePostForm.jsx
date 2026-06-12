@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { showAlert, showToast } from "@/utils/alerts";
 
 function CreatePostPage() {
   const navigate = useNavigate();
@@ -33,7 +34,7 @@ function CreatePostPage() {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      alert("Ukuran gambar maksimal 2 MB");
+      showAlert({ title: "Gambar Terlalu Besar", text: "Ukuran gambar maksimal 2 MB.", icon: "error" });
       e.target.value = "";
       return;
     }
@@ -59,7 +60,7 @@ function CreatePostPage() {
 
   const removePollOption = (index) => {
     if (pollOptions.length <= 2) {
-      alert("Minimal polling harus memiliki 2 opsi");
+      showAlert({ title: "Polling Belum Lengkap", text: "Minimal polling harus memiliki 2 opsi.", icon: "warning" });
       return;
     }
 
@@ -71,7 +72,7 @@ function CreatePostPage() {
     e.preventDefault();
 
     if (!title.trim()) {
-      alert("Title wajib diisi");
+      showAlert({ title: "Title Wajib Diisi", text: "Isi title sebelum membuat post.", icon: "warning" });
       return;
     }
 
@@ -96,10 +97,14 @@ function CreatePostPage() {
         }
       });
 
-      alert("Post berhasil dibuat");
+      showToast({ title: "Post berhasil dibuat." });
       navigate("/");
     } catch (error) {
-      alert(error.response?.data?.message || "Gagal membuat post");
+      showAlert({
+        title: "Gagal Membuat Post",
+        text: error.response?.data?.message || "Gagal membuat post.",
+        icon: "error",
+      });
     }
   };
 

@@ -23,6 +23,7 @@ import PremiumAvatar from "@/components/ui/PremiumAvatar";
 import ReportModal from "@/components/ui/ReportModal";
 import { createChatThreadFromUser, openChatThread } from "@/utils/chat";
 import { requireLogin, requirePremiumAccess } from "@/utils/authPrompt";
+import { confirmAction, showAlert, showToast } from "@/utils/alerts";
 import { submitReport } from "@/utils/report";
 import "./Community.css";
 
@@ -416,7 +417,12 @@ function Community() {
   };
 
   const handleDeletePost = async (id_post) => {
-    const confirmDelete = window.confirm("Yakin ingin menghapus post ini?");
+    const confirmDelete = await confirmAction({
+      title: "Hapus Post?",
+      text: "Post yang dihapus tidak bisa dikembalikan.",
+      icon: "warning",
+      confirmButtonText: "Hapus",
+    });
     if (!confirmDelete) return;
 
     try {
@@ -431,7 +437,7 @@ function Community() {
 
       fetchPosts();
     } catch (error) {
-      alert(error.response?.data?.message || "Gagal menghapus post");
+      showAlert({ title: "Gagal Menghapus Post", text: error.response?.data?.message || "Gagal menghapus post.", icon: "error" });
     }
   };
 
@@ -453,7 +459,7 @@ function Community() {
 
       fetchPosts();
     } catch (error) {
-      alert(error.response?.data?.message || "Gagal memberi like");
+      showAlert({ title: "Gagal Memberi Like", text: error.response?.data?.message || "Gagal memberi like.", icon: "error" });
     }
   };
 
@@ -476,7 +482,7 @@ function Community() {
       fetchPosts();
       return true;
     } catch (error) {
-      alert(error.response?.data?.message || "Gagal memberi reaction");
+      showAlert({ title: "Gagal Memberi Reaction", text: error.response?.data?.message || "Gagal memberi reaction.", icon: "error" });
       return false;
     }
   };
@@ -503,9 +509,9 @@ function Community() {
 
       await navigator.clipboard.writeText(shareLink);
       fetchPosts();
-      alert("Link post berhasil disalin");
+      showToast({ title: "Link post berhasil disalin." });
     } catch (error) {
-      alert("Gagal menyalin link");
+      showAlert({ title: "Gagal Menyalin Link", text: "Link post belum bisa disalin.", icon: "error" });
     }
   };
 
@@ -527,7 +533,7 @@ function Community() {
       setInsight(res.data);
       setShowInsight(true);
     } catch (error) {
-      alert(error.response?.data?.message || "Gagal mengambil insight");
+      showAlert({ title: "Insight Tidak Tersedia", text: error.response?.data?.message || "Gagal mengambil insight.", icon: "error" });
     }
   };
 
@@ -557,7 +563,7 @@ function Community() {
         reason,
       });
       setReportTarget(null);
-      alert("Report berhasil dikirim");
+      showToast({ title: "Report berhasil dikirim." });
     } catch (error) {
       setReportError(error.response?.data?.message || "Gagal mengirim report");
     } finally {
@@ -619,7 +625,7 @@ function Community() {
       );
       setFriendTarget(null);
     } catch (error) {
-      alert(error.response?.data?.message || "Gagal menambahkan teman");
+      showAlert({ title: "Gagal Menambahkan Teman", text: error.response?.data?.message || "Gagal menambahkan teman.", icon: "error" });
     } finally {
       setFriendRequestSaving(false);
     }
@@ -660,7 +666,7 @@ function Community() {
       await fetchPosts();
       await fetchComments(postId);
     } catch (error) {
-      alert(error.response?.data?.message || "Gagal vote polling");
+      showAlert({ title: "Gagal Vote Polling", text: error.response?.data?.message || "Gagal vote polling.", icon: "error" });
     }
   };
 

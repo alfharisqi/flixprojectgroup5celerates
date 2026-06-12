@@ -41,6 +41,7 @@ import {
   readWatchlist as readStoredWatchlist,
   readWatchStatus,
 } from "@/utils/watchlistStorage";
+import { confirmAction } from "@/utils/alerts";
 import "./ProfilePage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -1779,9 +1780,12 @@ function ProfilePage() {
       return;
     }
 
-    const shouldRemove = window.confirm(
-      `Hapus ${friend.username || "teman ini"} dari friendlist?`,
-    );
+    const shouldRemove = await confirmAction({
+      title: "Hapus Teman?",
+      text: `Hapus ${friend.username || "teman ini"} dari friendlist?`,
+      icon: "warning",
+      confirmButtonText: "Hapus",
+    });
 
     if (!shouldRemove) {
       return;

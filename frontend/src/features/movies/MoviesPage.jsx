@@ -24,6 +24,7 @@ import {
   getSeriesWatchlistKey,
   readWatchlist as readStoredWatchlist,
 } from "@/utils/watchlistStorage";
+import { promptInput, showAlert } from "@/utils/alerts";
 import amazonPrimeVideoIcon from "@/assets/platformstream-logo/amazonprimevideo-icon.png";
 import appleTvIcon from "@/assets/platformstream-logo/appletv-icon.png";
 import catchplayIcon from "@/assets/platformstream-logo/catchplay-icon.png";
@@ -814,7 +815,12 @@ function MoviesPage() {
     try {
       await navigator.clipboard.writeText(url);
     } catch {
-      window.prompt("Salin link film:", url);
+      await promptInput({
+        title: "Salin Link Film",
+        text: "Browser tidak memberi akses clipboard. Salin link berikut secara manual.",
+        inputValue: url,
+        confirmButtonText: "Tutup",
+      });
     }
   };
 
@@ -850,7 +856,7 @@ function MoviesPage() {
       const trailerUrl = getTrailerUrl([...localizedVideos, ...fallbackVideos]);
 
       if (!trailerUrl) {
-        window.alert("Trailer belum tersedia untuk film ini.");
+        showAlert({ title: "Trailer Belum Tersedia", text: "Trailer belum tersedia untuk film ini.", icon: "info" });
         return;
       }
 
@@ -860,7 +866,7 @@ function MoviesPage() {
       }));
       window.open(trailerUrl, "_blank", "noopener,noreferrer");
     } catch {
-      window.alert("Gagal membuka trailer film.");
+      showAlert({ title: "Gagal Membuka Trailer", text: "Trailer film belum bisa dibuka.", icon: "error" });
     }
   };
 

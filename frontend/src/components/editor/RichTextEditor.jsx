@@ -13,6 +13,7 @@ import {
   FiCode,
   FiEyeOff,
 } from "react-icons/fi";
+import { promptInput, showAlert } from "@/utils/alerts";
 import "./rich-content.css";
 
 const Spoiler = Mark.create({
@@ -109,9 +110,15 @@ function RichTextEditor({ value, onChange }) {
     return `https://${trimmed}`;
   };
 
-  const handleAddLink = () => {
+  const handleAddLink = async () => {
     const previousUrl = editor.getAttributes("link").href || "";
-    const input = window.prompt("Masukkan URL link:", previousUrl);
+    const input = await promptInput({
+      title: "Tambahkan Link",
+      text: "Masukkan URL yang ingin dipasang.",
+      inputValue: previousUrl,
+      inputPlaceholder: "https://contoh.com",
+      confirmButtonText: "Pasang Link",
+    });
 
     if (input === null) return;
 
@@ -143,13 +150,13 @@ function RichTextEditor({ value, onChange }) {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("File harus berupa gambar");
+      showAlert({ title: "File Tidak Valid", text: "File harus berupa gambar.", icon: "error" });
       e.target.value = "";
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      alert("Ukuran gambar maksimal 2 MB");
+      showAlert({ title: "Gambar Terlalu Besar", text: "Ukuran gambar maksimal 2 MB.", icon: "error" });
       e.target.value = "";
       return;
     }
@@ -191,7 +198,11 @@ function RichTextEditor({ value, onChange }) {
         .focus()
         .run();
     } catch (error) {
-      alert(error.message || "Gagal upload gambar");
+      showAlert({
+        title: "Upload Gagal",
+        text: error.message || "Gagal upload gambar.",
+        icon: "error",
+      });
     } finally {
       setUploadingImage(false);
       e.target.value = "";

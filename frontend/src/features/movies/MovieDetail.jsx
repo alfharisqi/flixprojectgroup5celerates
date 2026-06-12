@@ -31,6 +31,7 @@ import {
   getMovieWatchlistKey,
   readWatchlist as readStoredWatchlist,
 } from "@/utils/watchlistStorage";
+import { promptInput, showAlert, showToast } from "@/utils/alerts";
 import { submitReport } from "@/utils/report";
 import "@/features/movies/MovieDetail.css";
 
@@ -408,13 +409,13 @@ function MovieDetail() {
       const fallbackTrailerUrl = getTrailerUrl(data.results || []);
 
       if (!fallbackTrailerUrl) {
-        window.alert("Trailer belum tersedia untuk film ini.");
+        showAlert({ title: "Trailer Belum Tersedia", text: "Trailer belum tersedia untuk film ini.", icon: "info" });
         return;
       }
 
       window.open(fallbackTrailerUrl, "_blank", "noopener,noreferrer");
     } catch {
-      window.alert("Gagal membuka trailer film.");
+      showAlert({ title: "Gagal Membuka Trailer", text: "Trailer film belum bisa dibuka.", icon: "error" });
     }
   };
 
@@ -440,7 +441,12 @@ function MovieDetail() {
         return;
       }
 
-      window.prompt("Salin link film:", url);
+      await promptInput({
+        title: "Salin Link Film",
+        text: "Browser tidak memberi akses clipboard. Salin link berikut secara manual.",
+        inputValue: url,
+        confirmButtonText: "Tutup",
+      });
     }
   };
 
@@ -547,7 +553,7 @@ function MovieDetail() {
         reason,
       });
       setReportTarget(null);
-      alert("Report berhasil dikirim");
+      showToast({ title: "Report berhasil dikirim." });
     } catch (error) {
       setReportError(error.response?.data?.message || "Gagal mengirim report");
     } finally {

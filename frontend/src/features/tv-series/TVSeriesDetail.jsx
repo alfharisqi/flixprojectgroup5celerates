@@ -35,6 +35,7 @@ import {
   readWatchlist as readStoredWatchlist,
   readWatchStatus,
 } from "@/utils/watchlistStorage";
+import { promptInput, showAlert, showToast } from "@/utils/alerts";
 import { submitReport } from "@/utils/report";
 import "@/features/movies/MovieDetail.css";
 
@@ -602,13 +603,13 @@ function TVSeriesDetail() {
       const fallbackTrailerUrl = getTrailerUrl(data.results || []);
 
       if (!fallbackTrailerUrl) {
-        window.alert("Trailer belum tersedia untuk TV series ini.");
+        showAlert({ title: "Trailer Belum Tersedia", text: "Trailer belum tersedia untuk TV series ini.", icon: "info" });
         return;
       }
 
       window.open(fallbackTrailerUrl, "_blank", "noopener,noreferrer");
     } catch {
-      window.alert("Gagal membuka trailer TV series.");
+      showAlert({ title: "Gagal Membuka Trailer", text: "Trailer TV series belum bisa dibuka.", icon: "error" });
     }
   };
 
@@ -634,7 +635,12 @@ function TVSeriesDetail() {
         return;
       }
 
-      window.prompt("Salin link TV series:", url);
+      await promptInput({
+        title: "Salin Link TV Series",
+        text: "Browser tidak memberi akses clipboard. Salin link berikut secara manual.",
+        inputValue: url,
+        confirmButtonText: "Tutup",
+      });
     }
   };
 
@@ -741,7 +747,7 @@ function TVSeriesDetail() {
         reason,
       });
       setReportTarget(null);
-      alert("Report berhasil dikirim");
+      showToast({ title: "Report berhasil dikirim." });
     } catch (error) {
       setReportError(error.response?.data?.message || "Gagal mengirim report");
     } finally {

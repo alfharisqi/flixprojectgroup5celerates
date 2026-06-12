@@ -5,6 +5,7 @@ import { FiArrowLeft, FiHash, FiPlus, FiSend, FiTrash2, FiX } from "react-icons/
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import RichTextEditor from "@/components/editor/RichTextEditor";
 import { requireLogin, requirePremiumAccess } from "@/utils/authPrompt";
+import { showAlert, showToast } from "@/utils/alerts";
 import "./CreatePostPage.css";
 
 function CreatePostPage() {
@@ -60,7 +61,7 @@ function CreatePostPage() {
 
   const removePollOption = (index) => {
     if (pollOptions.length <= 2) {
-      alert("Minimal polling harus memiliki 2 opsi");
+      showAlert({ title: "Polling Belum Lengkap", text: "Minimal polling harus memiliki 2 opsi.", icon: "warning" });
       return;
     }
 
@@ -85,7 +86,7 @@ function CreatePostPage() {
     }
 
     if (!title.trim()) {
-      alert("Title wajib diisi");
+      showAlert({ title: "Title Wajib Diisi", text: "Isi title sebelum membuat post.", icon: "warning" });
       return;
     }
 
@@ -102,7 +103,7 @@ function CreatePostPage() {
           .filter((item) => item !== "");
 
         if (cleanedOptions.length < 2) {
-          alert("Polling minimal harus memiliki 2 opsi");
+          showAlert({ title: "Polling Belum Lengkap", text: "Polling minimal harus memiliki 2 opsi.", icon: "warning" });
           return;
         }
 
@@ -115,11 +116,15 @@ function CreatePostPage() {
         },
       });
 
-      alert("Post berhasil dibuat");
+      showToast({ title: "Post berhasil dibuat." });
       resetForm();
       navigate("/");
     } catch (error) {
-      alert(error.response?.data?.message || "Gagal membuat post");
+      showAlert({
+        title: "Gagal Membuat Post",
+        text: error.response?.data?.message || "Gagal membuat post.",
+        icon: "error",
+      });
     }
   };
 

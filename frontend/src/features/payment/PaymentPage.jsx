@@ -4,6 +4,7 @@ import axios from "axios";
 import flixLogo from "@/assets/flix-logo.png";
 import blueDiamondIcon from "@/assets/icon/bluediamond-icon.png";
 import PageLoadingOverlay from "@/components/ui/PageLoadingOverlay";
+import { showToast } from "@/utils/alerts";
 import { resolveMediaUrl } from "@/utils/media";
 import "./PaymentPage.css";
 
@@ -343,7 +344,7 @@ function PaymentPage() {
   // Salin teks ke Clipboard
   const handleCopyText = (text) => {
     navigator.clipboard.writeText(text);
-    alert("Berhasil disalin ke clipboard!");
+    showToast({ title: "Berhasil disalin ke clipboard." });
   };
 
   // Kalkulasi Harga secara Dinamis berdasarkan Durasi Bulan
