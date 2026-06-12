@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import flixLogo from "@/assets/flix-logo.png";
 import blueDiamondIcon from "@/assets/icon/bluediamond-icon.png";
+import PageLoadingOverlay from "@/components/ui/PageLoadingOverlay";
 import { resolveMediaUrl } from "@/utils/media";
 import "./PaymentPage.css";
 
@@ -126,6 +127,7 @@ function PaymentPage() {
   const [paymentProofPreview, setPaymentProofPreview] = useState("");
   const [currentPendingPayment, setCurrentPendingPayment] = useState(storedPendingPayment);
   const [checkingCurrentPayment, setCheckingCurrentPayment] = useState(Boolean(token));
+  const [paymentSettingsLoading, setPaymentSettingsLoading] = useState(true);
   
   // 5. State Tambahan
   const [promoCode, setPromoCode] = useState("");
@@ -209,6 +211,10 @@ function PaymentPage() {
           setPaymentPackages(fallbackPaymentPackages);
           setPaymentMethod("qris");
           setSelectedPaymentMethodId("qris");
+        }
+      } finally {
+        if (isMounted) {
+          setPaymentSettingsLoading(false);
         }
       }
     };
@@ -476,9 +482,10 @@ function PaymentPage() {
     }
   };
 
-  if (checkingCurrentPayment) {
+  if (checkingCurrentPayment || paymentSettingsLoading) {
     return (
       <div className="payment-page">
+        <PageLoadingOverlay visible />
         <header className="payment-header">
           <img
             className="payment-header__logo"
@@ -498,9 +505,9 @@ function PaymentPage() {
                 <polyline points="20 6 9 17 4 12"></polyline>
               </svg>
             </div>
-            <h2>Memeriksa Status Pembayaran</h2>
+            <h2>Memuat Data Pembayaran</h2>
             <p className="success-subtext">
-              Mohon tunggu sebentar. FLIX sedang memeriksa transaksi premium kamu.
+              Mohon tunggu sebentar. FLIX sedang mengambil harga paket dan metode pembayaran terbaru.
             </p>
           </div>
         </main>

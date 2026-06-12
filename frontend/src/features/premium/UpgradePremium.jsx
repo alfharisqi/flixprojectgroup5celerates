@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import flixLogo from "../../assets/flix-logo.png";
+import PageLoadingOverlay from "@/components/ui/PageLoadingOverlay";
 import "./UpgradePremium.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -39,6 +40,7 @@ function UpgradePage() {
   const [user, setUser] = useState(() => getStoredUser());
   const [packagePrices, setPackagePrices] = useState(defaultPackagePrices);
   const [subscriberCount, setSubscriberCount] = useState(0);
+  const [paymentSettingsLoading, setPaymentSettingsLoading] = useState(true);
 
   useEffect(() => {
     if (!token) {
@@ -101,6 +103,10 @@ function UpgradePage() {
         if (!shouldIgnore) {
           setPackagePrices(defaultPackagePrices);
           setSubscriberCount(0);
+        }
+      } finally {
+        if (!shouldIgnore) {
+          setPaymentSettingsLoading(false);
         }
       }
     };
@@ -282,6 +288,7 @@ function UpgradePage() {
 
   return (
     <div className="upgrade-page">
+      <PageLoadingOverlay visible={paymentSettingsLoading} />
       {/* 1. Header Halaman */}
       <header className="upgrade-header">
         <div className="upgrade-header__logo" onClick={() => navigate("/")}>
