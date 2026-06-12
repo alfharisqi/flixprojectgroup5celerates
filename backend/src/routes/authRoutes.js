@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  bootstrapAdmin,
   forgotPassword,
   login,
   register,
@@ -15,5 +16,6 @@ router.post("/verify-email", verifyEmail);
 router.get("/verify-email", verifyEmail);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
+router.post("/bootstrap-admin", bootstrapAdmin);
 
 export default router;

@@ -59,6 +59,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const initializeDatabase = () => {
+  if (process.env.SKIP_DATABASE_INIT === "true") {
+    return Promise.resolve();
+  }
+
   if (!databaseReadyPromise) {
     databaseReadyPromise = Promise.all([
       initializeEmailVerificationTable(),
@@ -84,6 +88,14 @@ const initializeDatabase = () => {
 };
 
 const verifyMailer = () => {
+  if (
+    process.env.REQUIRE_EMAIL_VERIFICATION === "false" ||
+    !process.env.MAIL_HOST?.trim() ||
+    !process.env.MAIL_FROM?.trim()
+  ) {
+    return Promise.resolve();
+  }
+
   if (!mailVerifyPromise) {
     mailVerifyPromise = transporter
       .verify()

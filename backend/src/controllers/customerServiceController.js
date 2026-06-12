@@ -1,5 +1,6 @@
 import pool from "../config/db.js";
 import { initializeCustomerServiceTables } from "../config/initCustomerService.js";
+import { fileToDataUrl } from "../utils/uploadDataUrl.js";
 
 const categoryLabels = {
   account: "Kendala Akun",
@@ -188,7 +189,7 @@ const insertAttachments = async ({ ticketId, messageId = null, userId, files = [
         ticketId,
         messageId,
         userId,
-        `/uploads/${file.filename}`,
+        fileToDataUrl(file),
         file.originalname,
         file.mimetype,
         file.size,

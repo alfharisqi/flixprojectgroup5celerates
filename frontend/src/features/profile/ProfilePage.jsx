@@ -125,6 +125,14 @@ const cropImageToBlob = async ({
   });
 };
 
+const blobToDataUrl = (blob) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Gagal membaca gambar"));
+    reader.readAsDataURL(blob);
+  });
+
 const movieGenreLookup = {
   12: "Adventure",
   14: "Fantasy",
@@ -1527,32 +1535,15 @@ function ProfilePage() {
         stageSize: cropData.stageSize,
         outputWidth: config.outputWidth,
         outputHeight: config.outputHeight,
-        type: cropData.file.type,
+        type: "image/jpeg",
       });
-      const formData = new FormData();
-      formData.append(
-        "image",
-        new File([croppedBlob], cropData.file.name || "profile-image.jpg", {
-          type: croppedBlob.type || "image/jpeg",
-        }),
-      );
-
-      const uploadResponse = await axios.post(
-        `${apiUrl}/api/uploads/editor-image`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        },
-      );
+      const imageDataUrl = await blobToDataUrl(croppedBlob);
 
       const mediaResponse = await axios.put(
         `${apiUrl}/api/profile/media`,
         {
           field: cropData.field,
-          image_url: uploadResponse.data.imageUrl,
+          image_url: imageDataUrl,
         },
         {
           headers: { Authorization: `Bearer ${token}` },

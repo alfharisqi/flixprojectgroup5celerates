@@ -1,6 +1,5 @@
 import express from "express";
 import multer from "multer";
-import path from "path";
 import {
   addCustomerServiceMessage,
   createCustomerServiceTicket,
@@ -10,16 +9,6 @@ import {
 import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  },
-});
 
 const allowedTypes = new Set([
   "image/jpeg",
@@ -32,7 +21,7 @@ const allowedTypes = new Set([
 ]);
 
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
     if (allowedTypes.has(file.mimetype)) {
       cb(null, true);

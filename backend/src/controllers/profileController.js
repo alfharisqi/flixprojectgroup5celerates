@@ -267,7 +267,11 @@ export const updateMyProfileMedia = async (req, res) => {
       });
     }
 
-    if (!image_url.startsWith("/uploads/") && !image_url.startsWith("http")) {
+    if (
+      !image_url.startsWith("/uploads/") &&
+      !image_url.startsWith("http") &&
+      !image_url.startsWith("data:image/")
+    ) {
       return res.status(400).json({
         message: "URL gambar tidak valid"
       });

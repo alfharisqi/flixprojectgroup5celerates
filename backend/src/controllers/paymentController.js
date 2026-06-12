@@ -1,6 +1,7 @@
 import pool from "../config/db.js";
 import { initializePaymentTransactionsTable } from "../config/initPaymentTransactions.js";
 import { initializePaymentMethodsTable } from "../config/initPaymentMethods.js";
+import { fileToDataUrl } from "../utils/uploadDataUrl.js";
 
 export const mapPaymentMethodRow = (row) => ({
   id: row.id_method,
@@ -181,8 +182,7 @@ export const upgradeToPremium = async (req, res) => {
       });
     }
 
-    // 1. Ambil path file bukti pembayaran dari req.file
-    const paymentProofPath = req.file ? `/uploads/${req.file.filename}` : null;
+    const paymentProofPath = req.file ? fileToDataUrl(req.file) : null;
 
     if (!paymentProofPath) {
       return res.status(400).json({

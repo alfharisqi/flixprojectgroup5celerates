@@ -1,4 +1,17 @@
 import pool from "../config/db.js";
+import { fileToDataUrl } from "../utils/uploadDataUrl.js";
+
+let postUploadColumnReadyPromise;
+
+const ensurePostUploadColumn = () => {
+  if (!postUploadColumnReadyPromise) {
+    postUploadColumnReadyPromise = pool.query(
+      "ALTER TABLE flix.posts ALTER COLUMN image_url TYPE TEXT"
+    );
+  }
+
+  return postUploadColumnReadyPromise;
+};
 
 export const getPosts = async (req, res) => {
   try {
@@ -354,7 +367,9 @@ export const createPost = async (req, res) => {
       }
     }
 
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const imageUrl = req.file ? fileToDataUrl(req.file) : null;
+
+    await ensurePostUploadColumn();
 
     await client.query("BEGIN");
 

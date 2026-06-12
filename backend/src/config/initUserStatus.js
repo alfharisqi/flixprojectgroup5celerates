@@ -33,7 +33,12 @@ export const initializeUserStatusColumns = async () => {
   // 2. TAMBAHKAN: Kolom payment_proof untuk menyimpan path bukti pembayaran
   await pool.query(`
     ALTER TABLE flix.users
-    ADD COLUMN IF NOT EXISTS payment_proof VARCHAR(255)
+    ADD COLUMN IF NOT EXISTS payment_proof TEXT
+  `);
+
+  await pool.query(`
+    ALTER TABLE flix.users
+    ALTER COLUMN payment_proof TYPE TEXT
   `);
 
   await pool.query(`

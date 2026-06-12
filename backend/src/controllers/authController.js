@@ -14,6 +14,36 @@ const hashToken = (token) =>
 const getFrontendUrl = () =>
   (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
 
+const isMailConfigured = () =>
+  Boolean(process.env.MAIL_HOST?.trim() && process.env.MAIL_FROM?.trim());
+
+const shouldRequireEmailVerification = () => {
+  if (process.env.REQUIRE_EMAIL_VERIFICATION === "true") {
+    return true;
+  }
+
+  if (process.env.REQUIRE_EMAIL_VERIFICATION === "false") {
+    return false;
+  }
+
+  return isMailConfigured();
+};
+
+const shouldSendAuthEmails = () =>
+  process.env.REQUIRE_EMAIL_VERIFICATION !== "false" && isMailConfigured();
+
+const isBootstrapTokenValid = (token) => {
+  const expectedToken = process.env.ADMIN_BOOTSTRAP_TOKEN?.trim();
+
+  if (!expectedToken || !token || expectedToken.length !== token.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expectedToken));
+};
+
+const normalizeBootstrapCredential = (value) => String(value || "").trim();
+
 export const register = async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -42,47 +72,68 @@ export const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const roleId = roleResult.rows[0].id_role;
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-    const verificationTokenHash = hashToken(verificationToken);
+    const requireEmailVerification = shouldRequireEmailVerification();
+    const verificationToken = requireEmailVerification
+      ? crypto.randomBytes(32).toString("hex")
+      : null;
+    const verificationTokenHash = verificationToken ? hashToken(verificationToken) : null;
     const frontendUrl = getFrontendUrl();
-    const verificationLink = `${frontendUrl}/verify-email?token=${verificationToken}`;
-    const client = await pool.connect();
+    const verificationLink = verificationToken
+      ? `${frontendUrl}/verify-email?token=${verificationToken}`
+      : null;
     let newUser;
 
-    try {
-      await client.query("BEGIN");
-
-      const result = await client.query(
+    if (!requireEmailVerification) {
+      const result = await pool.query(
         `INSERT INTO flix.users (id_role, username, email, password, email_verified, subscription_plan)
-         VALUES ($1, $2, $3, $4, FALSE, 'free')
+         VALUES ($1, $2, $3, $4, $5, 'free')
          RETURNING id_user, username, email, profile_image_url, banner_image_url, email_verified, is_premium, subscription_plan`,
-        [roleId, username, email, hashedPassword]
+        [roleId, username, email, hashedPassword, !requireEmailVerification]
       );
 
       newUser = result.rows[0];
+    } else {
+      const client = await pool.connect();
 
-      await client.query(
-        `INSERT INTO flix.email_verification_tokens (id_user, token_hash, expires_at)
-         VALUES ($1, $2, CURRENT_TIMESTAMP + INTERVAL '24 hours')`,
-        [newUser.id_user, verificationTokenHash]
-      );
+      try {
+        await client.query("BEGIN");
 
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
+        const result = await client.query(
+          `INSERT INTO flix.users (id_role, username, email, password, email_verified, subscription_plan)
+           VALUES ($1, $2, $3, $4, $5, 'free')
+           RETURNING id_user, username, email, profile_image_url, banner_image_url, email_verified, is_premium, subscription_plan`,
+          [roleId, username, email, hashedPassword, !requireEmailVerification]
+        );
+
+        newUser = result.rows[0];
+
+        await client.query(
+          `INSERT INTO flix.email_verification_tokens (id_user, token_hash, expires_at)
+           VALUES ($1, $2, CURRENT_TIMESTAMP + INTERVAL '24 hours')`,
+          [newUser.id_user, verificationTokenHash]
+        );
+
+        await client.query("COMMIT");
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally {
+        client.release();
+      }
     }
 
-    try {
-      await sendAccountVerificationEmail(email, username, verificationLink);
-    } catch (mailError) {
-      console.error("Gagal kirim email verifikasi:", mailError.message);
+    if (requireEmailVerification) {
+      try {
+        await sendAccountVerificationEmail(email, username, verificationLink);
+      } catch (mailError) {
+        console.error("Gagal kirim email verifikasi:", mailError.message);
+      }
     }
 
     return res.status(201).json({
-      message: "Register berhasil. Cek email kamu untuk verifikasi akun.",
+      message: requireEmailVerification
+        ? "Register berhasil. Cek email kamu untuk verifikasi akun."
+        : "Register berhasil. Kamu bisa login sekarang.",
       user: newUser
     });
   } catch (error) {
@@ -180,7 +231,9 @@ export const login = async (req, res) => {
       });
     }
 
-    if (!user.email_verified) {
+    const emailVerified = user.email_verified || !shouldRequireEmailVerification();
+
+    if (!emailVerified) {
       return res.status(403).json({
         message: "Akun belum diverifikasi. Silakan cek email untuk verifikasi akun."
       });
@@ -192,7 +245,7 @@ export const login = async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role_name,
-        email_verified: user.email_verified,
+        email_verified: emailVerified,
         is_premium: subscriptionPlan === "premium" || subscriptionPlan === "exclusive",
         subscription_plan: subscriptionPlan
       },
@@ -201,10 +254,12 @@ export const login = async (req, res) => {
     );
 
     // kirim email notifikasi login
-    try {
-      await sendLoginNotificationEmail(user.email, user.username);
-    } catch (mailError) {
-      console.error("Gagal kirim email login:", mailError.message);
+    if (shouldSendAuthEmails()) {
+      try {
+        await sendLoginNotificationEmail(user.email, user.username);
+      } catch (mailError) {
+        console.error("Gagal kirim email login:", mailError.message);
+      }
     }
 
     return res.json({
@@ -215,7 +270,7 @@ export const login = async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role_name,
-        email_verified: user.email_verified,
+        email_verified: emailVerified,
         is_premium: subscriptionPlan === "premium" || subscriptionPlan === "exclusive",
         subscription_plan: subscriptionPlan,
         profile_image_url: user.profile_image_url,
@@ -447,6 +502,87 @@ export const resetPassword = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Gagal reset password",
+      error: error.message
+    });
+  }
+};
+
+export const bootstrapAdmin = async (req, res) => {
+  if (process.env.ENABLE_ADMIN_BOOTSTRAP !== "true") {
+    return res.status(404).json({
+      message: "Route tidak ditemukan"
+    });
+  }
+
+  const token = req.headers["x-bootstrap-token"];
+
+  if (!isBootstrapTokenValid(Array.isArray(token) ? token[0] : token)) {
+    return res.status(403).json({
+      message: "Token bootstrap tidak valid"
+    });
+  }
+
+  try {
+    const username = normalizeBootstrapCredential(req.body?.username);
+    const email = normalizeBootstrapCredential(req.body?.email).toLowerCase();
+    const password = normalizeBootstrapCredential(req.body?.password);
+
+    if (!username || !email || !password) {
+      return res.status(400).json({
+        message: "Username, email, dan password wajib diisi"
+      });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({
+        message: "Password admin minimal 8 karakter"
+      });
+    }
+
+    const roleResult = await pool.query(
+      "SELECT id_role FROM flix.roles WHERE role_name = $1",
+      ["admin"]
+    );
+
+    if (!roleResult.rowCount) {
+      return res.status(500).json({
+        message: "Role admin tidak tersedia di database"
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      `INSERT INTO flix.users (
+         id_role,
+         username,
+         email,
+         password,
+         email_verified,
+         email_verified_at,
+         is_active,
+         subscription_plan
+       )
+       VALUES ($1, $2, $3, $4, TRUE, CURRENT_TIMESTAMP, TRUE, 'free')
+       ON CONFLICT (email)
+       DO UPDATE SET
+         id_role = EXCLUDED.id_role,
+         username = EXCLUDED.username,
+         password = EXCLUDED.password,
+         email_verified = TRUE,
+         email_verified_at = COALESCE(flix.users.email_verified_at, CURRENT_TIMESTAMP),
+         is_active = TRUE,
+         updated_at = CURRENT_TIMESTAMP
+       RETURNING id_user, username, email, email_verified, is_active`,
+      [roleResult.rows[0].id_role, username, email, hashedPassword]
+    );
+
+    return res.status(201).json({
+      message: "Akun admin berhasil dibuat",
+      user: result.rows[0]
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Gagal membuat akun admin",
       error: error.message
     });
   }

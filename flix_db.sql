@@ -2,6 +2,8 @@
 -- Please log an issue at https://github.com/pgadmin-org/pgadmin4/issues/new/choose if you find any bugs, including reproduction steps.
 BEGIN;
 
+CREATE SCHEMA IF NOT EXISTS flix;
+
 
 CREATE TABLE IF NOT EXISTS flix.admin_movies
 (
@@ -189,7 +191,7 @@ CREATE TABLE IF NOT EXISTS flix.payment_transactions
     payer_email character varying(160) COLLATE pg_catalog."default",
     payer_phone character varying(60) COLLATE pg_catalog."default",
     ewallet_phone character varying(60) COLLATE pg_catalog."default",
-    payment_proof character varying(255) COLLATE pg_catalog."default",
+    payment_proof text COLLATE pg_catalog."default",
     status character varying(30) COLLATE pg_catalog."default" NOT NULL DEFAULT 'pending'::character varying,
     admin_note text COLLATE pg_catalog."default",
     verified_by_user_id bigint,
@@ -276,7 +278,7 @@ CREATE TABLE IF NOT EXISTS flix.posts
     content text COLLATE pg_catalog."default" NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    image_url character varying(255) COLLATE pg_catalog."default",
+    image_url text COLLATE pg_catalog."default",
     title character varying(300) COLLATE pg_catalog."default",
     tags text[] COLLATE pg_catalog."default" DEFAULT '{}'::text[],
     post_type character varying(20) COLLATE pg_catalog."default" DEFAULT 'post'::character varying,
@@ -384,7 +386,7 @@ CREATE TABLE IF NOT EXISTS flix.users
     deactivated_at timestamp without time zone,
     deactivated_by_user_id bigint,
     is_premium boolean NOT NULL DEFAULT false,
-    payment_proof character varying(255) COLLATE pg_catalog."default",
+    payment_proof text COLLATE pg_catalog."default",
     subscription_plan character varying(20) COLLATE pg_catalog."default" NOT NULL DEFAULT 'free'::character varying,
     CONSTRAINT users_pkey PRIMARY KEY (id_user),
     CONSTRAINT users_email_key UNIQUE (email),

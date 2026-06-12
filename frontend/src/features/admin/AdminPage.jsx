@@ -4797,9 +4797,7 @@ function AdminPage() {
                         <div>
                           <strong>{paymentPackage.name}</strong>
                           <small>
-                            {paymentPackage.id === "premium_yearly"
-                              ? "Paket tahunan"
-                              : "Paket bulanan"}
+                            Paket bulanan
                           </small>
                         </div>
                       </div>

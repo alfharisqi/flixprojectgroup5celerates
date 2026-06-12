@@ -13,7 +13,12 @@ export const initializePaymentTransactionsTable = async () => {
 
   await pool.query(`
     ALTER TABLE flix.users
-    ADD COLUMN IF NOT EXISTS payment_proof VARCHAR(255)
+    ADD COLUMN IF NOT EXISTS payment_proof TEXT
+  `);
+
+  await pool.query(`
+    ALTER TABLE flix.users
+    ALTER COLUMN payment_proof TYPE TEXT
   `);
 
   await pool.query(`
@@ -32,7 +37,7 @@ export const initializePaymentTransactionsTable = async () => {
       payer_email VARCHAR(160),
       payer_phone VARCHAR(60),
       ewallet_phone VARCHAR(60),
-      payment_proof VARCHAR(255),
+      payment_proof TEXT,
       status VARCHAR(30) NOT NULL DEFAULT 'pending',
       admin_note TEXT,
       verified_by_user_id BIGINT REFERENCES flix.users(id_user) ON DELETE SET NULL,
@@ -49,6 +54,11 @@ export const initializePaymentTransactionsTable = async () => {
   await pool.query(`
     ALTER TABLE flix.payment_transactions
     ALTER COLUMN payment_proof DROP NOT NULL
+  `);
+
+  await pool.query(`
+    ALTER TABLE flix.payment_transactions
+    ALTER COLUMN payment_proof TYPE TEXT
   `);
 
   await pool.query(`

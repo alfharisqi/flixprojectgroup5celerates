@@ -22,3 +22,4 @@ backend/uploads/*
 !backend/uploads/.gitkeep
 uploads/*
 !uploads/.gitkeep
+.vercel

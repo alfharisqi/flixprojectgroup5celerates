@@ -1,6 +1,5 @@
 import express from "express";
 import multer from "multer";
-import path from "path";
 import {
   getCurrentPayment,
   getPaymentSettings,
@@ -9,18 +8,6 @@ import {
 import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
-
-// 1. Konfigurasi media penyimpanan (diskStorage) Multer
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/"); // Gambar akan disimpan di folder backend/uploads
-  },
-  filename: (req, file, cb) => {
-    // nama unik dengan timestamp agar tidak bentrok
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  }
-});
 
 // 2. Filter file agar hanya menerima gambar (JPEG, PNG, WEBP)
 const fileFilter = (req, file, cb) => {
@@ -33,7 +20,7 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: {
     fileSize: 2 * 1024 * 1024 // Batasi ukuran file maksimal 2 MB
