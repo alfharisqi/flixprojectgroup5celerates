@@ -465,6 +465,7 @@ Authorization: Bearer <token>
 | GET/POST | `/api/auth/verify-email` | Verifikasi akun |
 | POST | `/api/auth/forgot-password` | Kirim link reset password |
 | POST | `/api/auth/reset-password` | Reset password |
+| POST | `/api/auth/bootstrap-admin` | Bootstrap akun admin production jika diaktifkan |
 
 ### Profile dan Settings
 
@@ -483,20 +484,33 @@ Authorization: Bearer <token>
 | --- | --- | --- |
 | GET | `/api/movies/search` | Search movie |
 | GET | `/api/movies/popular` | Popular movies |
+| GET | `/api/movies/top-rated` | Top rated movies |
+| GET | `/api/movies/now-playing` | Now playing movies |
+| GET | `/api/movies/upcoming` | Upcoming movies |
 | GET | `/api/movies/trending` | Trending movies |
+| GET | `/api/movies/genres` | Genre movie |
 | GET | `/api/movies/discover` | Discover/filter movies |
+| GET | `/api/movies/:id/recommendations` | Rekomendasi movie terkait |
 | GET | `/api/movies/:id` | Detail movie |
 | GET | `/api/movies/:id/videos` | Trailer movie |
 | GET | `/api/movies/:id/credits` | Cast movie |
 | GET | `/api/movies/:id/watch-providers` | Provider streaming movie |
 | GET | `/api/tv-series/search` | Search TV series |
 | GET | `/api/tv-series/popular` | Popular TV series |
+| GET | `/api/tv-series/top-rated` | Top rated TV series |
+| GET | `/api/tv-series/on-the-air` | TV series on the air |
 | GET | `/api/tv-series/trending` | Trending TV series |
+| GET | `/api/tv-series/genres` | Genre TV series |
 | GET | `/api/tv-series/discover` | Discover/filter TV series |
 | GET | `/api/tv-series/:id` | Detail TV series |
 | GET | `/api/tv-series/:id/seasons/:seasonNumber` | Episode per season |
 | GET | `/api/tv-series/:id/videos` | Trailer TV series |
 | GET | `/api/tv-series/:id/watch-providers` | Provider streaming TV series |
+
+Alias route:
+
+- `/api/tmdb/*` memakai route yang sama dengan `/api/movies/*`.
+- `/api/tv/*` memakai route yang sama dengan `/api/tv-series/*`.
 
 ### Watchlist dan Reviews
 
@@ -505,20 +519,27 @@ Authorization: Bearer <token>
 | GET | `/api/watchlist` | Watchlist user login |
 | POST | `/api/watchlist` | Simpan film/series |
 | DELETE | `/api/watchlist/:mediaType/:tmdbId` | Hapus watchlist |
-| GET/POST | `/api/movie-reviews/:movieId` | List dan buat review movie |
-| PUT/DELETE | `/api/movie-reviews/:reviewId` | Edit/hapus review movie |
+| GET | `/api/movie-reviews/:movieId` | List review movie |
+| POST | `/api/movie-reviews/:movieId` | Buat review movie |
+| PUT | `/api/movie-reviews/:reviewId` | Edit review movie |
+| DELETE | `/api/movie-reviews/:reviewId` | Hapus review movie |
 | POST | `/api/movie-reviews/likes/:reviewId` | Like review movie |
-| GET/POST | `/api/tv-series-reviews/:seriesId` | List dan buat review TV series |
-| PUT/DELETE | `/api/tv-series-reviews/:reviewId` | Edit/hapus review TV series |
+| GET | `/api/tv-series-reviews/:seriesId` | List review TV series |
+| POST | `/api/tv-series-reviews/:seriesId` | Buat review TV series |
+| PUT | `/api/tv-series-reviews/:reviewId` | Edit review TV series |
+| DELETE | `/api/tv-series-reviews/:reviewId` | Hapus review TV series |
 | POST | `/api/tv-series-reviews/likes/:reviewId` | Like review TV series |
 
 ### Community
 
 | Method | Endpoint | Fungsi |
 | --- | --- | --- |
-| GET/POST | `/api/posts` | List dan buat post |
-| GET/DELETE | `/api/posts/:id` | Detail/hapus post |
-| GET/POST | `/api/comments/:postId` | List dan buat comment/reply |
+| GET | `/api/posts` | List post |
+| POST | `/api/posts` | Buat post |
+| GET | `/api/posts/:id` | Detail post |
+| DELETE | `/api/posts/:id` | Hapus post |
+| GET | `/api/comments/:postId` | List comment/reply |
+| POST | `/api/comments/:postId` | Buat comment/reply |
 | POST | `/api/post-likes/:postId` | Like/unlike post |
 | POST | `/api/post-reactions/:postId` | Reaction post |
 | POST | `/api/post-shares/:postId` | Share post |
@@ -534,14 +555,17 @@ Authorization: Bearer <token>
 | Method | Endpoint | Fungsi |
 | --- | --- | --- |
 | GET | `/api/friends` | Friendlist |
+| GET | `/api/friends/ids` | ID friendlist user login |
 | GET | `/api/friends/search` | Cari user untuk add friend |
 | GET | `/api/friends/requests` | Request pertemanan |
-| POST/DELETE | `/api/friends/:userId` | Add/remove friend |
+| POST | `/api/friends/:userId` | Add friend |
+| DELETE | `/api/friends/:userId` | Remove friend |
 | PUT | `/api/friends/requests/:friendId/accept` | Accept request |
 | DELETE | `/api/friends/requests/:friendId/decline` | Decline request |
 | GET | `/api/chats/conversations` | Inbox chat |
 | POST | `/api/chats/conversations/:userId` | Mulai chat |
-| GET/POST | `/api/chats/conversations/:conversationId/messages` | List/kirim chat |
+| GET | `/api/chats/conversations/:conversationId/messages` | List pesan chat |
+| POST | `/api/chats/conversations/:conversationId/messages` | Kirim pesan chat |
 | GET | `/api/notifications` | Notifikasi user |
 | PUT | `/api/notifications/read-all` | Tandai semua dibaca |
 | PUT | `/api/notifications/:id/read` | Tandai satu notifikasi dibaca |
@@ -555,19 +579,24 @@ Authorization: Bearer <token>
 | GET | `/api/payment/current` | Transaksi aktif/pending user |
 | POST | `/api/payment/checkout` | Kirim bukti pembayaran |
 | POST | `/api/contact-us` | Kirim laporan/kritik/saran |
-| GET/POST | `/api/customer-service/tickets` | List dan buat tiket CS |
+| GET | `/api/customer-service/tickets` | List tiket CS user |
+| POST | `/api/customer-service/tickets` | Buat tiket CS |
 | GET | `/api/customer-service/tickets/:id` | Detail tiket CS |
 | POST | `/api/customer-service/tickets/:id/messages` | Kirim pesan tiket CS |
+| POST | `/api/uploads/editor-image` | Upload gambar rich text editor |
 
 ### Admin dan Moderator
 
 | Method | Endpoint | Fungsi |
 | --- | --- | --- |
 | GET | `/api/admin/dashboard` | Statistik dashboard admin |
-| GET/POST | `/api/admin/movies` | List/tambah film manual |
+| GET | `/api/admin/movies` | List film manual |
+| POST | `/api/admin/movies` | Tambah film manual |
 | PUT | `/api/admin/movies/:id` | Edit film manual |
 | GET | `/api/admin/users` | List user |
 | GET | `/api/admin/users/:id` | Detail user |
+| PUT | `/api/admin/users/:id` | Update data user |
+| POST | `/api/admin/users/:id/reset-password` | Reset password user |
 | PATCH | `/api/admin/users/:id/status` | Aktif/nonaktif user |
 | GET | `/api/admin/reviews` | Moderasi review |
 | PATCH | `/api/admin/reviews/reports/:reportId/status` | Update status report review |
@@ -575,7 +604,8 @@ Authorization: Bearer <token>
 | PATCH | `/api/admin/community/reports/:reportId/status` | Update status report community |
 | GET | `/api/admin/transactions` | List transaksi |
 | PATCH | `/api/admin/transactions/:id/status` | Setujui/tolak transaksi |
-| GET/PUT | `/api/admin/payment-settings` | Lihat/update payment settings |
+| GET | `/api/admin/payment-settings` | Lihat payment settings |
+| PUT | `/api/admin/payment-settings` | Update payment settings |
 | GET | `/api/admin/contact-us` | Pesan Contact Us |
 | PATCH | `/api/admin/contact-us/:id/status` | Update status Contact Us |
 | GET | `/api/admin/customer-service/tickets` | List tiket CS |
