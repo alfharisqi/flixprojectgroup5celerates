@@ -323,10 +323,15 @@ function PaymentPage() {
   const monthlyPackage =
     paymentPackages.find((paymentPackage) => paymentPackage.code === "premium") ||
     fallbackPaymentPackages[0];
+  const yearlyPackage =
+    paymentPackages.find((paymentPackage) => paymentPackage.code === "premium_yearly") ||
+    fallbackPaymentPackages[1];
   const monthlyPrice = Number(monthlyPackage.price || fallbackPaymentPackages[0].price || 0);
-  const baseSubtotal = Number(durationMonths) * monthlyPrice;
-  const durationDiscount = Number(durationMonths) === 12 ? Math.round(baseSubtotal * 0.1) : 0;
-  const subtotal = baseSubtotal - durationDiscount;
+  const yearlyPrice = Number(yearlyPackage.price || fallbackPaymentPackages[1].price || 0);
+  const isExclusivePackage = Number(durationMonths) === 12;
+  const baseSubtotal = isExclusivePackage ? yearlyPrice : Number(durationMonths) * monthlyPrice;
+  const durationDiscount = 0;
+  const subtotal = baseSubtotal;
   const adminFee = 2500; // Biaya admin Rp2.500 sesuai mockup Anda
   const totalPayment = subtotal + adminFee;
 
@@ -357,7 +362,7 @@ function PaymentPage() {
     return expiry.toLocaleDateString("id-ID", options);
   };
 
-  const getPackageCode = () => (Number(durationMonths) === 12 ? "premium_yearly" : "premium");
+  const getPackageCode = () => (isExclusivePackage ? "premium_yearly" : "premium");
 
   const getPaymentMethodLabel = () => {
     return selectedPaymentMethod?.name || paymentTypeLabels[paymentMethod] || "QRIS";
@@ -374,7 +379,7 @@ function PaymentPage() {
       "Bebas iklan",
     ];
 
-    if (Number(durationMonths) === 12) {
+    if (isExclusivePackage) {
       return [
         ...premiumFeatures.filter((feature) => feature !== "Badge Premium di profil"),
         "Badge Eksklusif di profil",
@@ -383,7 +388,7 @@ function PaymentPage() {
     }
 
     return premiumFeatures;
-  }, [durationMonths]);
+  }, [isExclusivePackage]);
 
   // Ketika klik tombol "Bayar Sekarang"
   const handleOpenUploadModal = () => {
@@ -421,7 +426,7 @@ function PaymentPage() {
       formData.append("packageCode", getPackageCode());
       formData.append(
         "packageName",
-        Number(durationMonths) === 12 ? "Eksklusif" : "Premium Bulanan",
+        isExclusivePackage ? "Eksklusif" : "Premium Bulanan",
       );
       formData.append("durationMonths", String(durationMonths));
       formData.append("paymentMethod", paymentMethod);
@@ -453,7 +458,7 @@ function PaymentPage() {
           pending_payment_status: "pending",
           pending_payment_package_code: getPackageCode(),
           pending_payment_package_name:
-            Number(durationMonths) === 12 ? "Eksklusif" : "Premium Bulanan",
+            isExclusivePackage ? "Eksklusif" : "Premium Bulanan",
           pending_payment_duration_months: Number(durationMonths),
           pending_payment_total_amount: totalPayment,
         }),
@@ -506,7 +511,7 @@ function PaymentPage() {
   if (currentPendingPayment) {
     const pendingPackageName =
       currentPendingPayment.packageName ||
-      (Number(durationMonths) === 12 ? "Eksklusif" : "Premium Bulanan");
+      (isExclusivePackage ? "Eksklusif" : "Premium Bulanan");
     const pendingTotalAmount = Number(currentPendingPayment.totalAmount || totalPayment);
 
     return (
@@ -648,7 +653,7 @@ function PaymentPage() {
                   <option value={1}>1 Bulan (Premium Bulanan)</option>
                   <option value={3}>3 Bulan</option>
                   <option value={6}>6 Bulan</option>
-                  <option value={12}>12 Bulan (Hemat 10%)</option>
+                  <option value={12}>12 Bulan (Eksklusif)</option>
                 </select>
               </div>
             </div>
@@ -853,7 +858,9 @@ function PaymentPage() {
             <div className="summary-details">
               <div className="summary-row">
                 <span>Nama Produk / Layanan</span>
-                <strong>FLIX Premium ({durationMonths} Bulan)</strong>
+                <strong>
+                  {isExclusivePackage ? "FLIX Eksklusif" : "FLIX Premium"} ({durationMonths} Bulan)
+                </strong>
               </div>
               <div className="summary-row">
                 <span>Nama Akun</span>
@@ -867,18 +874,14 @@ function PaymentPage() {
                 <span>Paket</span>
                 <strong>
                   <img src={blueDiamondIcon} alt="" className="pro-icon" />{" "}
-                  {durationMonths === 12 ? "Eksklusif" : "Premium Bulanan"}
+                  {isExclusivePackage ? "Eksklusif" : "Premium Bulanan"}
                 </strong>
               </div>
-              {durationMonths === 12 && (
+              {isExclusivePackage && (
                 <>
                   <div className="summary-row">
-                    <span>Harga 12 Bulan</span>
+                    <span>Harga Eksklusif</span>
                     <strong>{formatRupiah(baseSubtotal)}</strong>
-                  </div>
-                  <div className="summary-row">
-                    <span>Diskon 10%</span>
-                    <strong>-{formatRupiah(durationDiscount)}</strong>
                   </div>
                 </>
               )}
@@ -1005,7 +1008,7 @@ function PaymentPage() {
               </div>
               <div className="table-row">
                 <span>Paket</span>
-                <strong>{durationMonths === 12 ? "Eksklusif" : "Premium Bulanan"}</strong>
+                <strong>{isExclusivePackage ? "Eksklusif" : "Premium Bulanan"}</strong>
               </div>
               <div className="table-row">
                 <span>Metode</span>
