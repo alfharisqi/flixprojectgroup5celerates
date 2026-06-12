@@ -176,7 +176,7 @@ function UpgradePage() {
 
     if (pkg.id === "annual" && currentPackageId === "premium") {
       return {
-        text: "Upgrade Tahunan",
+        text: "Upgrade Eksklusif",
         className: "btn-secondary",
         disabled: false,
         hasArrow: true
@@ -435,17 +435,15 @@ function UpgradePage() {
                   }
 
                   // Konfigurasi data paket untuk dibawa ke halaman pembayaran
+                  const isExclusive = pkg.id === "annual";
                   const selectedPkg = {
-                    name:
-                      pkg.id === "annual"
-                        ? "Eksklusif"
-                        : "Premium Bulanan",
-                    priceText:
-                      pkg.id === "annual"
-                        ? formatCurrency(packagePrices.premium_yearly)
-                        : formatCurrency(packagePrices.premium),
-                    price: pkg.id === "annual" ? packagePrices.premium_yearly : packagePrices.premium,
-                    durationMonths: pkg.id === "annual" ? 12 : 1,
+                    packageCode: isExclusive ? "premium_yearly" : "premium",
+                    name: isExclusive ? "Eksklusif" : "Premium Bulanan",
+                    priceText: isExclusive
+                      ? formatCurrency(packagePrices.premium_yearly)
+                      : formatCurrency(packagePrices.premium),
+                    price: isExclusive ? packagePrices.premium_yearly : packagePrices.premium,
+                    durationMonths: 1,
                   };
 
                   navigate("/payment", { state: { package: selectedPkg } });

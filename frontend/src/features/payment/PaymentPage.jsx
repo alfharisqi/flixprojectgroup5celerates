@@ -66,6 +66,22 @@ const getMethodIcon = (type) => {
   return "📱";
 };
 
+const inferPackageCode = (paymentPackage = {}) => {
+  const packageCode = String(paymentPackage.packageCode || paymentPackage.code || "").toLowerCase();
+  const packageName = String(paymentPackage.packageName || paymentPackage.name || "").toLowerCase();
+
+  if (
+    packageCode === "premium_yearly" ||
+    packageCode === "exclusive" ||
+    packageName.includes("eksklusif") ||
+    packageName.includes("exclusive")
+  ) {
+    return "premium_yearly";
+  }
+
+  return "premium";
+};
+
 function PaymentPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -89,6 +105,7 @@ function PaymentPage() {
     location.state?.package ||
     (String(storedUser.pending_payment_status || "").toLowerCase() === "pending"
       ? {
+          packageCode: storedUser.pending_payment_package_code,
           name: storedUser.pending_payment_package_name || "Premium Bulanan",
           priceText: storedUser.pending_payment_total_amount
             ? new Intl.NumberFormat("id-ID", {
@@ -112,6 +129,9 @@ function PaymentPage() {
   const [email, setEmail] = useState(storedUser.email || "");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [durationMonths, setDurationMonths] = useState(selectedPackage.durationMonths);
+  const [selectedPackageCode, setSelectedPackageCode] = useState(() =>
+    inferPackageCode(selectedPackage),
+  );
 
   // 3. State Metode Pembayaran & Saluran
   const [paymentMethods, setPaymentMethods] = useState(fallbackPaymentMethods);
@@ -249,6 +269,7 @@ function PaymentPage() {
         if (response.data?.hasPendingPayment && pendingPayment) {
           setCurrentPendingPayment(pendingPayment);
           setDurationMonths(Number(pendingPayment.durationMonths || 1));
+          setSelectedPackageCode(inferPackageCode(pendingPayment));
           setTransactionId(pendingPayment.transactionId || "");
           localStorage.setItem(
             "user",
@@ -334,9 +355,10 @@ function PaymentPage() {
     fallbackPaymentPackages[1];
   const monthlyPrice = Number(monthlyPackage.price || fallbackPaymentPackages[0].price || 0);
   const yearlyPrice = Number(yearlyPackage.price || fallbackPaymentPackages[1].price || 0);
-  const isExclusivePackage = Number(durationMonths) === 12;
-  const baseSubtotal = isExclusivePackage ? yearlyPrice : Number(durationMonths) * monthlyPrice;
-  const durationDiscount = 0;
+  const isExclusivePackage = selectedPackageCode === "premium_yearly";
+  const packageUnitPrice = isExclusivePackage ? yearlyPrice : monthlyPrice;
+  const packageDisplayName = isExclusivePackage ? "Eksklusif" : "Premium Bulanan";
+  const baseSubtotal = Number(durationMonths) * packageUnitPrice;
   const subtotal = baseSubtotal;
   const adminFee = 2500; // Biaya admin Rp2.500 sesuai mockup Anda
   const totalPayment = subtotal + adminFee;
@@ -368,7 +390,8 @@ function PaymentPage() {
     return expiry.toLocaleDateString("id-ID", options);
   };
 
-  const getPackageCode = () => (isExclusivePackage ? "premium_yearly" : "premium");
+  const getPackageCode = () => selectedPackageCode;
+  const getPackageName = () => packageDisplayName;
 
   const getPaymentMethodLabel = () => {
     return selectedPaymentMethod?.name || paymentTypeLabels[paymentMethod] || "QRIS";
@@ -430,10 +453,7 @@ function PaymentPage() {
       const formData = new FormData();
       formData.append("payment_proof", paymentProofFile);
       formData.append("packageCode", getPackageCode());
-      formData.append(
-        "packageName",
-        isExclusivePackage ? "Eksklusif" : "Premium Bulanan",
-      );
+      formData.append("packageName", getPackageName());
       formData.append("durationMonths", String(durationMonths));
       formData.append("paymentMethod", paymentMethod);
       formData.append("paymentMethodDetail", getPaymentMethodLabel());
@@ -463,8 +483,7 @@ function PaymentPage() {
           ...storedUser,
           pending_payment_status: "pending",
           pending_payment_package_code: getPackageCode(),
-          pending_payment_package_name:
-            isExclusivePackage ? "Eksklusif" : "Premium Bulanan",
+          pending_payment_package_name: getPackageName(),
           pending_payment_duration_months: Number(durationMonths),
           pending_payment_total_amount: totalPayment,
         }),
@@ -518,7 +537,7 @@ function PaymentPage() {
   if (currentPendingPayment) {
     const pendingPackageName =
       currentPendingPayment.packageName ||
-      (isExclusivePackage ? "Eksklusif" : "Premium Bulanan");
+      packageDisplayName;
     const pendingTotalAmount = Number(currentPendingPayment.totalAmount || totalPayment);
 
     return (
@@ -657,10 +676,10 @@ function PaymentPage() {
                   value={durationMonths}
                   onChange={(e) => setDurationMonths(Number(e.target.value))}
                 >
-                  <option value={1}>1 Bulan (Premium Bulanan)</option>
-                  <option value={3}>3 Bulan</option>
-                  <option value={6}>6 Bulan</option>
-                  <option value={12}>12 Bulan (Eksklusif)</option>
+                  <option value={1}>1 Bulan ({packageDisplayName})</option>
+                  <option value={3}>3 Bulan ({packageDisplayName})</option>
+                  <option value={6}>6 Bulan ({packageDisplayName})</option>
+                  <option value={12}>12 Bulan ({packageDisplayName})</option>
                 </select>
               </div>
             </div>
@@ -881,17 +900,13 @@ function PaymentPage() {
                 <span>Paket</span>
                 <strong>
                   <img src={blueDiamondIcon} alt="" className="pro-icon" />{" "}
-                  {isExclusivePackage ? "Eksklusif" : "Premium Bulanan"}
+                  {packageDisplayName}
                 </strong>
               </div>
-              {isExclusivePackage && (
-                <>
-                  <div className="summary-row">
-                    <span>Harga Eksklusif</span>
-                    <strong>{formatRupiah(baseSubtotal)}</strong>
-                  </div>
-                </>
-              )}
+              <div className="summary-row">
+                <span>Harga per Bulan</span>
+                <strong>{formatRupiah(packageUnitPrice)}</strong>
+              </div>
               <div className="summary-row">
                 <span>Subtotal</span>
                 <strong>{formatRupiah(subtotal)}</strong>
@@ -1015,7 +1030,7 @@ function PaymentPage() {
               </div>
               <div className="table-row">
                 <span>Paket</span>
-                <strong>{isExclusivePackage ? "Eksklusif" : "Premium Bulanan"}</strong>
+                <strong>{packageDisplayName}</strong>
               </div>
               <div className="table-row">
                 <span>Metode</span>
