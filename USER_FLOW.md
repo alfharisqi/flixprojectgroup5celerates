@@ -21,11 +21,16 @@ flowchart TD
 ```mermaid
 flowchart TD
   A["User daftar"] --> B["Backend membuat akun Free"]
-  B --> C["Email verifikasi dikirim"]
-  C --> D["User klik tombol verifikasi"]
-  D --> E["Login"]
-  E --> F["Navbar berubah ke mode user login"]
+  B --> C{"REQUIRE_EMAIL_VERIFICATION aktif?"}
+  C -- "Ya" --> D["Email verifikasi dikirim"]
+  D --> E["User klik tombol verifikasi"]
+  C -- "Tidak" --> F["Akun langsung bisa login"]
+  E --> G["Login"]
+  F --> G
+  G --> H["Navbar berubah ke mode user login"]
 ```
+
+Catatan production saat ini: `REQUIRE_EMAIL_VERIFICATION=false`, sehingga register tidak menunggu email verifikasi.
 
 ## 3. Film, TV Series, dan Watchlist
 
@@ -41,6 +46,8 @@ flowchart TD
   F --> H["Kelola status sudah/belum ditonton"]
   H --> I["Untuk TV series, pilih season dan episode"]
 ```
+
+Catatan teknis: watchlist backend tersedia di `flix.user_watchlist`, sedangkan beberapa progress tontonan seperti episode/status watched masih disimpan di browser storage.
 
 ## 4. Review Film dan TV Series
 
@@ -84,14 +91,20 @@ flowchart TD
 flowchart TD
   A["Klik Upgrade Premium"] --> B{"Ada transaksi pending?"}
   B -- "Ya" --> C["Diarahkan ke Payment pending"]
-  B -- "Tidak" --> D["Pilih paket dan durasi"]
-  D --> E["Pilih QR Code, E-Wallet, atau Bank"]
-  E --> F["Upload bukti pembayaran"]
-  F --> G["Status pending"]
-  G --> H["Admin cek transaksi"]
-  H -- "Setuju" --> I["Plan user aktif"]
-  H -- "Tolak" --> J["Transaksi ditolak"]
+  B -- "Tidak" --> D["Pilih paket Premium atau Eksklusif"]
+  D --> E["Pilih durasi 1, 3, 6, atau 12 bulan"]
+  E --> F["Harga dihitung dari harga bulanan paket terpilih"]
+  F --> G["Pilih QR Code, E-Wallet, atau Bank"]
+  G --> H["Upload bukti pembayaran"]
+  H --> I["Status pending"]
+  I --> J["Admin cek transaksi"]
+  J -- "Setuju" --> K["Plan user aktif"]
+  J -- "Tolak" --> L["Transaksi ditolak"]
 ```
+
+Catatan paket: Eksklusif memakai kode `premium_yearly` di API/database, tetapi UI memperlakukannya sebagai harga bulanan Eksklusif. Durasi 12 bulan berarti 12 kali harga bulanan Eksklusif.
+
+Catatan upload: bukti pembayaran disimpan sebagai data URL di database agar tetap tersedia di deployment Vercel yang stateless.
 
 ## 8. Chatbot FLIX
 
@@ -118,6 +131,8 @@ flowchart TD
   H --> I["Chat lanjut dengan admin/moderator"]
   I --> J["Tiket selesai dan read-only"]
 ```
+
+Lampiran customer service mengikuti mekanisme upload backend dan tidak mengandalkan folder runtime permanen untuk production.
 
 ## 10. Admin dan Moderator
 

@@ -10,6 +10,7 @@ FLIX adalah website rekomendasi film dan TV series berbasis React, Node.js, Expr
 - [Admin dan Moderator Flow](#admin-dan-moderator-flow)
 - [Teknologi](#teknologi)
 - [Struktur Folder](#struktur-folder)
+- [Dokumentasi Pendukung](#dokumentasi-pendukung)
 - [Deployment yang Digunakan](#deployment-yang-digunakan)
 - [Environment Variable](#environment-variable)
 - [Database](#database)
@@ -33,7 +34,7 @@ FLIX adalah website rekomendasi film dan TV series berbasis React, Node.js, Expr
 
 ### Watchlist
 
-- Watchlist tersimpan per user melalui backend.
+- Watchlist tersedia per user dengan endpoint backend, sementara sebagian state UI/progress tontonan masih memakai browser storage.
 - User dapat menyimpan film dan TV series.
 - User dapat menandai status sudah ditonton atau belum ditonton.
 - Untuk TV series, progres dapat ditandai per season dan episode.
@@ -353,10 +354,25 @@ flix/
         watchlist/
       utils/
   flix_db.sql
+  API_DOCUMENTATION.md
+  DEPLOYMENT.md
+  ADMIN_GUIDE.md
+  KNOWN_LIMITATIONS.md
+  USER_FLOW.md
   README.md
 ```
 
 Frontend memakai alias import `@/` untuk `frontend/src`.
+
+## Dokumentasi Pendukung
+
+| Dokumen | Isi |
+| --- | --- |
+| `API_DOCUMENTATION.md` | Endpoint internal lengkap, akses, contoh body, dan response umum |
+| `DEPLOYMENT.md` | Detail deployment Vercel, Supabase PostgreSQL, env production, dan troubleshooting |
+| `ADMIN_GUIDE.md` | Panduan workflow admin/moderator untuk transaksi, user, moderasi, dan customer service |
+| `KNOWN_LIMITATIONS.md` | Batasan teknis, tradeoff, dan rekomendasi pengembangan lanjutan |
+| `USER_FLOW.md` | Alur user, subscription, payment, admin, dan customer service |
 
 ## Deployment yang Digunakan
 
