@@ -14,7 +14,12 @@ import {
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import FilterPopup from "@/components/ui/FilterPopup";
 import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
-import { canAddWatchlistItem, requireLogin } from "@/utils/authPrompt";
+import { canAddWatchlistItem, hasPremiumAccess, requireLogin } from "@/utils/authPrompt";
+import {
+  getMovieWatchlistKey,
+  getSeriesWatchlistKey,
+  readWatchlist as readStoredWatchlist,
+} from "@/utils/watchlistStorage";
 import "./TVSeriesPage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -322,20 +327,6 @@ const getStoredUser = () => {
   }
 };
 
-const getWatchlistKey = (user) =>
-  `flix_tv_watchlist_${user?.id_user || "guest"}`;
-const getMovieWatchlistKey = (user) =>
-  `flix_movie_watchlist_${user?.id_user || "guest"}`;
-
-const readWatchlist = (key) => {
-  try {
-    const savedWatchlist = JSON.parse(localStorage.getItem(key));
-    return Array.isArray(savedWatchlist) ? savedWatchlist : [];
-  } catch {
-    return [];
-  }
-};
-
 function SeriesCard({
   series,
   isSaved,
@@ -397,11 +388,11 @@ function SeriesCard({
 function TVSeriesPage() {
   const navigate = useNavigate();
   const user = useMemo(() => getStoredUser(), []);
-  const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
+  const watchlistKey = useMemo(() => getSeriesWatchlistKey(user), [user]);
   const movieWatchlistKey = useMemo(() => getMovieWatchlistKey(user), [user]);
-  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const [watchlist, setWatchlist] = useState(() => readStoredWatchlist(user, "tv"));
   const [movieWatchlist, setMovieWatchlist] = useState(() =>
-    readWatchlist(movieWatchlistKey),
+    readStoredWatchlist(user, "movie"),
   );
   const [pendingWatchlistSeries, setPendingWatchlistSeries] = useState(null);
   const [trendingSeries, setTrendingSeries] = useState(fallbackSeries.slice(0, 4));
@@ -684,7 +675,8 @@ function TVSeriesPage() {
         return currentWatchlist;
       }
 
-      return [{ ...mediaItem, media_type: mediaType }, ...currentWatchlist].slice(0, 20);
+      const nextWatchlist = [{ ...mediaItem, media_type: mediaType }, ...currentWatchlist];
+      return hasPremiumAccess() ? nextWatchlist : nextWatchlist.slice(0, 20);
     });
   };
 

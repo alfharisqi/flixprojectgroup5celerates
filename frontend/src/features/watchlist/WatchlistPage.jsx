@@ -3,6 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import { requireLogin } from "@/utils/authPrompt";
+import {
+  getMovieWatchlistKey,
+  getSeriesWatchlistKey,
+  getWatchStatusKey,
+  readWatchlist as readStoredWatchlist,
+  readWatchStatus,
+} from "@/utils/watchlistStorage";
 import bookmarkIcon from "@/assets/icon/bookmark-icon.svg";
 import checkIcon from "@/assets/icon/check-icon.svg";
 import clockIcon from "@/assets/icon/clock-icon.svg";
@@ -24,29 +31,6 @@ const getStoredUser = () => {
     return null;
   }
 };
-
-const readStorageArray = (key) => {
-  try {
-    const value = JSON.parse(localStorage.getItem(key));
-    return Array.isArray(value) ? value : [];
-  } catch {
-    return [];
-  }
-};
-
-const readStorageObject = (key) => {
-  try {
-    const value = JSON.parse(localStorage.getItem(key));
-    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
-  } catch {
-    return {};
-  }
-};
-
-const getUserStorageId = (user) => user?.id_user || "guest";
-const getMovieWatchlistKey = (user) => `flix_movie_watchlist_${getUserStorageId(user)}`;
-const getSeriesWatchlistKey = (user) => `flix_tv_watchlist_${getUserStorageId(user)}`;
-const getWatchStatusKey = (user) => `flix_watchlist_status_${getUserStorageId(user)}`;
 
 const getItemKey = (item) => `${item.mediaType}:${item.id}`;
 const getSeriesStatusKey = (seriesId) => `tv:${seriesId}`;
@@ -278,13 +262,13 @@ function WatchlistPage() {
   const watchStatusKey = useMemo(() => getWatchStatusKey(user), [user]);
 
   const [movieWatchlist, setMovieWatchlist] = useState(() =>
-    readStorageArray(movieWatchlistKey),
+    readStoredWatchlist(user, "movie"),
   );
   const [seriesWatchlist, setSeriesWatchlist] = useState(() =>
-    readStorageArray(seriesWatchlistKey),
+    readStoredWatchlist(user, "tv"),
   );
   const [watchStatus, setWatchStatus] = useState(() =>
-    readStorageObject(watchStatusKey),
+    readWatchStatus(user),
   );
   const [seriesDetails, setSeriesDetails] = useState({});
   const [seriesSeasonSelection, setSeriesSeasonSelection] = useState({});

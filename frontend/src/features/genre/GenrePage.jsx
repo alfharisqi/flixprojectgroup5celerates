@@ -13,7 +13,12 @@ import {
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import FilterPopup from "@/components/ui/FilterPopup";
 import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
-import { canAddWatchlistItem, requireLogin } from "@/utils/authPrompt";
+import { canAddWatchlistItem, hasPremiumAccess, requireLogin } from "@/utils/authPrompt";
+import {
+  getMovieWatchlistKey,
+  getSeriesWatchlistKey,
+  readWatchlist as readStoredWatchlist,
+} from "@/utils/watchlistStorage";
 import "./GenrePage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -464,21 +469,6 @@ const getStoredUser = () => {
   }
 };
 
-const getMovieWatchlistKey = (user) =>
-  `flix_movie_watchlist_${user?.id_user || "guest"}`;
-
-const getSeriesWatchlistKey = (user) =>
-  `flix_tv_watchlist_${user?.id_user || "guest"}`;
-
-const readWatchlist = (key) => {
-  try {
-    const savedWatchlist = JSON.parse(localStorage.getItem(key));
-    return Array.isArray(savedWatchlist) ? savedWatchlist : [];
-  } catch {
-    return [];
-  }
-};
-
 function GenreMovieCard({
   movie,
   mediaType,
@@ -548,10 +538,10 @@ function GenrePage() {
   const movieWatchlistKey = useMemo(() => getMovieWatchlistKey(user), [user]);
   const seriesWatchlistKey = useMemo(() => getSeriesWatchlistKey(user), [user]);
   const [movieWatchlist, setMovieWatchlist] = useState(() =>
-    readWatchlist(movieWatchlistKey),
+    readStoredWatchlist(user, "movie"),
   );
   const [seriesWatchlist, setSeriesWatchlist] = useState(() =>
-    readWatchlist(seriesWatchlistKey),
+    readStoredWatchlist(user, "tv"),
   );
   const [pendingWatchlistItem, setPendingWatchlistItem] = useState(null);
   const [genres, setGenres] = useState(fallbackGenres.map(normalizeGenre));
@@ -982,7 +972,8 @@ function GenrePage() {
         return currentWatchlist;
       }
 
-      return [{ ...mediaItem, media_type: mediaType }, ...currentWatchlist].slice(0, 20);
+      const nextWatchlist = [{ ...mediaItem, media_type: mediaType }, ...currentWatchlist];
+      return hasPremiumAccess() ? nextWatchlist : nextWatchlist.slice(0, 20);
     });
   };
 

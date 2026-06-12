@@ -28,7 +28,13 @@ import catchplayIcon from "@/assets/platformstream-logo/catchplay-icon.png";
 import disneyHotstarIcon from "@/assets/platformstream-logo/disneyhotstar-icon.png";
 import hboMaxIcon from "@/assets/platformstream-logo/HBOmax-icon.png";
 import netflixIcon from "@/assets/platformstream-logo/netflix-icon.png";
-import { canAddWatchlistItem, requireLogin } from "@/utils/authPrompt";
+import { canAddWatchlistItem, hasPremiumAccess, requireLogin } from "@/utils/authPrompt";
+import {
+  getSeriesWatchlistKey,
+  getWatchStatusKey,
+  readWatchlist as readStoredWatchlist,
+  readWatchStatus,
+} from "@/utils/watchlistStorage";
 import { submitReport } from "@/utils/report";
 import "@/features/movies/MovieDetail.css";
 
@@ -160,25 +166,10 @@ function ReviewAvatar({ review, user }) {
   );
 }
 
-const getWatchlistKey = (user) =>
-  `flix_tv_watchlist_${user?.id_user || "guest"}`;
-
-const getWatchStatusKey = (user) =>
-  `flix_watchlist_status_${user?.id_user || "guest"}`;
-
 const getSeriesStatusKey = (seriesId) => `tv:${seriesId}`;
 
 const getEpisodeStatusKey = (seriesId, seasonNumber, episodeNumber) =>
   `tv:${seriesId}:s${seasonNumber}:e${episodeNumber}`;
-
-const readWatchlist = (key) => {
-  try {
-    const savedWatchlist = JSON.parse(localStorage.getItem(key));
-    return Array.isArray(savedWatchlist) ? savedWatchlist : [];
-  } catch {
-    return [];
-  }
-};
 
 const readStorageObject = (key) => {
   try {
@@ -243,12 +234,12 @@ function TVSeriesDetail() {
     }
   }, []);
 
-  const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
+  const watchlistKey = useMemo(() => getSeriesWatchlistKey(user), [user]);
   const watchStatusKey = useMemo(() => getWatchStatusKey(user), [user]);
   const [series, setSeries] = useState(null);
-  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const [watchlist, setWatchlist] = useState(() => readStoredWatchlist(user, "tv"));
   const [watchStatus, setWatchStatus] = useState(() =>
-    readStorageObject(watchStatusKey),
+    readWatchStatus(user),
   );
   const [pendingWatchlistSeries, setPendingWatchlistSeries] = useState(null);
   const [reviews, setReviews] = useState([]);
@@ -478,7 +469,8 @@ function TVSeriesDetail() {
         return currentWatchlist;
       }
 
-      return [watchlistSeries, ...currentWatchlist].slice(0, 20);
+      const nextWatchlist = [watchlistSeries, ...currentWatchlist];
+      return hasPremiumAccess() ? nextWatchlist : nextWatchlist.slice(0, 20);
     });
   };
 

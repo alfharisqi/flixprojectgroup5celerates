@@ -15,7 +15,13 @@ import {
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import FilterPopup from "@/components/ui/FilterPopup";
 import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
-import { canAddWatchlistItem, requireLogin } from "@/utils/authPrompt";
+import { canAddWatchlistItem, hasPremiumAccess, requireLogin } from "@/utils/authPrompt";
+import {
+  getMoodHistoryKey,
+  getMovieWatchlistKey,
+  getSeriesWatchlistKey,
+  readWatchlist as readStoredWatchlist,
+} from "@/utils/watchlistStorage";
 import menegangkanIcon from "@/assets/emoticon/menegangkan-emoticon.png";
 import pikiranIcon from "@/assets/emoticon/pikiran-emoticon.png";
 import romantisIcon from "@/assets/emoticon/romantis-emoticon.png";
@@ -325,34 +331,20 @@ const getStoredUser = () => {
   }
 };
 
-const getWatchlistKey = (user) => `flix_movie_watchlist_${user?.id_user || "guest"}`;
-const getSeriesWatchlistKey = (user) =>
-  `flix_tv_watchlist_${user?.id_user || "guest"}`;
-const getMoodHistoryKey = (user) => `flix_mood_history_${user?.id_user || "guest"}`;
-
-const readWatchlist = (key) => {
-  try {
-    const savedWatchlist = JSON.parse(localStorage.getItem(key));
-    return Array.isArray(savedWatchlist) ? savedWatchlist : [];
-  } catch {
-    return [];
-  }
-};
-
 function Homepage() {
   const navigate = useNavigate();
   const moodScrollerRef = useRef(null);
   const user = useMemo(() => getStoredUser(), []);
-  const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
+  const watchlistKey = useMemo(() => getMovieWatchlistKey(user), [user]);
   const seriesWatchlistKey = useMemo(() => getSeriesWatchlistKey(user), [user]);
 
   const [selectedMood, setSelectedMood] = useState(moods[0]);
   const [hitMovies, setHitMovies] = useState([fallbackHeroMovie, ...fallbackMovies]);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const [moodMovies, setMoodMovies] = useState(fallbackMovies);
-  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const [watchlist, setWatchlist] = useState(() => readStoredWatchlist(user, "movie"));
   const [seriesWatchlist, setSeriesWatchlist] = useState(() =>
-    readWatchlist(seriesWatchlistKey),
+    readStoredWatchlist(user, "tv"),
   );
   const [pendingWatchlistMovie, setPendingWatchlistMovie] = useState(null);
   const [providersByMovieId, setProvidersByMovieId] = useState({});
@@ -652,7 +644,8 @@ function Homepage() {
         return currentWatchlist;
       }
 
-      return [{ ...mediaItem, media_type: mediaType }, ...currentWatchlist].slice(0, 20);
+      const nextWatchlist = [{ ...mediaItem, media_type: mediaType }, ...currentWatchlist];
+      return hasPremiumAccess() ? nextWatchlist : nextWatchlist.slice(0, 20);
     });
   };
 

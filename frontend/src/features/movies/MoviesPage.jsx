@@ -18,7 +18,12 @@ import {
 import SiteNavbar from "@/components/layout/SiteNavbar";
 import FilterPopup from "@/components/ui/FilterPopup";
 import WatchlistConfirmModal from "@/components/ui/WatchlistConfirmModal";
-import { canAddWatchlistItem, requireLogin } from "@/utils/authPrompt";
+import { canAddWatchlistItem, hasPremiumAccess, requireLogin } from "@/utils/authPrompt";
+import {
+  getMovieWatchlistKey,
+  getSeriesWatchlistKey,
+  readWatchlist as readStoredWatchlist,
+} from "@/utils/watchlistStorage";
 import amazonPrimeVideoIcon from "@/assets/platformstream-logo/amazonprimevideo-icon.png";
 import appleTvIcon from "@/assets/platformstream-logo/appletv-icon.png";
 import catchplayIcon from "@/assets/platformstream-logo/catchplay-icon.png";
@@ -408,19 +413,6 @@ const getStoredUser = () => {
   }
 };
 
-const getWatchlistKey = (user) => `flix_movie_watchlist_${user?.id_user || "guest"}`;
-const getSeriesWatchlistKey = (user) =>
-  `flix_tv_watchlist_${user?.id_user || "guest"}`;
-
-const readWatchlist = (key) => {
-  try {
-    const savedWatchlist = JSON.parse(localStorage.getItem(key));
-    return Array.isArray(savedWatchlist) ? savedWatchlist : [];
-  } catch {
-    return [];
-  }
-};
-
 function MovieCard({
   movie,
   isSaved,
@@ -480,11 +472,11 @@ function MovieCard({
 function MoviesPage() {
   const navigate = useNavigate();
   const user = useMemo(() => getStoredUser(), []);
-  const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
+  const watchlistKey = useMemo(() => getMovieWatchlistKey(user), [user]);
   const seriesWatchlistKey = useMemo(() => getSeriesWatchlistKey(user), [user]);
-  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const [watchlist, setWatchlist] = useState(() => readStoredWatchlist(user, "movie"));
   const [seriesWatchlist, setSeriesWatchlist] = useState(() =>
-    readWatchlist(seriesWatchlistKey),
+    readStoredWatchlist(user, "tv"),
   );
   const [pendingWatchlistMovie, setPendingWatchlistMovie] = useState(null);
   const [trendingMovies, setTrendingMovies] = useState(fallbackMovies.slice(0, 3));
@@ -774,7 +766,8 @@ function MoviesPage() {
         return currentWatchlist;
       }
 
-      return [{ ...mediaItem, media_type: mediaType }, ...currentWatchlist].slice(0, 20);
+      const nextWatchlist = [{ ...mediaItem, media_type: mediaType }, ...currentWatchlist];
+      return hasPremiumAccess() ? nextWatchlist : nextWatchlist.slice(0, 20);
     });
   };
 

@@ -26,7 +26,11 @@ import catchplayIcon from "@/assets/platformstream-logo/catchplay-icon.png";
 import disneyHotstarIcon from "@/assets/platformstream-logo/disneyhotstar-icon.png";
 import hboMaxIcon from "@/assets/platformstream-logo/HBOmax-icon.png";
 import netflixIcon from "@/assets/platformstream-logo/netflix-icon.png";
-import { canAddWatchlistItem, requireLogin } from "@/utils/authPrompt";
+import { canAddWatchlistItem, hasPremiumAccess, requireLogin } from "@/utils/authPrompt";
+import {
+  getMovieWatchlistKey,
+  readWatchlist as readStoredWatchlist,
+} from "@/utils/watchlistStorage";
 import { submitReport } from "@/utils/report";
 import "@/features/movies/MovieDetail.css";
 
@@ -89,18 +93,6 @@ const buildGenrePath = (genre, media = "movie") => {
   });
 
   return `/genre?${params.toString()}`;
-};
-
-const getWatchlistKey = (user) =>
-  `flix_movie_watchlist_${user?.id_user || "guest"}`;
-
-const readWatchlist = (key) => {
-  try {
-    const savedWatchlist = JSON.parse(localStorage.getItem(key));
-    return Array.isArray(savedWatchlist) ? savedWatchlist : [];
-  } catch {
-    return [];
-  }
 };
 
 const mapMovieToWatchlist = (movie) => ({
@@ -221,8 +213,8 @@ function MovieDetail() {
   }, []);
 
   const [movie, setMovie] = useState(null);
-  const watchlistKey = useMemo(() => getWatchlistKey(user), [user]);
-  const [watchlist, setWatchlist] = useState(() => readWatchlist(watchlistKey));
+  const watchlistKey = useMemo(() => getMovieWatchlistKey(user), [user]);
+  const [watchlist, setWatchlist] = useState(() => readStoredWatchlist(user, "movie"));
   const [pendingWatchlistMovie, setPendingWatchlistMovie] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [reviewSummary, setReviewSummary] = useState({
@@ -345,7 +337,8 @@ function MovieDetail() {
         return currentWatchlist;
       }
 
-      return [watchlistMovie, ...currentWatchlist].slice(0, 20);
+      const nextWatchlist = [watchlistMovie, ...currentWatchlist];
+      return hasPremiumAccess() ? nextWatchlist : nextWatchlist.slice(0, 20);
     });
   };
 

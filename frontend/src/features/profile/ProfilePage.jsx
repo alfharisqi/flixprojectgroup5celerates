@@ -36,6 +36,11 @@ import {
   requirePremiumAccess,
 } from "@/utils/authPrompt";
 import { resolveMediaUrl } from "@/utils/media";
+import {
+  readMoodHistory,
+  readWatchlist as readStoredWatchlist,
+  readWatchStatus,
+} from "@/utils/watchlistStorage";
 import "./ProfilePage.css";
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -184,26 +189,6 @@ const moodDefinitions = [
   },
 ];
 
-const readStorageArray = (key) => {
-  try {
-    const value = JSON.parse(localStorage.getItem(key));
-    return Array.isArray(value) ? value : [];
-  } catch {
-    return [];
-  }
-};
-
-const readStorageObject = (key) => {
-  try {
-    const value = JSON.parse(localStorage.getItem(key));
-    return value && typeof value === "object" && !Array.isArray(value)
-      ? value
-      : {};
-  } catch {
-    return {};
-  }
-};
-
 const getStoredUser = () => {
   try {
     return JSON.parse(localStorage.getItem("user"));
@@ -212,15 +197,6 @@ const getStoredUser = () => {
   }
 };
 
-const getUserStorageId = (user) => user?.id_user || "guest";
-const getMovieWatchlistKey = (user) =>
-  `flix_movie_watchlist_${getUserStorageId(user)}`;
-const getSeriesWatchlistKey = (user) =>
-  `flix_tv_watchlist_${getUserStorageId(user)}`;
-const getWatchStatusKey = (user) =>
-  `flix_watchlist_status_${getUserStorageId(user)}`;
-const getMoodHistoryKey = (user) =>
-  `flix_mood_history_${getUserStorageId(user)}`;
 const getItemKey = (item) => `${item.mediaType}:${item.id}`;
 const getReviewKey = (review) => `${review.media_type}:${review.id_review}`;
 const getReviewApiUrl = (review) =>
@@ -991,19 +967,19 @@ function ProfilePage() {
 
   const userForStorage = profile || storedUser;
   const movieWatchlist = useMemo(
-    () => readStorageArray(getMovieWatchlistKey(userForStorage)),
+    () => readStoredWatchlist(userForStorage, "movie"),
     [userForStorage],
   );
   const seriesWatchlist = useMemo(
-    () => readStorageArray(getSeriesWatchlistKey(userForStorage)),
+    () => readStoredWatchlist(userForStorage, "tv"),
     [userForStorage],
   );
   const watchStatus = useMemo(
-    () => readStorageObject(getWatchStatusKey(userForStorage)),
+    () => readWatchStatus(userForStorage),
     [userForStorage],
   );
   const moodHistory = useMemo(
-    () => readStorageObject(getMoodHistoryKey(userForStorage)),
+    () => readMoodHistory(userForStorage),
     [userForStorage],
   );
 
