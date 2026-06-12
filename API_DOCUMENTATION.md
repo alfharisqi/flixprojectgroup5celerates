@@ -314,6 +314,7 @@ totalAmount: number
 | GET | `/api/admin/users/:id` | Admin | Detail user |
 | PUT | `/api/admin/users/:id` | Admin | Update user |
 | POST | `/api/admin/users/:id/reset-password` | Admin | Reset password user |
+| DELETE | `/api/admin/users/:id` | Admin | Hapus user non-admin |
 | PATCH | `/api/admin/users/:id/status` | Admin | Aktif/nonaktif user |
 | GET | `/api/moderator/dashboard` | Admin/Moderator | Dashboard moderator |
 

@@ -49,6 +49,7 @@ Admin dapat:
 3. Mengubah data user.
 4. Reset password user.
 5. Menonaktifkan/mengaktifkan user.
+6. Menghapus user non-admin jika data test perlu dibersihkan.
 
 Endpoint terkait:
 
@@ -56,11 +57,13 @@ Endpoint terkait:
 - `GET /api/admin/users/:id`
 - `PUT /api/admin/users/:id`
 - `POST /api/admin/users/:id/reset-password`
+- `DELETE /api/admin/users/:id`
 - `PATCH /api/admin/users/:id/status`
 
 Catatan:
 
 - User nonaktif tidak bisa login sampai diaktifkan kembali.
+- Delete user hanya untuk user non-admin dan tidak bisa dipakai admin untuk menghapus akun sendiri.
 - Reset password harus diberikan ke user secara aman.
 
 ## Transaksi Premium/Eksklusif

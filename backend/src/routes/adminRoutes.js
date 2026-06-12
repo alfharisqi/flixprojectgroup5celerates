@@ -19,6 +19,7 @@ import {
   getAdminTransactions,
   getAdminUserDetail,
   getAdminUsers,
+  deleteAdminUser,
   resetAdminUserPassword,
   updateAdminTransactionStatus,
   updateAdminCommunityReportStatus,
@@ -218,6 +219,13 @@ router.post(
   verifyToken,
   allowRoles("admin"),
   resetAdminUserPassword
+);
+
+router.delete(
+  "/users/:id",
+  verifyToken,
+  allowRoles("admin"),
+  deleteAdminUser
 );
 
 router.patch(

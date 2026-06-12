@@ -613,6 +613,7 @@ Alias route:
 | GET | `/api/admin/users/:id` | Detail user |
 | PUT | `/api/admin/users/:id` | Update data user |
 | POST | `/api/admin/users/:id/reset-password` | Reset password user |
+| DELETE | `/api/admin/users/:id` | Hapus user non-admin |
 | PATCH | `/api/admin/users/:id/status` | Aktif/nonaktif user |
 | GET | `/api/admin/reviews` | Moderasi review |
 | PATCH | `/api/admin/reviews/reports/:reportId/status` | Update status report review |

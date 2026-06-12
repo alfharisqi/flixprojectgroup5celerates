@@ -2244,6 +2244,79 @@ export const updateAdminUser = async (req, res) => {
   }
 };
 
+export const deleteAdminUser = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const userId = Number(req.params.id);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({
+        message: "ID user tidak valid",
+      });
+    }
+
+    if (Number(req.user?.id_user) === userId) {
+      return res.status(400).json({
+        message: "Admin tidak bisa menghapus akun sendiri",
+      });
+    }
+
+    await client.query("BEGIN");
+
+    const targetResult = await client.query(
+      `SELECT u.id_user, u.username, u.email, r.role_name
+       FROM flix.users u
+       JOIN flix.roles r ON r.id_role = u.id_role
+       WHERE u.id_user = $1
+       FOR UPDATE`,
+      [userId],
+    );
+
+    if (!targetResult.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        message: "User tidak ditemukan",
+      });
+    }
+
+    const targetUser = targetResult.rows[0];
+
+    if (targetUser.role_name === "admin") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: "Akun admin tidak bisa dihapus dari dashboard",
+      });
+    }
+
+    await client.query(
+      `DELETE FROM flix.users
+       WHERE id_user = $1`,
+      [userId],
+    );
+
+    await client.query("COMMIT");
+
+    return res.json({
+      message: "User berhasil dihapus",
+      user: {
+        id: Number(targetUser.id_user),
+        username: targetUser.username,
+        email: targetUser.email,
+        role: targetUser.role_name,
+      },
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    return res.status(500).json({
+      message: "Gagal menghapus user",
+      error: error.message,
+    });
+  } finally {
+    client.release();
+  }
+};
+
 export const resetAdminUserPassword = async (req, res) => {
   try {
     const userId = Number(req.params.id);
