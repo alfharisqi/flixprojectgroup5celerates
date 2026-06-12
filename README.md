@@ -10,13 +10,11 @@ FLIX adalah website rekomendasi film dan TV series berbasis React, Node.js, Expr
 - [Admin dan Moderator Flow](#admin-dan-moderator-flow)
 - [Teknologi](#teknologi)
 - [Struktur Folder](#struktur-folder)
-- [Setup Project](#setup-project)
+- [Deployment yang Digunakan](#deployment-yang-digunakan)
 - [Environment Variable](#environment-variable)
 - [Database](#database)
 - [API Eksternal](#api-eksternal)
 - [Endpoint Internal](#endpoint-internal)
-- [Email Lokal Dengan Mailpit](#email-lokal-dengan-mailpit)
-- [Deployment](#deployment)
 - [Catatan Pengembangan](#catatan-pengembangan)
 
 ## Fitur Utama
@@ -313,7 +311,7 @@ flowchart TD
 - TMDB API untuk data film, TV series, genre, trailer, cast, dan watch provider.
 - GIPHY API untuk GIF pada editor community.
 - Gemini API untuk Chatbot FLIX.
-- SMTP Mailpit atau Mailtrap untuk email verifikasi dan reset password.
+- SMTP provider untuk email verifikasi, reset password, dan notifikasi auth.
 
 ## Struktur Folder
 
@@ -356,108 +354,57 @@ flix/
       utils/
   flix_db.sql
   README.md
-  README_MAILPIT.md
 ```
 
 Frontend memakai alias import `@/` untuk `frontend/src`.
 
-## Setup Project
+## Deployment yang Digunakan
 
-Clone repository:
+Project FLIX dideploy menggunakan layanan berikut:
 
-```bash
-git clone https://github.com/alfharisqi/flixprojectgroup5celerates.git
-cd flixprojectgroup5celerates
-```
+| Bagian | Layanan | URL |
+| --- | --- | --- |
+| Frontend | Vercel | `https://flixprojectgroup5celerates-zfkn.vercel.app` |
+| Backend API | Vercel Serverless Functions | `https://flixprojectgroup5celerates.vercel.app` |
+| Database | Supabase PostgreSQL | Schema `flix` |
+| Email SMTP | SMTP provider production | Dipakai oleh backend melalui environment variable |
 
-Install backend:
+Frontend React/Vite dibuild oleh Vercel dari folder `frontend`. Backend Express berjalan sebagai deployment Node.js/serverless di Vercel dari folder `backend`.
 
-```bash
-cd backend
-npm install
-```
-
-Install frontend:
-
-```bash
-cd ../frontend
-npm install
-```
-
-Jalankan backend:
-
-```bash
-cd backend
-npm run dev
-```
-
-Jalankan frontend:
-
-```bash
-cd frontend
-npm run dev
-```
-
-URL lokal:
-
-```text
-Frontend: http://localhost:5173
-Backend:  http://localhost:5000
-```
-
-Build frontend:
-
-```bash
-cd frontend
-npm run build
-```
-
-Start backend production:
-
-```bash
-cd backend
-npm start
-```
+Database production memakai Supabase PostgreSQL dengan connection string `DATABASE_URL`. Karena environment production bersifat stateless, upload gambar disimpan sebagai data URL di database agar tetap tersedia setelah redeploy.
 
 ## Environment Variable
 
-### Backend `.env`
+### Backend Production
 
-Backend mendukung `DATABASE_URL` atau konfigurasi host PostgreSQL manual.
+Backend production memakai environment variable di Vercel.
 
 ```env
-PORT=5000
-
-# Pilihan 1: connection string
 DATABASE_URL=postgresql://user:password@host:5432/database?sslmode=require
 DB_SSL=true
-
-# Pilihan 2: konfigurasi manual
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=flix
-DB_USER=postgres
-DB_PASSWORD=password
-
-JWT_SECRET=flix_jwt_secret
-FRONTEND_URL=http://localhost:5173
+JWT_SECRET=secret_production
+FRONTEND_URL=https://flixprojectgroup5celerates-zfkn.vercel.app
 
 TMDB_API_KEY=tmdb_api_key
 GEMINI_API_KEY=gemini_api_key
 GEMINI_MODEL=gemini-1.5-flash
 
-MAIL_HOST=localhost
-MAIL_PORT=1025
-MAIL_SECURE=false
-MAIL_USER=
-MAIL_PASS=
-MAIL_FROM="FLIX Local <no-reply@flix.local>"
+MAIL_HOST=smtp_provider_host
+MAIL_PORT=465
+MAIL_SECURE=true
+MAIL_USER=smtp_user
+MAIL_PASS=smtp_password
+MAIL_FROM="FLIX <no-reply@domain-terverifikasi>"
+
+REQUIRE_EMAIL_VERIFICATION=false
+SKIP_DATABASE_INIT=true
+ENABLE_ADMIN_BOOTSTRAP=false
 ```
 
-### Frontend `.env`
+### Frontend Production
 
 ```env
-VITE_API_URL=http://localhost:5000
+VITE_API_URL=https://flixprojectgroup5celerates.vercel.app
 VITE_GIPHY_API_KEY=giphy_api_key
 ```
 
@@ -465,17 +412,9 @@ VITE_GIPHY_API_KEY=giphy_api_key
 
 Project memakai schema PostgreSQL `flix`.
 
-Import database awal:
+Database production berada di Supabase PostgreSQL dan memakai connection string Supabase pada environment variable backend `DATABASE_URL`.
 
-```bash
-psql "DATABASE_URL_KAMU" -f flix_db.sql
-```
-
-Jika `psql` tidak tersedia, bisa import melalui Node dengan package `pg` dari backend:
-
-```bash
-node -e "const fs=require('fs'); const { Client }=require('./backend/node_modules/pg'); const client=new Client({connectionString:process.env.DATABASE_URL, ssl:{rejectUnauthorized:false}}); (async()=>{await client.connect(); await client.query(fs.readFileSync('flix_db.sql','utf8')); await client.end(); console.log('Import database selesai');})().catch(e=>{console.error(e); process.exit(1);});"
-```
+Schema awal tersedia di file `flix_db.sql`. Import schema dilakukan ke database Supabase sebelum backend production dijalankan.
 
 Beberapa tabel/kolom dibuat atau dipastikan otomatis saat backend berjalan, termasuk:
 
@@ -491,13 +430,7 @@ Beberapa tabel/kolom dibuat atau dipastikan otomatis saat backend berjalan, term
 - Customer service tickets, messages, dan attachments.
 - Report untuk review, community post, comment, reply, dan user.
 
-Upload file disimpan di:
-
-```text
-backend/uploads/
-```
-
-Folder upload tidak perlu ikut masuk Git karena berisi file user/admin saat runtime.
+Upload gambar user/admin dan bukti pembayaran pada production disimpan sebagai data URL di database. Ini dipilih karena deployment Vercel bersifat stateless dan tidak menyimpan file runtime secara permanen.
 
 ## API Eksternal
 
@@ -507,14 +440,14 @@ Folder upload tidak perlu ikut masuk Git karena berisi file user/admin saat runt
 | TMDB Image API | Poster dan backdrop |
 | GIPHY API | GIF picker pada community post |
 | Gemini API | Chatbot FLIX |
-| SMTP Mailpit/Mailtrap | Email verifikasi akun dan reset password |
+| SMTP provider | Email verifikasi akun, reset password, dan notifikasi auth |
 
 ## Endpoint Internal
 
-Base URL lokal:
+Base URL production:
 
 ```text
-http://localhost:5000
+https://flixprojectgroup5celerates.vercel.app
 ```
 
 Header untuk endpoint login:
@@ -652,69 +585,8 @@ Authorization: Bearer <token>
 | PATCH | `/api/admin/customer-service/tickets/:id/close` | Selesaikan tiket CS |
 | GET | `/api/moderator/dashboard` | Dashboard moderator |
 
-## Email Lokal Dengan Mailpit
-
-Project mendukung Mailpit untuk testing email lokal.
-
-Konfigurasi backend:
-
-```env
-MAIL_HOST=localhost
-MAIL_PORT=1025
-MAIL_SECURE=false
-MAIL_USER=
-MAIL_PASS=
-MAIL_FROM="FLIX Local <no-reply@flix.local>"
-```
-
-Alamat Mailpit:
-
-```text
-SMTP server: localhost:1025
-Web inbox: http://localhost:8025
-```
-
-Panduan lengkap ada di:
-
-```text
-README_MAILPIT.md
-```
-
-## Deployment
-
-Rekomendasi deployment:
-
-- Frontend: Vercel.
-- Backend: Render, Railway, Fly.io, atau VPS Node.js.
-- Database: Neon PostgreSQL, Supabase PostgreSQL, Railway PostgreSQL, atau database PostgreSQL lain.
-- Upload runtime: untuk production sebaiknya gunakan object storage seperti Cloudinary, Supabase Storage, S3, atau layanan sejenis. Folder `backend/uploads` cocok untuk lokal, tetapi tidak ideal untuk server stateless.
-
-Environment frontend production:
-
-```env
-VITE_API_URL=https://domain-backend-kamu
-VITE_GIPHY_API_KEY=giphy_api_key
-```
-
-Environment backend production:
-
-```env
-DATABASE_URL=postgresql://...
-DB_SSL=true
-JWT_SECRET=secret_production
-FRONTEND_URL=https://domain-frontend-kamu
-TMDB_API_KEY=...
-GEMINI_API_KEY=...
-MAIL_HOST=...
-MAIL_PORT=...
-MAIL_USER=...
-MAIL_PASS=...
-MAIL_FROM=...
-```
-
 ## Catatan Pengembangan
 
-- Jangan commit file upload runtime dari `backend/uploads`.
 - Jangan simpan API key asli di Git.
 - Fitur Premium/Eksklusif harus divalidasi di backend dan frontend.
 - Admin memiliki semua hak akses.
